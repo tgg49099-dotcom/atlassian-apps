@@ -58,8 +58,9 @@ removes all storage entries (per Atlassian Forge uninstall behavior).
 The App requests only the following Atlassian API scopes:
 
 - `read:jira-work` — to read issue fields for validation.
-- `write:jira-work` — reserved for the optional strict-mode transition
-  blocker in Pro tier (inactive in the free tier).
+- `write:jira-work` — declared in the manifest but not used by the app: it
+  reads and reports, it never writes to Jira.
+- `storage:app` — to store one JSON Schema per project.
 
 No user-identity scope, no admin scope, no Confluence scope, no
 `llm:access` scope, no `read:cmdb-object` scope, no `read:jira-user` scope.
