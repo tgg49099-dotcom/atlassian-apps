@@ -1,6 +1,6 @@
 # Privacy Policy — Jira Validator small teams
 
-Last updated: 2026-10-14. Effective on first marketplace publish.
+Last updated: 2026-10-24. Effective on first marketplace publish.
 
 This Privacy Policy explains what data **Jira Validator small teams** (the
 "App", a Forge app published on the Atlassian Marketplace) reads, stores,
@@ -12,17 +12,34 @@ infrastructure and does not operate any external server.
 
 ## 1. Data we read
 
-The App reads the following Jira data, scoped by the Atlassian permissions
-declared in the manifest:
+When the validation panel is opened on an issue, the App makes **one** read
+request for that issue, as the signed-in user:
 
-- The **custom fields** and a small set of **system fields** (priority,
-  story points, due date, labels, components, issuetype, project key) of
-  every Jira issue on which the App is invoked via the issue panel.
-- The **project metadata** (project id, project key, project lead) of every
-  project the App is asked to validate against.
+    GET /rest/api/3/issue/<issueKey>
 
-We do **not** read comments, attachments, worklogs, time tracking data,
-user profiles, audit logs, or any other Jira data.
+The request carries **no field filter**, so Atlassian returns the issue's
+standard field set. The App receives, in memory and for the duration of that
+single request: the issue's system fields (summary, description, labels,
+components, priority, dates, time tracking, status, links, subtasks, ...), its
+custom fields, and the issue's creator, reporter and assignee references
+(account id, display name, email address) as Jira returns them.
+
+The App then applies the project's JSON Schema to that object. **Only the
+fields named in the schema are looked at**; every other field is discarded
+immediately. In particular, the App:
+
+- does not call the comment, worklog or attachment endpoints, and receives no
+  comment body;
+- stores no issue field, no user identifier, no email address and no personal
+  data - the only thing written to storage is the schema (section 2);
+- sends nothing to any external service (section 3).
+
+Because the schema is yours, **a rule you write can target any field of the
+issue**, including the creator's or the reporter's email address. Do not write
+such a rule on a project where that would be inappropriate.
+
+The App also reads the **project metadata** (project id, key, name) of every
+project the App is asked to validate against.
 
 ## 2. Data we store
 
