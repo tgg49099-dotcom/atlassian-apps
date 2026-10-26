@@ -12,13 +12,14 @@ processes that data, and what it does **not** do.
 
 ## What the App accesses
 
-The App declares two read-only Confluence scopes on
+The App declares two read-only Confluence scopes and one storage scope on
 `developer.atlassian.com/platform/forge/manifest-permissions/confluence/`:
 
-- `read:confluence-content.summary` — to read each page's timestamp,
-  label list, and owner accountId.
-- `read:confluence-space.summary` — to enumerate the spaces in the
-  tenant.
+- `read:space:confluence` — to enumerate the spaces in the tenant.
+- `read:page:confluence` — to read each page's timestamp, label list, and
+  owner accountId.
+- `storage:app` — to persist the admin's threshold config in the Forge
+  storage API, at the key `governance:<tenantId>`.
 
 The App reads no other Atlassian resource. The App does **not** read
 the body of any page, any user profile, any comment, or any
