@@ -62,9 +62,8 @@ OK, or lists the fields that fail and why.
 }
 ```
 
-The editor checks the schema before saving it and tells you what is wrong with
-it (it must be a JSON Schema object, must stay under 100 KB, and cannot use
-external `$ref`s).
+The editor checks the schema before saving it (it must be a JSON Schema object,
+under 100 KB, and cannot use external `$ref`s).
 
 ## The three permissions it requests, and why
 
@@ -81,11 +80,10 @@ Confluence scope**, **no `llm:access` scope**, **no `read:cmdb-object`
 scope**. It never calls the comment, worklog, attachment or user-profile
 endpoints, so it reads no comment body, no attachment and no audit log.
 
-One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md):
-the issue read carries **no field filter**, so Jira returns its standard field
-set — which includes the issue's creator, reporter and assignee references.
-The app then discards every field that your schema does not name, and stores
-none of them.
+One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md): the
+issue read carries **no field filter**, so Jira's standard field set comes back,
+including creator, reporter and assignee references — all discarded unless your
+schema names them.
 
 ## What it does **not** do
 
@@ -105,8 +103,7 @@ none of them.
 
 Everything stays inside your Atlassian site. The schema you paste is stored by
 Atlassian in the Cloud region your site uses (EU, US, APAC — we do not choose
-the region), encrypted at rest. See the [Privacy Policy](PRIVACY.md) for the
-full text, including what is stored, for how long and who to contact.
+the region), encrypted at rest — see the [Privacy Policy](PRIVACY.md) for details.
 
 - **Privacy Policy** — [PRIVACY.md](PRIVACY.md)
 - **Support & FAQ** — [SUPPORT.md](SUPPORT.md)
@@ -119,6 +116,6 @@ full text, including what is stored, for how long and who to contact.
 
 ## Version
 
-**App version 3** is the build currently served in production. Material
-changes are announced in the Marketplace listing changelog and in the
+**App version 3** is the build currently served in production. Material changes
+are announced in the Marketplace listing changelog and in the
 `Last updated` line of the [Privacy Policy](PRIVACY.md).
