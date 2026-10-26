@@ -29,8 +29,7 @@ checks every issue of that project against it. One schema per project.
 
 ## Who it is for
 
-Small teams (roughly 2 to 15 people) who want a **lightweight data-quality
-check on their custom fields** without installing a heavyweight Jira app:
+Small teams (roughly 2 to 15 people) who want a lightweight data-quality check on their custom fields without installing a heavyweight Jira app:
 
 - An ops team that wants every ticket to carry a `story_points`, a `region`
   and a `due_date`, and to see at a glance which ones do not.
@@ -80,10 +79,7 @@ Confluence scope**, **no `llm:access` scope**, **no `read:cmdb-object`
 scope**. It never calls the comment, worklog, attachment or user-profile
 endpoints, so it reads no comment body, no attachment and no audit log.
 
-One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md): the
-issue read carries **no field filter**, so Jira's standard field set comes back,
-including creator, reporter and assignee references — all discarded unless your
-schema names them.
+One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md): the issue read carries **no field filter**, so Jira's standard field set comes back, including creator, reporter and assignee references — all discarded unless your schema names them.
 
 ## What it does **not** do
 
