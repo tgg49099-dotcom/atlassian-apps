@@ -1,6 +1,6 @@
 # Security — Jira Validator small teams
 
-Last updated: 2026-10-23.
+Last updated: 2026-10-26.
 
 Jira Validator small teams runs entirely on the Atlassian Forge runtime, on
 Atlassian's own infrastructure.
@@ -10,12 +10,21 @@ Atlassian's own infrastructure.
 - **The issue** the panel is attached to, fetched as the signed-in user.
 - **Project metadata** (id, key, name) of the project selected in the admin page.
 
-It reads no comments, attachments, worklogs, user profiles or audit logs.
+It never calls the comment, worklog, attachment, audit or user-profile
+endpoints, so it reads no audit log. The single issue response does carry the
+issue's comments (with their text), its worklog entries and its attachments'
+metadata when the issue has them, and the creator, reporter and assignee
+references Jira includes: the app applies them to the administrator's schema
+in memory, stores none of them and sends none of them anywhere.
 
 ## What the app writes
 
 - **One JSON Schema per project**, in Atlassian Forge storage (`storage:app`),
-  under the key `schema:<projectId>`.
+  under the key `schema:<projectId>`, with its version number, its last-edit
+  timestamp and the Atlassian account ID of the administrator who saved it.
+  Only the current version is kept - there is no history of previous
+  versions, and no per-schema delete button: uninstalling the app is what
+  removes the entry.
 
 The app never writes to Jira: it does not edit issues, add comments or change
 statuses. The `write:jira-work` scope is declared but unused.

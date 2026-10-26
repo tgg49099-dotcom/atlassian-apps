@@ -70,16 +70,24 @@ The app declares exactly three scopes, visible in the app manifest:
 
 | Scope | Why it is requested |
 |---|---|
-| `read:jira-work` | To read the issue's fields and the project list, so your schema can be applied to them. **Read-only.** The app makes three GET calls and no others. |
+| `read:jira-work` | To read the issue's fields and the project list, so your schema can be applied to them. **Read-only.** The app calls only three Jira GET endpoints - the project list, one project's details, one issue - and nothing else. |
 | `write:jira-work` | **Declared but not exercised by the current build:** the app contains no write path — it never writes to Jira. The scope was reserved for a "strict mode" that would block a transition, which is not built. **It is removed from the manifest before the Marketplace submission**, and re-added only together with the feature that uses it. |
 | `storage:app` | To store **one JSON Schema per project** in the Forge Key-Value Store, scoped to your site. It grants no access to Jira data. Uninstalling the app deletes the schemas it stored. |
 
 The app asks for **no user-identity scope**, **no admin scope**, **no
 Confluence scope**, **no `llm:access` scope**, **no `read:cmdb-object`
-scope**. It never calls the comment, worklog, attachment or user-profile
-endpoints, so it reads no comment body, no attachment and no audit log.
+scope**. It never calls the comment, worklog, attachment, audit or
+user-profile endpoints, so it reads no audit log.
 
-One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md): the issue read carries **no field filter**, so Jira's standard field set comes back, including creator, reporter and assignee references — all discarded unless your schema names them.
+Two points stated plainly, because they are in the [Privacy Policy](PRIVACY.md):
+
+- The issue read carries **no field filter**, so Jira's standard field set
+  comes back, including creator, reporter and assignee references — all
+  discarded unless your schema names them.
+- That same response also carries the issue's **comments (with their text),
+  its worklog entries and its attachments' metadata** when the issue has
+  them. The app hands them to your schema like any other field: it never
+  calls those endpoints, never stores them and never sends them anywhere.
 
 ## What it does **not** do
 
@@ -92,8 +100,12 @@ One point stated plainly, because it is in the [Privacy Policy](PRIVACY.md): the
 - It does not **use AI or a language model** at runtime. Validation is plain
   JSON Schema evaluation, locally, in the Forge runtime.
 - It does not **store issue data**: the only thing written to storage is your
-  schema text, its timestamp, and its last 10 versions.
-- It does not **read user profiles**: no `/myself`, no user search.
+  schema (text and parsed form), its version number, its timestamp, and the
+  Atlassian account ID of the admin who saved it. No history of previous
+  versions is kept.
+- It does not **call any user endpoint**: no `/myself`, no user search, no
+  profile lookup. The user references Jira includes in the issue response
+  are passed to your schema like any other field.
 
 ## Support, privacy and security
 

@@ -1,6 +1,6 @@
 # Privacy Policy — Jira Validator small teams
 
-Last updated: 2026-10-24. Effective on first marketplace publish.
+Last updated: 2026-10-26. Effective on first marketplace publish.
 
 This Privacy Policy explains what data **Jira Validator small teams** (the
 "App", a Forge app published on the Atlassian Marketplace) reads, stores,
@@ -22,16 +22,21 @@ standard field set. The App receives, in memory and for the duration of that
 single request: the issue's system fields (summary, description, labels,
 components, priority, dates, time tracking, status, links, subtasks, ...), its
 custom fields, and the issue's creator, reporter and assignee references
-(account id, display name, email address) as Jira returns them.
+(account id, display name, email address) as Jira returns them. When the issue
+carries comments, worklog entries or attachments, the same response carries
+them too: the comments with their text, the worklog entries with their
+comments, and the attachments' metadata (file name, size, type, author). The
+attachment contents themselves are not part of the issue response.
 
 The App then applies the project's JSON Schema to that object. **Only the
 fields named in the schema are looked at**; every other field is discarded
 immediately. In particular, the App:
 
-- does not call the comment, worklog or attachment endpoints, and receives no
-  comment body;
-- stores no issue field, no user identifier, no email address and no personal
-  data - the only thing written to storage is the schema (section 2);
+- never calls the comment, worklog or attachment endpoints, and never
+  downloads an attachment's content;
+- stores no issue field, no comment text, no email address and no personal
+  data - the only thing written to storage is the schema and the Atlassian
+  account ID of the administrator who saved it (section 2);
 - sends nothing to any external service (section 3).
 
 Because the schema is yours, **a rule you write can target any field of the
@@ -44,14 +49,20 @@ project the App is asked to validate against.
 ## 2. Data we store
 
 The App stores **one JSON Schema document per project** in the Atlassian
-Forge storage API. The schema contains:
+Forge storage API, under the key `schema:<projectId>`. The stored entry
+contains:
 
-- The project key or project id it applies to.
-- The JSON Schema text the administrator pasted in the Admin Panel.
-- A timestamp of the last edit.
+- The project key or project id it applies to (in the key itself).
+- The JSON Schema text the administrator pasted in the Admin Panel, and the
+  parsed form of that schema.
+- A timestamp of the last edit, and a version number.
+- The Atlassian **account ID of the administrator who saved it** - an opaque
+  Atlassian identifier, not a name and not an email address.
 
-The schema is the only piece of data the App writes. The App does not write
-any Jira issue data, user data, or attachment data.
+That entry is the only thing the App writes. The App does not write any Jira
+issue data, comment, attachment or user data. Only the **current** version is
+kept: saving again replaces the stored entry, and no history of previous
+versions is retained.
 
 Storage is scoped to the Forge installation. Data lives in the Atlassian
 Cloud region the customer has selected (EU, US, APAC…) — we do not choose
@@ -66,9 +77,10 @@ third-party APIs.
 
 ## 4. Data retention
 
-A schema is kept until the administrator deletes it via the Admin Panel
-or until the App is uninstalled from the Jira site. Uninstalling the App
-removes all storage entries (per Atlassian Forge uninstall behavior).
+A schema is kept until the App is uninstalled from the Jira site, or until
+the administrator replaces it from the Admin Panel: saving again overwrites
+the stored entry, and the previous version is not retained. Uninstalling the
+App removes all storage entries (per Atlassian Forge uninstall behavior).
 
 ## 5. Permissions used
 
@@ -95,7 +107,9 @@ on this page with a new "Last updated" date.
 ## 8. Contact
 
 Publisher contact email: **tgg.apps.support@gmail.com**. For data
-deletion requests, uninstalling the App removes all stored schemas.
+deletion requests: the stored schema is removed by uninstalling the App from
+the site, or by replacing it from the Admin Panel - the previous version is
+not retained.
 
 ## 9. Hosting and compliance
 
