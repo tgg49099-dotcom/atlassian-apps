@@ -36,12 +36,6 @@ check on their custom fields** without installing a heavyweight Jira app:
   and a `due_date`, and to see at a glance which ones do not.
 - A support team that must not let a ticket through without a `severity` and
   an `assignee_group` from a fixed list.
-- Any team with an agreed field convention that would like it visible on every
-  issue rather than enforced by a script.
-
-It is **not** a workflow-automation tool, not a reporting dashboard and not an
-AI assistant. It does one thing: show you where an issue does not match the
-rules you wrote.
 
 ## Install (2 steps)
 
@@ -80,7 +74,7 @@ The app declares exactly three scopes, visible in the app manifest:
 |---|---|
 | `read:jira-work` | To read the issue's fields and the project list, so your schema can be applied to them. **Read-only.** The app makes three GET calls and no others. |
 | `write:jira-work` | **Declared but not exercised by the current build:** the app contains no write path — it never writes to Jira. The scope was reserved for a "strict mode" that would block a transition, which is not built. **It is removed from the manifest before the Marketplace submission**, and re-added only together with the feature that uses it. |
-| `storage:app` | To store **one JSON Schema per project** in the Forge Key-Value Store, scoped to your site. It grants no access to Jira data. |
+| `storage:app` | To store **one JSON Schema per project** in the Forge Key-Value Store, scoped to your site. It grants no access to Jira data. Uninstalling the app deletes the schemas it stored. |
 
 The app asks for **no user-identity scope**, **no admin scope**, **no
 Confluence scope**, **no `llm:access` scope**, **no `read:cmdb-object`
@@ -107,14 +101,12 @@ none of them.
   schema text, its timestamp, and its last 10 versions.
 - It does not **read user profiles**: no `/myself`, no user search.
 
-## How your data is handled
+## Support, privacy and security
 
 Everything stays inside your Atlassian site. The schema you paste is stored by
 Atlassian in the Cloud region your site uses (EU, US, APAC — we do not choose
-the region), encrypted at rest. Uninstalling the app deletes the schemas it
-stored. See the [Privacy Policy](PRIVACY.md) for the full text.
-
-## Support, privacy and security
+the region), encrypted at rest. See the [Privacy Policy](PRIVACY.md) for the
+full text, including what is stored, for how long and who to contact.
 
 - **Privacy Policy** — [PRIVACY.md](PRIVACY.md)
 - **Support & FAQ** — [SUPPORT.md](SUPPORT.md)
