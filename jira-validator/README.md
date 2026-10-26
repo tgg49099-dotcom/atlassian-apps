@@ -10,8 +10,6 @@ you define, and reports what is missing or wrong — without blocking anything.*
 | **Data leaves your site** | No. The app declares no egress at all |
 | **App version** | 3 — the build currently served in production |
 
----
-
 ## What it does
 
 Every time you open a Jira issue, the **Jira Validator** panel appears next to
@@ -21,28 +19,27 @@ its range, a value outside its enum, a date in the wrong format.
 
 Two rules govern everything the app does:
 
-- **It reports. It never blocks.** A violation is a signal, not a gate. You can
-  still save, transition, comment on or close the issue — nothing is prevented.
-- **It never modifies anything.** The app does not edit a field, add a comment,
-  change a status or write an issue property. It reads and it tells you.
+- **It reports. It never blocks.** A violation is a signal, not a gate: you can
+  still save, transition, comment on or close the issue.
+- **It never modifies anything.** It does not edit a field, add a comment,
+  change a status or write an issue property. It reads, and it tells you.
 
-You define the rules. Paste a JSON Schema in the admin page and the panel
+You define the rules: paste a JSON Schema in the admin page and the panel
 checks every issue of that project against it. One schema per project.
 
 ## Who it is for
 
-Small teams (roughly 2 to 15 people) who need a **lightweight data-quality
-check on their custom fields** but who do not want to install a heavyweight
-Jira app or a validation engine:
+Small teams (roughly 2 to 15 people) who want a **lightweight data-quality
+check on their custom fields** without installing a heavyweight Jira app:
 
 - An ops team that wants every ticket to carry a `story_points`, a `region`
-  and a `due_date`, and that wants to see at a glance which ones do not.
-- A support team that must not let a ticket through without a `severity` and an
-  `assignee_group` from a fixed list.
-- Any team that has agreed on a field convention and would like it visible on
-  every issue rather than enforced by a script.
+  and a `due_date`, and to see at a glance which ones do not.
+- A support team that must not let a ticket through without a `severity` and
+  an `assignee_group` from a fixed list.
+- Any team with an agreed field convention that would like it visible on every
+  issue rather than enforced by a script.
 
-It is **not** a workflow-automation tool, not a reporting dashboard, and not an
+It is **not** a workflow-automation tool, not a reporting dashboard and not an
 AI assistant. It does one thing: show you where an issue does not match the
 rules you wrote.
 
@@ -55,11 +52,9 @@ directly on the Marketplace listing.) The app adds one panel to the issue view
 and one page to the project settings — it changes no existing Jira behaviour.
 
 **Step 2 — save your schema.** Open one of your projects → **Project settings →
-Apps → Jira Validator**. Pick the project, paste your JSON Schema in the
-editor, and press **Save**. Then open any issue of that project: the panel
-shows every field as OK, or lists the fields that fail and why.
-
-Example of a schema you can paste:
+Apps → Jira Validator**. Pick the project, paste your JSON Schema, and press
+**Save**. Then open any issue of that project: the panel shows every field as
+OK, or lists the fields that fail and why.
 
 ```json
 {
@@ -84,7 +79,7 @@ The app declares exactly three scopes, visible in the app manifest:
 | Scope | Why it is requested |
 |---|---|
 | `read:jira-work` | To read the issue's fields and the project list, so your schema can be applied to them. **Read-only.** The app makes three GET calls and no others. |
-| `write:jira-work` | **Declared but not exercised by the current build:** the app contains no write path — it never writes to Jira. This scope was reserved for a "strict mode" that would block a transition, which is not built. **It is removed from the manifest before the Marketplace submission**, and it will be re-added only together with the feature that uses it. |
+| `write:jira-work` | **Declared but not exercised by the current build:** the app contains no write path — it never writes to Jira. The scope was reserved for a "strict mode" that would block a transition, which is not built. **It is removed from the manifest before the Marketplace submission**, and re-added only together with the feature that uses it. |
 | `storage:app` | To store **one JSON Schema per project** in the Forge Key-Value Store, scoped to your site. It grants no access to Jira data. |
 
 The app asks for **no user-identity scope**, **no admin scope**, **no
@@ -106,29 +101,29 @@ none of them.
   issue property.
 - It does not **send your data anywhere**: no external service, no analytics,
   no error reporter, no marketing tracker.
-- It does not **use AI or a language model** at runtime. The validation is plain
+- It does not **use AI or a language model** at runtime. Validation is plain
   JSON Schema evaluation, locally, in the Forge runtime.
 - It does not **store issue data**: the only thing written to storage is your
   schema text, its timestamp, and its last 10 versions.
-- It does not **read your users**: no `/myself`, no user search, no account ids.
+- It does not **read user profiles**: no `/myself`, no user search.
 
 ## How your data is handled
 
-Everything stays inside your Atlassian site. The schema you paste is stored
-by Atlassian in the Cloud region your site uses (EU, US, APAC — we do not
-choose the region), encrypted at rest. Uninstalling the app deletes the
-schemas it stored. See the [Privacy Policy](PRIVACY.md) for the full text.
+Everything stays inside your Atlassian site. The schema you paste is stored by
+Atlassian in the Cloud region your site uses (EU, US, APAC — we do not choose
+the region), encrypted at rest. Uninstalling the app deletes the schemas it
+stored. See the [Privacy Policy](PRIVACY.md) for the full text.
 
 ## Support, privacy and security
 
 - **Privacy Policy** — [PRIVACY.md](PRIVACY.md)
 - **Support & FAQ** — [SUPPORT.md](SUPPORT.md)
-- **Security policy** (how to report a vulnerability, what is in scope, the
+- **Security policy** (reporting a vulnerability, what is in scope, the
   response SLA) — [SECURITY.md](SECURITY.md)
 - **Email** — `tgg.apps.support@gmail.com`. Please include your Jira site URL,
   the steps to reproduce, and the exact message shown by the panel.
-- **Source** — this app's public documents live in this repository; the
-  repository is open for questions and bug reports.
+- **Source** — this app's public documents live in this repository, open for
+  questions and bug reports.
 
 ## Version
 
