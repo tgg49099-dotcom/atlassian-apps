@@ -1,4 +1,4 @@
-# Jira Validator small teams
+# Schema Validator for Jira
 
 **A free Jira Cloud app that checks the fields of an issue against a JSON Schema
 you define, and reports what is missing or wrong — without blocking anything.**
@@ -12,7 +12,7 @@ you define, and reports what is missing or wrong — without blocking anything.*
 
 ## What it does
 
-Every time you open a Jira issue, the **Jira Validator** panel appears next to
+Every time you open a Jira issue, the **Schema Validator for Jira** panel appears next to
 it. The panel applies your project's JSON Schema to the issue and lists, field
 by field, what does not conform: a missing required field, a number outside
 its range, a value outside its enum, a date in the wrong format.
@@ -39,13 +39,13 @@ Small teams (roughly 2 to 15 people) who want a lightweight data-quality check o
 ## Install (2 steps)
 
 **Step 1 — install the app.** In Jira Cloud, go to **Administration → Apps →
-Get new apps**, search for *Jira Validator small teams*, press **Install**, and
+Get new apps**, search for *Schema Validator for Jira*, press **Install**, and
 approve the permissions listed below. (You can also press *Get started*
 directly on the Marketplace listing.) The app adds one panel to the issue view
 and one page to the project settings — it changes no existing Jira behaviour.
 
 **Step 2 — save your schema.** Open one of your projects → **Project settings →
-Apps → Jira Validator**. Pick the project, paste your JSON Schema, and press
+Apps → Schema Validator for Jira**. Pick the project, paste your JSON Schema, and press
 **Save**. Then open any issue of that project: the panel shows every field as
 OK, or lists the fields that fail and why.
 

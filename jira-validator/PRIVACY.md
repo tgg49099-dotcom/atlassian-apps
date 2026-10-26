@@ -1,8 +1,8 @@
-# Privacy Policy — Jira Validator small teams
+# Privacy Policy — Schema Validator for Jira
 
 Last updated: 2026-10-26. Effective on first marketplace publish.
 
-This Privacy Policy explains what data **Jira Validator small teams** (the
+This Privacy Policy explains what data **Schema Validator for Jira** (the
 "App", a Forge app published on the Atlassian Marketplace) reads, stores,
 and shares when an Atlassian Cloud administrator installs it on a Jira site.
 

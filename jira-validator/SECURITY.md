@@ -1,8 +1,8 @@
-# Security — Jira Validator small teams
+# Security — Schema Validator for Jira
 
 Last updated: 2026-10-26.
 
-Jira Validator small teams runs entirely on the Atlassian Forge runtime, on
+Schema Validator for Jira runs entirely on the Atlassian Forge runtime, on
 Atlassian's own infrastructure.
 
 ## What the app reads

@@ -1,11 +1,11 @@
-# Support — Jira Validator small teams
+# Support — Schema Validator for Jira
 
-If you use **Jira Validator small teams**, this page explains what the app
+If you use **Schema Validator for Jira**, this page explains what the app
 does, how to get help, and how to report a problem.
 
 ## What the app does
 
-Jira Validator is a **free** Jira Cloud app. It checks the fields of a Jira
+Schema Validator for Jira is a **free** Jira Cloud app. It checks the fields of a Jira
 issue against a **JSON Schema** that a project admin has saved for the
 project, and **reports** the violations it finds in the issue panel.
 
@@ -37,7 +37,7 @@ project, and **reports** the violations it finds in the issue panel.
 ### 1. Why does my panel say "No schema is set for this project yet"?
 
 The project has no schema saved yet, so there is nothing to validate
-against. Open the admin page (**Project settings → Apps → Jira Validator**),
+against. Open the admin page (**Project settings → Apps → Schema Validator for Jira**),
 pick your project in the list, paste a JSON Schema, and press **Save**. The
 issue panel then checks the issues of that project against it.
 
@@ -64,7 +64,7 @@ permission is requested: the app uses the same `read:jira-work` scope.
 
 ### 5. How do I uninstall cleanly?
 
-In your Jira site: **Settings → Apps → Manage apps → Jira Validator →
+In your Jira site: **Settings → Apps → Manage apps → Schema Validator for Jira →
 Uninstall**. Atlassian deletes the schemas the app had stored for the site
 when the app is uninstalled.
 
