@@ -8,7 +8,7 @@ you define, and reports what is missing or wrong — without blocking anything.*
 | **Runs on** | Atlassian Forge — inside your own Jira site, on Atlassian's infrastructure |
 | **Price** | Free. No paid tier, no per-seat pricing, no usage metering |
 | **Data leaves your site** | No. The app declares no egress at all |
-| **App version** | 3 — the build currently served in production |
+| **App version** | 4.0.0 — the build currently served in production |
 
 ## What it does
 
@@ -36,7 +36,7 @@ Small teams (roughly 2 to 15 people) who want a lightweight data-quality check o
 - A support team that must not let a ticket through without a `severity` and
   an `assignee_group` from a fixed list.
 
-## Install (2 steps)
+## Install (4 steps)
 
 **Step 1 — install the app.** In Jira Cloud, go to **Administration → Apps →
 Get new apps**, search for *Schema Validator for Jira*, press **Install**, and
@@ -44,10 +44,20 @@ approve the permissions listed below. (You can also press *Get started*
 directly on the Marketplace listing.) The app adds one panel to the issue view
 and one page to the project settings — it changes no existing Jira behaviour.
 
-**Step 2 — save your schema.** Open one of your projects → **Project settings →
-Apps → Schema Validator for Jira**. Pick the project, paste your JSON Schema, and press
-**Save**. Then open any issue of that project: the panel shows every field as
-OK, or lists the fields that fail and why.
+**Step 2 — open the app.** Open one of your projects → **Project settings →
+Apps → Schema Validator for Jira**. The first time you open it, the app asks
+Atlassian for permission to read your Jira data and shows an **Allow access**
+button instead of the project list.
+
+**Step 3 — accept Atlassian's consent.** Press **Allow access**, approve on
+Atlassian's own consent screen, then reload the page. Until you do, the app
+reads nothing — no field, no issue, no project. This is Atlassian's consent,
+not ours: the app only ever asks for the reading permission listed below.
+
+**Step 4 — save your schema.** Back on the same page (**Project settings →
+Apps → Schema Validator for Jira**), pick the project, paste your JSON Schema,
+and press **Save**. Then open any issue of that project: the panel shows every
+field as OK, or lists the fields that fail and why.
 
 ```json
 {
@@ -64,14 +74,13 @@ OK, or lists the fields that fail and why.
 The editor checks the schema before saving it (it must be a JSON Schema object,
 under 100 KB, and cannot use external `$ref`s).
 
-## The three permissions it requests, and why
+## The two permissions it requests, and why
 
-The app declares exactly three scopes, visible in the app manifest:
+The app declares exactly two scopes, visible in the app manifest:
 
 | Scope | Why it is requested |
 |---|---|
 | `read:jira-work` | To read the issue's fields and the project list, so your schema can be applied to them. **Read-only.** The app calls only three Jira GET endpoints - the project list, one project's details, one issue - and nothing else. |
-| `write:jira-work` | **Declared but not exercised by the current build:** the app contains no write path — it never writes to Jira. The scope was reserved for a "strict mode" that would block a transition, which is not built. **It is removed from the manifest before the Marketplace submission**, and re-added only together with the feature that uses it. |
 | `storage:app` | To store **one JSON Schema per project** in the Forge Key-Value Store, scoped to your site. It grants no access to Jira data. Uninstalling the app deletes the schemas it stored. |
 
 The app asks for **no user-identity scope**, **no admin scope**, **no
@@ -81,13 +90,15 @@ user-profile endpoints, so it reads no audit log.
 
 Two points stated plainly, because they are in the [Privacy Policy](PRIVACY.md):
 
-- The issue read carries **no field filter**, so Jira's standard field set
-  comes back, including creator, reporter and assignee references — all
-  discarded unless your schema names them.
+- The issue read carries **no field filter**, so the app reads the **whole
+  issue — comments and attachments included**: Jira's standard field set comes
+  back, with creator, reporter and assignee references, all discarded unless
+  your schema names them.
 - That same response also carries the issue's **comments (with their text),
-  its worklog entries and its attachments' metadata** when the issue has
-  them. The app hands them to your schema like any other field: it never
-  calls those endpoints, never stores them and never sends them anywhere.
+  its worklog entries and its attachments' metadata** (file name, size, type,
+  author) when the issue has them. The app hands them to your schema like any
+  other field: it never calls those endpoints, never stores them and never
+  sends them anywhere. The content of an attached file is never read.
 
 ## What it does **not** do
 
@@ -124,6 +135,6 @@ the region), encrypted at rest — see the [Privacy Policy](PRIVACY.md) for deta
 
 ## Version
 
-**App version 3** is the build currently served in production. Material changes
+**App version 4.0.0** is the build currently served in production. Material changes
 are announced in the Marketplace listing changelog and in the
 `Last updated` line of the [Privacy Policy](PRIVACY.md).

@@ -1,6 +1,6 @@
 # Privacy Policy — Schema Validator for Jira
 
-Last updated: 2026-10-26. Effective on first marketplace publish.
+Last updated: 2026-10-27. Effective on first marketplace publish.
 
 This Privacy Policy explains what data **Schema Validator for Jira** (the
 "App", a Forge app published on the Atlassian Marketplace) reads, stores,
@@ -27,6 +27,11 @@ carries comments, worklog entries or attachments, the same response carries
 them too: the comments with their text, the worklog entries with their
 comments, and the attachments' metadata (file name, size, type, author). The
 attachment contents themselves are not part of the issue response.
+
+Nothing is read until the signed-in user has granted Atlassian's consent.
+Until then the request is refused with HTTP 401, and the App displays an
+**Allow access** link to Atlassian's own consent screen instead of any issue
+data.
 
 The App then applies the project's JSON Schema to that object. **Only the
 fields named in the schema are looked at**; every other field is discarded
@@ -87,8 +92,6 @@ App removes all storage entries (per Atlassian Forge uninstall behavior).
 The App requests only the following Atlassian API scopes:
 
 - `read:jira-work` — to read issue fields for validation.
-- `write:jira-work` — declared in the manifest but not used by the app: it
-  reads and reports, it never writes to Jira.
 - `storage:app` — to store one JSON Schema per project.
 
 No user-identity scope, no admin scope, no Confluence scope, no

@@ -27,7 +27,7 @@ in memory, stores none of them and sends none of them anywhere.
   removes the entry.
 
 The app never writes to Jira: it does not edit issues, add comments or change
-statuses. The `write:jira-work` scope is declared but unused.
+statuses. It requests no write scope at all.
 
 ## Where the data lives
 
@@ -38,8 +38,8 @@ statuses. The `write:jira-work` scope is declared but unused.
 
 ## Permissions requested
 
-`read:jira-work`, `write:jira-work` (declared, unused), `storage:app`. No
-user-identity scope, no admin scope, no Confluence scope.
+`read:jira-work` and `storage:app`. No write scope, no user-identity scope,
+no admin scope, no Confluence scope.
 
 ## Reporting a vulnerability
 
