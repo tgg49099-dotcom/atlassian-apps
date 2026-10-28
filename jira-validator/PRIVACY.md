@@ -1,6 +1,6 @@
 # Privacy Policy — Schema Validator for Jira
 
-Last updated: 2026-10-27. Effective on first marketplace publish.
+Last updated: 2026-10-28. Effective on first marketplace publish.
 
 This Privacy Policy explains what data **Schema Validator for Jira** (the
 "App", a Forge app published on the Atlassian Marketplace) reads, stores,
@@ -29,9 +29,10 @@ comments, and the attachments' metadata (file name, size, type, author). The
 attachment contents themselves are not part of the issue response.
 
 Nothing is read until the signed-in user has granted Atlassian's consent.
-Until then the request is refused with HTTP 401, and the App displays an
-**Allow access** link to Atlassian's own consent screen instead of any issue
-data.
+Until then the request is refused with HTTP 401. The App does not answer that
+refusal itself and never builds a link to a consent screen: it lets the error
+reach Atlassian, which shows its own consent screen — with its own **Allow
+access** button — instead of any issue data.
 
 The App then applies the project's JSON Schema to that object. **Only the
 fields named in the schema are looked at**; every other field is discarded

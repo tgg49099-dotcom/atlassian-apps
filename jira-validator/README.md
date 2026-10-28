@@ -8,7 +8,7 @@ you define, and reports what is missing or wrong — without blocking anything.*
 | **Runs on** | Atlassian Forge — inside your own Jira site, on Atlassian's infrastructure |
 | **Price** | Free. No paid tier, no per-seat pricing, no usage metering |
 | **Data leaves your site** | No. The app declares no egress at all |
-| **App version** | 4.0.0 — the build currently served in production |
+| **App version** | 4.1.0 — the build currently served in production |
 
 ## What it does
 
@@ -46,11 +46,15 @@ and one page to the project settings — it changes no existing Jira behaviour.
 
 **Step 2 — open the app.** Open one of your projects → **Project settings →
 Apps → Schema Validator for Jira**. The first time you open it, the app asks
-Atlassian for permission to read your Jira data and shows an **Allow access**
-button instead of the project list.
+Atlassian for permission to read your Jira data. It does not build a consent
+link of its own: the request is refused with HTTP 401 and the error is handed
+straight back to Atlassian, which shows its own consent screen.
 
-**Step 3 — accept Atlassian's consent.** Press **Allow access**, approve on
-Atlassian's own consent screen, then reload the page. Until you do, the app
+**Step 3 — accept Atlassian's consent.** On that same settings page, Atlassian
+shows its own consent screen — *"For Schema Validator for Jira to display, you
+need to grant it access to Atlassian apps on your behalf."* — with an **Allow
+access** button that belongs to Atlassian, not to this app. Press it, approve
+on Atlassian's consent screen, then reload the page. Until you do, the app
 reads nothing — no field, no issue, no project. This is Atlassian's consent,
 not ours: the app only ever asks for the reading permission listed below.
 
@@ -135,6 +139,6 @@ the region), encrypted at rest — see the [Privacy Policy](PRIVACY.md) for deta
 
 ## Version
 
-**App version 4.0.0** is the build currently served in production. Material changes
+**App version 4.1.0** is the build currently served in production. Material changes
 are announced in the Marketplace listing changelog and in the
 `Last updated` line of the [Privacy Policy](PRIVACY.md).
