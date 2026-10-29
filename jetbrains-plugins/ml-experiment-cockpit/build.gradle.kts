@@ -48,6 +48,43 @@ dependencies {
         // Note: adding a second IDE roughly doubles the verifyPlugin wall-clock cost.
         // create("DS", (project.findProperty("platformVersion") as String?) ?: "2024.3")
     }
+
+    // 29/10/2026 (cycle 82) : dependance de TEST.
+    //
+    // Les deux fichiers de `src/test/kotlin/` (JsonParserTest.kt,
+    // WandbClientTest.kt) utilisent JUnit 5 (`org.junit.jupiter.api.*`), mais
+    // le script ne declarait AUCUNE dependance de test : `gradle test`
+    // echouait donc a la COMPILATION des tests avec
+    //   "Unresolved reference: junit" / "Unresolved reference: assertEquals",
+    // et les tests n'ont jamais ete executes par Gradle.
+    // (Les tests "hors-ligne" du cycle 54, 63 assertions, etaient un banc
+    // Python/console separe, pas la tache `:test` de Gradle.)
+    //
+    // Les tests ne dependent que du JDK (le faux serveur W&B est un
+    // `com.sun.net.httpserver.HttpServer`) : JUnit 5 seul suffit, le
+    // framework de test d'IntelliJ n'est pas necessaire.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.2")
+    // JUnit 4 : l'initialiseur d'environnement de test d'IntelliJ
+    // (`com.intellij.testFramework.junit5.impl.Junit5TestEnvironmentInitializer`,
+    // appele par le `LauncherSession` de la plateforme JUnit) construit un
+    // `Logger` de test framework qui IMPLEMENTE `org.junit.rules.TestRule`,
+    // une classe de JUnit 4. Sans JUnit 4 sur le classpath de test, la tache
+    // `:test` meurt au demarrage du worker :
+    //   java.lang.NoClassDefFoundError: org/junit/rules/TestRule
+    //   Caused by: java.lang.ClassNotFoundException: org.junit.rules.TestRule
+    testRuntimeOnly("junit:junit:4.13.2")
+}
+
+// JUnit 5 : Gradle ne lance la plateforme JUnit que si on le demande
+// explicitement (sinon il ne trouve aucun moteur de test et la tache `:test`
+// ne fait rien, sans erreur visible).
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = false
+    }
 }
 
 // Configure the IntelliJ Platform Gradle Plugin.
