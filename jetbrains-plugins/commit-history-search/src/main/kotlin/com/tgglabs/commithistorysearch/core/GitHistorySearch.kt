@@ -91,6 +91,9 @@ class GitHistorySearch(
         }
         val output = try {
             GitCommand.run(git, root, buildArguments(perlRegex = regex), cancelled)
+        } catch (e: GitTimeoutException) {
+            // A timeout must not be retried: the fallback would pay the maximum delay twice.
+            throw e
         } catch (e: GitException) {
             // Some git builds are compiled without PCRE: fall back to POSIX extended regexps.
             if (!regex) throw e
@@ -107,6 +110,11 @@ class GitHistorySearch(
 
     fun buildArguments(perlRegex: Boolean = regex): List<String> {
         val args = ArrayList<String>()
+        // `git log` starts a pager (less) when it can: in the IDE there is no terminal to
+        // interact with, so the pager would wait for a keyboard input that never comes
+        // (the IDE freezes) and it would pollute the captured output with its escape codes.
+        // --no-pager is a global git option, it must come before the sub command.
+        args.add("--no-pager")
         args.add("log")
         args.add("--no-color")
         args.add("--no-merges")

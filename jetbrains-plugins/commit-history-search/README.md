@@ -11,21 +11,36 @@ correspondances les plus récentes** : ce plafond limite la taille de la liste, 
 **pas** la profondeur du balayage. Ce point a été **mesuré** le 29/10/2026 (`git 2.39.5`) et
 **prouvé par des tests** : voir « Ce qui a été vérifié » plus bas.
 
-**État au 29/10/2026 22:10 :** **le texte public du cycle 13 était faux** — il annonçait « the
+**État au 30/10/2026 00:55 :** **le texte public du cycle 13 était faux** — il annonçait « the
 scan stops after the 500 most recent commits ». C'est corrigé partout (descripteur livré, Gradle,
-`description.md`, paquet Tgg) et **verrouillé par des tests**. **33** tests verts. ZIP reconstruit
-le 29/10 à 22:07 (patch de la revue hostile du 29/10 21:38 appliqué), **pré-vol 24/24 vert**,
-**plugin vérifié chargé dans un vrai IDE avec le build livré** (29/10 à 22:09), et **réglages
-vérifiés persistants d'une session IDE à l'autre** (preuve par captures).
+`description.md`, paquet Tgg) et **verrouillé par des tests**. **42** tests verts. ZIP reconstruit
+le 30/10 (les **2 défauts de la relecture hostile du 30/10 00:25** sont corrigés : pager de git
+et entrée standard de l'enfant, annulation réactive et délai maximal), **pré-vol 24/24 vert**,
+**plugin vérifié chargé dans un vrai IDE avec le build livré**, et **réglages vérifiés
+persistants d'une session IDE à l'autre** (preuve par captures).
+
+## Les 2 défauts corrigés le 30/10/2026 (relecture hostile)
+
+| Défaut | Correction | Test qui la prouve |
+|---|---|---|
+| **Le pager de git.** `git log` peut démarrer `less` ; l'IDE n'a pas de terminal, `less` attend une frappe clavier qui ne vient jamais (l'IDE gèle) et la sortie capturée est polluée par ses codes d'échappement. | `--no-pager` est ajouté **à toutes** les commandes git (dans `buildArguments()` et au point unique de passage `GitCommand.run()`), et **l'entrée standard de l'enfant est fermée immédiatement** (`process.outputStream.close()`) : git et son éventuel pager reçoivent un EOF. | `GitProcessSafetyTest` : « the command line of git always contains --no-pager », « the arguments of the git log command contain --no-pager », « the pager is disabled even for a command built by hand », « the standard input of the child git is closed » |
+| **L'annulation ne répond pas, aucun délai maximal.** `cancelled()` n'était testé qu'entre deux `readLine()` : sur un gros dépôt, le bouton Annuler ne fait rien tant que git n'a rien affiché ; et une commande bloquée pouvait durer indéfiniment. | La lecture passe par un **thread lecteur** ; la boucle interroge la file **toutes les 200 ms** (`POLL_INTERVAL_MS`), donc l'annulation est testée au plus toutes les ~200 ms même quand git est silencieux. **Délai maximal : 10 minutes** (`DEFAULT_TIMEOUT_MS = 600000`) par commande git : au-delà, le processus est tué et une `GitTimeoutException` est levée. | `GitProcessSafetyTest` : « a silent git is killed when the search is cancelled », « the cancellation is checked at least every 200 ms while git is silent » ; `GitTimeoutTest` : « a git command that never ends is killed after the maximum delay », « a timeout is a GitException that can be told apart from another failure » |
+
+**Contre-épreuve rouge → vert** (30/10/2026) : les 6 tests de `GitProcessSafetyTest` **échouent
+tous** sur le code livré le 29/10 (`/work/evidence/contre-epreuve-ROUGE-20261030-pager-annulation.log`,
+6 tests, 6 échecs) et **passent tous** après le correctif. Le test de délai maximal ne compile
+même pas sur le code du 29/10 : `GitCommand.run(...)` n'y avait **aucun** argument `timeoutMs`
+(le `GitCommand.kt` public du 29/10, dans le dépôt, le montre).
+
 
 ## Le livrable
 
 | | |
 |---|---|
-| Fichier à téléverser | `commit-history-search-0.0.1.zip` (1 668 357 octets, reconstruit le 29/10/2026 à 22:07) |
-| md5 | `1e37f7daea945040d1530623b9beedb3` |
-| sha256 | `0dbea39bcdb7f4dd167c2d1bc0f1fe775590c2a1a64f4c9c959dcdab15d0ed29` |
-| jar interne `commit-history-search-0.0.1.jar` | 66 170 octets — md5 `15873c1f63e894c2a4e2b8a21ef0cfbd` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
+| Fichier à téléverser | `commit-history-search-0.0.1.zip` (1 671 499 octets, reconstruit le 30/10/2026 à 00:57) |
+| md5 | `e2c35a4535097495e3ea29b1ff855484` |
+| sha256 | `b35dc85d49e3fb901d123f077f1c34f4fcb62ed12d0e7b84db1f64909c01df8b` |
+| jar interne `commit-history-search-0.0.1.jar` | 69 474 octets — md5 `cde740c08b520a35ba0d5047771b2acf` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
 | Nom public | `Commit History Search` (21 caractères, sans mot interdit) |
 | Version | `0.0.1` |
 | Plugin ID (xmlId) | `com.tgglabs.commithistorysearch` |
@@ -89,7 +104,7 @@ n'a pas encore de fiche**, donc pas de `pluginId` à déclarer.
   sensitive » cochée** et la **requête restaurée** (`MAGIC_TOKEN_9F3A`). Captures :
   `/work/evidence/persistance-ide/` (4 PNG) ; la valeur persistée est dans
   `.idea/workspace.xml` (`com.tgglabs.commithistorysearch.caseSensitive` = `true`).
-- **33 tests verts** (`gradle test buildPlugin --offline --rerun-tasks` : 33 PASSED, 0 échec,
+- **42 tests verts** (`gradle test buildPlugin --rerun-tasks` : 42 PASSED, 0 échec,
   0 erreur, 0 ignoré ; comptés sur les rapports XML JUnit de `build/test-results/test/`, pas
   recopiés d'un rapport).
 - **Patch de la revue du jury appliqué et prouvé le 28/10/2026 09:04** : en mode *regular
@@ -120,11 +135,11 @@ n'a pas encore de fiche**, donc pas de `pluginId` à déclarer.
   L'adresse personnelle du compte éditeur ne figure dans aucun fichier du produit.
 - **L'action fait son `update()` en arrière-plan** (`getActionUpdateThread() = BGT`) : elle
   touche le disque (racine du dépôt), elle ne doit pas geler l'IDE.
-- **Le plugin se charge** : démarrage réel d'IntelliJ IDEA Community 2024.3 le **29/10/2026 à
-  22:09** avec le **ZIP livré** → log :
+- **Le plugin se charge** : démarrage réel d'IntelliJ IDEA Community 2024.3 le **30/10/2026 à
+  01:00** avec le **ZIP livré** (le build corrigé des 2 défauts) → log :
   `Loaded custom plugins: Commit History Search (0.0.1)`, **0** occurrence de
   `invalid plugin descriptor`, de `Unknown element`, de `PluginException` et **0 ERROR / SEVERE**
-  dans le log (`preuve_ide_chargement.log`).
+  dans le log (`preuve_ide_chargement.log`, journal `/work/boot_test_cycle18.log`).
 - **L'angle est vérifié dans l'IDE** : nativement, l'IDE cherche un commit par son **message**
   (« Search Everywhere → Commit by message », et le champ de recherche de l'onglet Log,
   « Filter by Commit Message or Hashes ») — jamais dans le contenu des diffs. Les captures sont
