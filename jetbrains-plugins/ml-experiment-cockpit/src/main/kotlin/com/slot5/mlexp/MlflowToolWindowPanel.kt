@@ -62,6 +62,8 @@ class MlflowToolWindowPanel(
         // payload object ("ExperimentNode(exp=Experiment(id=2, …))"), which is
         // both unreadable and truncated by the column width.
         setCellRenderer(NodeTreeCellRenderer())
+        // Swing shows a renderer's toolTipText only for a registered component.
+        javax.swing.ToolTipManager.sharedInstance().registerComponent(this)
     }
 
     /**

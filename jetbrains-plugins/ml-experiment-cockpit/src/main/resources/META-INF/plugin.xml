@@ -13,29 +13,23 @@
     <depends>com.intellij.modules.platform</depends>
 
     <description><![CDATA[
-        <p>ML Experiment Cockpit — browse your MLflow experiments, runs, metrics and Model Registry models directly inside the JetBrains IDE.</p>
-        <p>Connects to a running MLflow Tracking Server, an Optuna Dashboard
-        and the W&B GraphQL API, and surfaces experiment / run / study /
-        trial / sweep / model-registry metadata directly inside the IDE.
-        Built for ML engineers who already use MLflow, Optuna or W&B and want
-        the IDE to see their experiments and registered models instead of
-        switching to a browser tab.</p>
-        <ul>
-            <li><b>MLflow</b>: browse experiments and runs, params, metrics and metric charts.</li>
-            <li><b>MLflow Model Registry</b>: list registered models and their versions.</li>
-            <li><b>Optuna</b>: browse studies and trials from an Optuna Dashboard.</li>
-            <li><b>W&amp;B Sweeps</b>: list sweeps by state with their run count (read-only, W&amp;B API key).</li>
-        </ul>
-        <p>Open it from the <em>ML Experiment Cockpit</em> tool window; configure servers in
-        <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
+        <p>Browse your MLflow experiments, runs and metrics directly inside your JetBrains IDE — no browser, no notebook, no extra code.</p>
+<ul>
+<li>Your MLflow tree, one click away — experiments, runs, status and parameters inside a tool window, refreshed with a single button.</li>
+<li>Metrics, charted instantly — pick a metric and read its history as a curve, with the last value and the step it was recorded at.</li>
+<li>Works in the IDE you already use — PyCharm, IntelliJ IDEA, WebStorm, GoLand, CLion; your MLflow tracking server stays where it is, nothing is sent anywhere else.</li>
+</ul>
+<p>Three more tabs cover the rest of an ML workflow: <b>Optuna</b> (studies and trials from an Optuna Dashboard), <b>Models</b> (the MLflow Model Registry) and <b>Sweeps</b> (W&amp;B sweeps, read-only, with a W&amp;B API key).</p>
+<p><b>What you see is the server’s answer, within its query limits:</b> up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run. W&amp;B sweeps are read without pagination (the first 50 sweeps).</p>
+<p>Open it from the <b>ML Experiment Cockpit</b> tool window and configure your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — the plugin sends nothing anywhere else.</p>
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>0.0.16 — Complete axis labels in the metric chart.</h3>
+        <h3>0.0.17 — Compatible with the 2026.3 IDE release, and clearer W&amp;B errors.</h3>
         <ul>
-            <li>The X-axis labels of the metric chart are no longer cut off: the last step label ("step 39") is now fully visible instead of being truncated to "step".</li>
-            <li>The chart keeps a right margin, so the curve no longer runs into the edge of the panel, and the Y-axis has enough room for values in scientific notation.</li>
-            <li>The "N point(s) for &lt;metric&gt;" caption no longer touches the right border of the panel.</li>
+            <li>The plugin now declares compatibility up to IDE build 263.*, so it keeps installing on PyCharm 2026.3 instead of becoming obsolete when that release becomes stable.</li>
+            <li>W&amp;B tab: a GraphQL error now shows the server's own message (e.g. "Cannot query field …") instead of a bare "GraphQL error", and an unknown project is reported as "project not found" instead of an empty list.</li>
+            <li>The MLflow and Optuna tabs are unchanged.</li>
         </ul>
     ]]></change-notes>
 
