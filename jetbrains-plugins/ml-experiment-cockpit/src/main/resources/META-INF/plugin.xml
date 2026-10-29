@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+
+    <id>com.tgglabs.mlexp</id>
+
+    <name>ML Experiment Cockpit</name>
+
+    <vendor>Tgg Labs</vendor>
+
+    <idea-version since-build="243"/>
+
+    <!-- Without any <depends>, the plugin is treated as legacy and loads only in IntelliJ IDEA. -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <description><![CDATA[
+        <p>ML Experiment Cockpit — browse your MLflow experiments, runs, metrics and Model Registry models directly inside the JetBrains IDE.</p>
+        <p>Connects to a running MLflow Tracking Server, an Optuna Dashboard
+        and the W&B GraphQL API, and surfaces experiment / run / study /
+        trial / sweep / model-registry metadata directly inside the IDE.
+        Built for ML engineers who already use MLflow, Optuna or W&B and want
+        the IDE to see their experiments and registered models instead of
+        switching to a browser tab.</p>
+        <ul>
+            <li><b>MLflow</b>: browse experiments and runs, params, metrics and metric charts.</li>
+            <li><b>MLflow Model Registry</b>: list registered models and their versions.</li>
+            <li><b>Optuna</b>: browse studies and trials from an Optuna Dashboard.</li>
+            <li><b>W&amp;B Sweeps</b>: list sweeps by state with their run count (read-only, W&amp;B API key).</li>
+        </ul>
+        <p>Open it from the <em>ML Experiment Cockpit</em> tool window; configure servers in
+        <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>0.0.16 — Complete axis labels in the metric chart.</h3>
+        <ul>
+            <li>The X-axis labels of the metric chart are no longer cut off: the last step label ("step 39") is now fully visible instead of being truncated to "step".</li>
+            <li>The chart keeps a right margin, so the curve no longer runs into the edge of the panel, and the Y-axis has enough room for values in scientific notation.</li>
+            <li>The "N point(s) for &lt;metric&gt;" caption no longer touches the right border of the panel.</li>
+        </ul>
+    ]]></change-notes>
+
+    <actions>
+        <!-- Main MVP action: probe the configured MLflow tracking server. -->
+        <action id="Slot5.Mlexp.Connect"
+                class="com.slot5.mlexp.ConnectToMlflowAction"
+                text="Connect to MLflow Tracking Server"
+                description="Probe the configured MLflow Tracking Server and show a notification with the result.">
+            <add-to-group group-id="ToolsMenu" anchor="first"/>
+        </action>
+    </actions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Application-level service that holds the configured tracking URI. -->
+        <applicationService serviceInterface="com.slot5.mlexp.MlflowSettings"
+                            serviceImplementation="com.slot5.mlexp.MlflowSettingsImpl"/>
+
+        <!-- Configurable UI: Settings → Tools → ML Experiment Cockpit. -->
+        <applicationConfigurable id="Slot5.Mlexp.Settings"
+                                 groupId="tools"
+                                 displayName="ML Experiment Cockpit"
+                                 instance="com.slot5.mlexp.MlflowSettingsConfigurable"/>
+
+        <!-- Notification group used by the connect action. -->
+        <notificationGroup id="ML Experiment Cockpit Notifications"
+                           displayType="BALLOON"/>
+
+        <!-- Tool Window: "ML Experiment Cockpit" — left rail, ships the
+             Experiments/Run browser with a one-click Refresh button. v0.0.2. -->
+        <toolWindow id="ML Experiment Cockpit"
+                    anchor="left"
+                    icon="AllIcons.Toolwindows.ToolWindowRun"
+                    factoryClass="com.slot5.mlexp.MlflowToolWindowFactory"/>
+    </extensions>
+
+</idea-plugin>

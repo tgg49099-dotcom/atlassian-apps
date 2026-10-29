@@ -1,0 +1,14 @@
+# Build / Gradle
+build/
+dist/
+.gradle/
+out/
+.intellijPlatform/
+
+# IDE
+.idea/
+*.iml
+
+# Python caches and backup copies (helper scripts)
+__pycache__/
+*.bak-*

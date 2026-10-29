@@ -1,0 +1,53 @@
+<idea-plugin>
+
+    <id>com.tgglabs.branchbadge</id>
+
+    <name>Git Branch Badge</name>
+
+    <vendor email="tgg.apps.support@gmail.com" url="https://plugins.jetbrains.com/vendor/tgg-labs">Tgg Labs</vendor>
+
+    <description><![CDATA[
+        <p>Shows the current Git branch of your project right in the Project view.</p>
+<ul>
+<li><b>Always visible</b> — the project root shows <code>path [branch]</code>: the branch is right where you look for it, and the project path is still there.</li>
+<li><b>Always up to date</b> — the label refreshes by itself the moment you switch branches, from the IDE or from a terminal.</li>
+<li><b>Detached HEAD too</b> — on a detached HEAD the label shows <code>detached @ abc1234</code> instead of disappearing.</li>
+<li><b>No configuration</b> — nothing to set up, no account, no network call: the branch is read from the local <code>.git/HEAD</code> file, in IntelliJ IDEA, PyCharm, WebStorm, GoLand, CLion and every other JetBrains IDE.</li>
+</ul>
+    ]]></description>
+
+    <!-- Sans <depends>, le plugin est considere comme legacy et ne se charge
+         que dans IntelliJ IDEA. -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <!-- Notes de version 0.0.1 : ce que fait REELLEMENT cette version.
+         La revue Marketplace les exige (elle refuse une fiche dont les
+         notes sont absentes ou vides) : c'est pourquoi elles sont ecrites
+         ici, dans le source, et non injectees par le build. -->
+    <change-notes><![CDATA[
+        <h3>0.0.1 — First release</h3>
+<ul>
+<li>The current Git branch is shown next to the project root in the Project view, as <code>path [branch]</code>: the project path is kept, the branch is added.</li>
+<li>The label refreshes by itself when you switch branches, even from a terminal.</li>
+<li>A detached HEAD is shown as <code>detached @ abc1234</code> instead of nothing.</li>
+<li>The project path stays available in the node tooltip.</li>
+</ul>
+    ]]></change-notes>
+
+    <!-- Dependance OPTIONNELLE : le plugin Git de l'IDE. Elle ne sert qu'a
+         donner un rafraichissement INSTANTANE quand le changement de
+         branche est fait dans l'IDE. Le rafraichissement lui-meme ne
+         depend pas de Git4Idea (voir BranchRefreshService) : le fichier de
+         configuration qui suit n'est charge QUE si Git4Idea est present. -->
+    <depends optional="true" config-file="git4idea.xml">Git4Idea</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Affiche la branche Git courante sur la racine du projet. -->
+        <projectViewNodeDecorator
+                implementation="com.tgglabs.branchbadge.BranchProjectViewDecorator"/>
+        <!-- Relit .git/HEAD et redessine le panneau quand la branche change. -->
+        <projectService
+                serviceImplementation="com.tgglabs.branchbadge.BranchRefreshService"/>
+    </extensions>
+
+</idea-plugin>

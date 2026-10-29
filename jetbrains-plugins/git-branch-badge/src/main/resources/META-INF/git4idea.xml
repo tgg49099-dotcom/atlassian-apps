@@ -1,0 +1,12 @@
+<idea-plugin>
+    <!--
+      Charge UNIQUEMENT si le plugin Git de l'IDE (Git4Idea) est present :
+      c'est la semantique de `<depends optional="true" config-file="git4idea.xml">`.
+      Le listener ne fait qu'une chose : rafraichir le panneau « Project »
+      quand la branche change.
+    -->
+    <projectListeners>
+        <listener class="com.tgglabs.branchbadge.GitBranchChangeListener"
+                  topic="git4idea.repo.GitRepositoryChangeListener"/>
+    </projectListeners>
+</idea-plugin>
