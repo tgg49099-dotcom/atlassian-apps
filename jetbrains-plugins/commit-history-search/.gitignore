@@ -1,0 +1,5 @@
+source/build/
+source/.gradle/
+source/.intellijPlatform/
+.gradle/
+build/

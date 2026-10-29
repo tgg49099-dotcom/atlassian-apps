@@ -1,0 +1,39 @@
+<idea-plugin>
+    <id>com.tgglabs.commithistorysearch</id>
+    <name>Commit History Search</name>
+    <version>0.0.1</version>
+    <vendor email="tgg.apps.support@gmail.com" url="https://plugins.jetbrains.com/vendor/tgg-labs">Tgg Labs</vendor>
+
+    <description>Search for a text string inside the diffs of your Git commit history, directly in the IDE.
+Equivalent of 'git log -S' and 'git log -G': the commits where the string was added, removed or
+modified are listed, and the diff of the matching file opens in the IDE diff viewer.
+The IDE searches commit messages and hashes natively; this plugin searches what the commits actually
+changed.
+Limit: the scan covers the whole history of the current branch and skips merge commits; the result
+list shows at most the 500 most recent matching commits. The search runs in the background and can
+be cancelled.</description>
+
+    <change-notes>First release: search a string in the diffs of your Git history (merge commits are
+skipped), list the matching commits and files, and open the diff of a result in the IDE.</change-notes>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <idea-version since-build="243" until-build="263.*"/>
+
+    <!--
+      Une seule action, une seule fenetre : "Git > Search in Commit History".
+      Le groupe "Git.MainMenu" est celui du vrai menu Git des IDE JetBrains (il existe dans
+      vcs-git.jar : META-INF/plugin.xml). Si le plugin Git est desactive, la plateforme ecrit
+      "isn't registered so the action won't be added to it; the action can be invoked via
+      'Find Action'" : l'action reste donc utilisable par Ctrl+Shift+A.
+      Pas de <license> : IntelliJ 2024.3 rejette le descripteur ("Unknown element: license").
+    -->
+    <actions>
+        <action id="TggLabs.CommitHistorySearch"
+                class="com.tgglabs.commithistorysearch.ui.SearchInHistoryAction"
+                text="Search in Commit History"
+                description="Search a text string in the diffs of the Git history">
+            <add-to-group group-id="Git.MainMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
