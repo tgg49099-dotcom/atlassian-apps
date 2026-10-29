@@ -23,6 +23,11 @@ plugins {
     kotlin("jvm") version "1.9.25"
 }
 
+// 26/10/2026 (cycle 58) : types du DSL `pluginVerification.ides.select { }`
+// (canal EAP). Sans ces imports, `select` n'existe pas dans le script.
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.models.ProductRelease
+
 group = "com.tgglabs.mlexp"
 version = (project.findProperty("pluginVersion") as String?) ?: "0.0.1"
 
@@ -73,6 +78,10 @@ intellijPlatform {
             <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.0.18 — Run tooltips now show.</h3>
+            <ul>
+                <li>The tooltip of a run in the Experiments tree is now displayed when you hover it: Swing only shows a renderer's tooltip for a component registered with the ToolTipManager, so the run details were silently never shown. This fix was not part of the 0.0.17 build.</li>
+            </ul>
             <h3>0.0.17 — Compatible with the 2026.3 IDE release, and clearer W&amp;B errors.</h3>
             <ul>
                 <li>The plugin now declares compatibility up to IDE build 263.*, so it keeps installing on PyCharm 2026.3 instead of becoming obsolete when that release becomes stable.</li>
@@ -120,7 +129,28 @@ intellijPlatform {
             // We don't need any IDE-specific configuration here, so an empty
             // lambda suffices - but the deprecation warning goes away.
             create("PY", "2024.3") {}
-            create("PY", "2026.2") {}
+            //
+            // 26/10/2026 (cycle 58) : le PLAFOND declare est `until-build 263.*`,
+            // donc l'IDE 2026.3 (build 263) DOIT figurer dans la matrice de
+            // verification. C'est exactement ce que le jury `a80c` reprochait :
+            // la matrice ne testait que 2024.3 et 2026.2, donc jamais le 263
+            // que la version en ligne annonce.
+            //
+            // On ne met PAS une 3e IDE (le conteneur n'a que ~5 Go libres et une
+            // IDE PyCharm occupe ~3,9 Go extrait) : `select { channels = EAP }`
+            // remplace 2026.2 par l'EAP 2026.3 (build 263), ce qui garde DEUX
+            // IDE au total et UNE seule passe de verification.
+            //
+            // Mesure du cycle 58 : l'EAP n'est PAS publie dans le
+            // intellij-repository (404 sur `pycharmPC/2026.3`), il se resout
+            // via l'API officielle des versions (data.services.jetbrains.com,
+            // build 263.7307.50 du 23/10/2026) et se telecharge depuis
+            // download.jetbrains.com.
+            select {
+                types.set(listOf(IntelliJPlatformType.PyCharmProfessional))
+                channels.set(listOf(ProductRelease.Channel.EAP))
+                untilBuild.set("263.*")
+            }
         }
     }
 }

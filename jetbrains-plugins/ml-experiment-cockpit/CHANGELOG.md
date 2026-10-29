@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.18] — 2026-10-29
+
+### Fixed
+- **The tooltip of a run in the Experiments tree was never displayed.** Swing only
+  shows a renderer's `toolTipText` for a component that has been registered with
+  the `ToolTipManager`; the tree never registered itself, so hovering a run gave
+  nothing at all. `MlflowToolWindowPanel` now calls
+  `javax.swing.ToolTipManager.sharedInstance().registerComponent(this)`.
+  **This fix was not part of the published 0.0.17 build** — measured on the
+  public ZIP of 0.0.17 (update 1202899): the published class file contains no
+  `ToolTipManager` reference, the local build does.
+
+### Bumped
+- `pluginVersion` 0.0.17 → 0.0.18 (release notes of the new version).
+
 ## [0.0.17] — 2026-10-24
 
 Compatibility with the 2026.3 IDE release (build 263), plus the three defects

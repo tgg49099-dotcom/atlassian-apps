@@ -25,6 +25,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
+        <h3>0.0.18 — Run tooltips now show.</h3>
+            <ul>
+                <li>The tooltip of a run in the Experiments tree is now displayed when you hover it: Swing only shows a renderer's tooltip for a component registered with the ToolTipManager, so the run details were silently never shown. This fix was not part of the 0.0.17 build.</li>
+            </ul>
         <h3>0.0.17 — Compatible with the 2026.3 IDE release, and clearer W&amp;B errors.</h3>
         <ul>
             <li>The plugin now declares compatibility up to IDE build 263.*, so it keeps installing on PyCharm 2026.3 instead of becoming obsolete when that release becomes stable.</li>
