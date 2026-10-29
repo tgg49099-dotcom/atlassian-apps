@@ -8,7 +8,7 @@ you define, and reports what is missing or wrong — without blocking anything.*
 | **Runs on** | Atlassian Forge — inside your own Jira site, on Atlassian's infrastructure |
 | **Price** | Free. No paid tier, no per-seat pricing, no usage metering |
 | **Data leaves your site** | No. The app declares no egress at all |
-| **App version** | 4.1.0 — the build currently served in production |
+| **App version** | 4.3.0 — the build currently served in production |
 
 ## What it does
 
@@ -139,6 +139,6 @@ the region), encrypted at rest — see the [Privacy Policy](PRIVACY.md) for deta
 
 ## Version
 
-**App version 4.1.0** is the build currently served in production. Material changes
+**App version 4.3.0** is the build currently served in production. Material changes
 are announced in the Marketplace listing changelog and in the
 `Last updated` line of the [Privacy Policy](PRIVACY.md).
