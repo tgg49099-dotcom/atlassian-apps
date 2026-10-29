@@ -113,4 +113,49 @@ class JsonParserTest {
         // Un champ absent ne doit pas faire planter la lecture.
         assertEquals("", root.obj("inexistant").str("id"))
     }
+
+    // ---------------------------------------------------------------------
+    // v0.0.19 — les nombres doivent suivre la grammaire exacte de la RFC 8259.
+    //
+    // Le bug mesure : le lecteur acceptait « 1. », « 1e », « - » et « 01 ».
+    // Le nombre produit était illisible (« 1. ».toDouble() leve une
+    // NumberFormatException qui n'est PAS une JsonException) : elle
+    // traversait `MlflowClient.parse()` et arrivait jusqu'a l'utilisateur sous
+    // la forme « Unexpected error: For input string: "1." », au lieu du
+    // message prevu « reponse non JSON du serveur ».
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("un nombre mal forme est refuse comme du JSON invalide")
+    fun malformedNumbersAreRejected() {
+        val corps = listOf(
+            """{"a":1.}""",      // point decimal sans chiffre
+            """{"a":1e}""",      // exposant sans chiffre
+            """{"a":1e+}""",     // exposant signe sans chiffre
+            """{"a":-}""",       // signe sans chiffre
+            """{"a":01}"""       // zero initial interdit par la RFC 8259
+        )
+        for (c in corps) {
+            try {
+                JsonParser.parse(c)
+                fail("un nombre mal forme doit lever JsonException : $c")
+            } catch (e: JsonException) {
+                assertTrue(
+                    e.message!!.contains("nombre"),
+                    "le message doit parler du nombre, il dit : ${e.message} (corps $c)"
+                )
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("les nombres valides de la RFC 8259 sont toujours lus (garde-fou)")
+    fun validNumbersAreStillParsed() {
+        val root = JsonParser.parse("""{"z":0,"o":-0.5,"e":1e-05,"E":2E+3,"i":42}""")
+        assertEquals(0.0, root.dbl("z"))
+        assertEquals(-0.5, root.dbl("o"))
+        assertEquals(1e-05, root.dbl("e"))
+        assertEquals(2000.0, root.dbl("E"))
+        assertEquals(42L, root.lng("i"))
+    }
 }

@@ -18,6 +18,14 @@ package com.slot5.mlexp
  * Ce qu'il refuse : tout le reste, y compris le JSON tronqué — un corps
  * d'erreur HTML d'un serveur qui renvoie 200 est rejeté au lieu de produire
  * silencieusement une liste vide.
+ *
+ * v0.0.19 — **les nombres sont lus selon la grammaire exacte de la RFC 8259.**
+ * Le lecteur acceptait auparavant « 1. », « 1e », « - » et « 01 » ; le
+ * nombre obtenu était alors illisible et faisait échouer la lecture du champ
+ * avec une `NumberFormatException` non maîtrisée (message utilisateur :
+ * « Unexpected error: For input string: "1." »). Un corps dont le nombre est
+ * mal formé est désormais **refusé comme du JSON invalide**, ce qui donne le
+ * message « reponse non JSON du serveur ».
  */
 sealed class Json {
 
@@ -34,7 +42,9 @@ sealed class Json {
     /** Chaîne JSON, déjà déséchappée. */
     class Str(val value: String) : Json()
 
-    /** Nombre JSON. On garde le texte d'origine : `1e-05` doit rester exact. */
+    /** Nombre JSON. On garde le texte d'origine : `1e-05` doit rester exact.
+     *  v0.0.19 : le texte vient du parseur, qui n'accepte que la grammaire
+     *  RFC 8259 — `toDouble()` ne peut donc plus lever. */
     class Num(val text: String) : Json() {
         val asDouble: Double get() = text.toDouble()
         val asLong: Long get() = text.toLongOrNull() ?: text.toDouble().toLong()
@@ -200,23 +210,47 @@ object JsonParser {
             }
         }
 
+        /**
+         * Nombre JSON, selon la grammaire exacte de la RFC 8259 :
+         * `-? (0 | [1-9][0-9]*) ( '.' [0-9]+ )? ( [eE] [+-]? [0-9]+ )?`
+         *
+         * v0.0.19 — **la grammaire est maintenant appliquée strictement.**
+         * Avant, le lecteur acceptait « 1. », « 1e », « - » et « 01 » : le
+         * nombre produit était ensuite illisible (`"1.".toDouble()` levait une
+         * `NumberFormatException` **non maîtrisée**, qui traversait
+         * `MlflowClient.parse()` — qui n'attrape que `JsonException` — et
+         * arrivait jusqu'à l'utilisateur sous la forme « Unexpected error:
+         * For input string: "1." »). Un corps qui n'est pas du JSON valide
+         * doit être refusé comme tel, avec le message « reponse non JSON du
+         * serveur », pas avec une exception de conversion.
+         */
         fun number(): Json {
             val start = i
             if (!eof() && s[i] == '-') i++
-            while (!eof() && s[i] in '0'..'9') i++
-            if (!eof() && s[i] == '.') {
+            // Partie entière : « 0 » ou [1-9][0-9]* (pas de zéro initial).
+            if (eof() || s[i] !in '0'..'9') fail("nombre attendu")
+            if (s[i] == '0') {
                 i++
+                if (!eof() && s[i] in '0'..'9') fail("nombre invalide : zero initial interdit")
+            } else {
                 while (!eof() && s[i] in '0'..'9') i++
             }
+            // Partie fractionnaire : '.' suivi d'au moins un chiffre.
+            if (!eof() && s[i] == '.') {
+                i++
+                if (eof() || s[i] !in '0'..'9') fail("nombre invalide : chiffres apres le point manquant")
+                while (!eof() && s[i] in '0'..'9') i++
+            }
+            // Exposant : 'e'/'E', signe optionnel, puis au moins un chiffre.
             if (!eof() && (s[i] == 'e' || s[i] == 'E')) {
                 i++
                 if (!eof() && (s[i] == '+' || s[i] == '-')) i++
+                if (eof() || s[i] !in '0'..'9') fail("nombre invalide : exposant sans chiffre")
                 while (!eof() && s[i] in '0'..'9') i++
             }
-            if (i == start) fail("nombre attendu")
             val text = s.substring(start, i)
-            // `toDouble` accepte « 1d », « 0x1p3 » et l'infini : on refuse tout
-            // ce qui n'est pas strictement un nombre JSON.
+            // Garde-fou : le texte ne contient que ce que la grammaire admet,
+            // donc `toDouble()` ne peut plus lever.
             if (text.any { it !in "0123456789+-.eE" }) fail("nombre invalide : $text")
             return Json.Num(text)
         }

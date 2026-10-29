@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.19] — 2026-10-30
+
+### Fixed
+- **A malformed number in a server response broke the read with an opaque
+  message.** The hand-written JSON parser accepted `1.`, `1e`, `-` and `01`;
+  the number it produced could not be converted (`"1.".toDouble()` throws
+  `NumberFormatException`), and that exception is *not* a `JsonException`, so
+  it escaped `MlflowClient.parse()` and reached the user as
+  « Unexpected error: For input string: "1." ». Numbers are now read with the
+  exact JSON grammar (RFC 8259): such a response is rejected as invalid JSON
+  and reported as « reponse non JSON du serveur ».
+  Covered by 3 new tests (2 in `JsonParserTest`, 1 in `MlflowClientTest`).
+
+### Bumped
+- `pluginVersion` 0.0.18 → 0.0.19 (release notes of the new version).
+
 ## [0.0.18] — 2026-10-29
 
 ### Fixed

@@ -115,6 +115,10 @@ intellijPlatform {
             <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.0.19 — Malformed numbers are reported as invalid JSON.</h3>
+            <ul>
+                <li>Numbers are now read with the exact JSON grammar (RFC 8259). A response holding a malformed number (for example <code>1.</code>, <code>1e</code> or <code>01</code>) is rejected as invalid JSON: the plugin now says that the server did not answer JSON, instead of failing with an opaque conversion error such as <code>For input string: "1."</code>.</li>
+            </ul>
             <h3>0.0.18 — Run tooltips now show.</h3>
             <ul>
                 <li>The tooltip of a run in the Experiments tree is now displayed when you hover it: Swing only shows a renderer's tooltip for a component registered with the ToolTipManager, so the run details were silently never shown. This fix was not part of the 0.0.17 build.</li>
