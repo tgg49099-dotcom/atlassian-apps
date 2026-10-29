@@ -1,0 +1,23 @@
+# Gradle / build
+build/
+.gradle/
+out/
+*.class
+
+# IntelliJ Platform Gradle Plugin : artefacts locaux (IDE telecharge)
+.intellijPlatform/
+
+# Journaux et sauvegardes d'experimentation (hors depot public)
+*.log
+*.avant-recette-262
+.avant-recette-262/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db

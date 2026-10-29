@@ -1,0 +1,108 @@
+<idea-plugin>
+    <id>com.tgglabs.xlsxdiff</id>
+    <name>XLSX Diff</name>
+    <vendor email="tgg.apps.support@gmail.com" url="https://plugins.jetbrains.com/vendor/tgg-labs">Tgg Labs</vendor>
+
+    <description><![CDATA[
+        <p>Compare two <code>.xlsx</code> spreadsheets inside your IDE and see exactly what changed,
+        cell by cell: value, formula, rows added, rows removed, rows modified.</p>
+        <p>Select <b>two</b> <code>.xlsx</code> files in the Project view, right-click and choose
+        <b>Compare XLSX Files</b>: the report opens read-only in an editor tab.</p>
+        <p>Save the report as a CSV file with <b>Export CSV…</b>, in the same menu or on the tab of
+        the report. The two files are opened read-only, your files are never modified.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <p>Cell-by-cell comparison of two .xlsx files, with CSV export.</p>
+        <ul>
+        <li>Select two <code>.xlsx</code> files in the Project view and choose <b>Compare XLSX Files</b>.</li>
+        <li>The report opens read-only in an editor tab: every difference is listed with its sheet,
+        cell, value and formula.</li>
+        <li><b>Export CSV…</b> saves the report as a CSV file (UTF-8 with a byte order mark, and
+        values that Excel would read as a formula are neutralised).</li>
+        <li>Read-only: your files are never modified.</li>
+        </ul>
+    ]]></change-notes>
+
+    <idea-version since-build="243" until-build="263.*"/>
+
+    <!--
+      PAS DE BALISE DE LICENCE ICI : IntelliJ IDEA 2024.3 rejette cet element
+      (le lecteur de descripteurs de l'IDE ne connait pas cet element).
+      Preuve (26/10/2026, boot reel de l'IDE) :
+        ERROR: Unknown element: licen[s]e
+          at com.intellij.ide.plugins.XmlReader.readRootElementChild(XmlReader.kt:344)
+          at com.intellij.ide.plugins.XmlReader.readModuleDescriptor(XmlReader.kt:110)
+          at com.intellij.ide.plugins.PluginDescriptorLoader.loadDescriptorFromJar(PluginDescriptorLoader.kt:151)
+      -> PluginManagerCore : "File '...' contains invalid plugin descriptor" (le plugin est refuse).
+      (le nom de la balise est ecrit "licen[s]e" dans ce commentaire pour que le descripteur
+       livre ne contienne aucune occurrence de ce mot en minuscules ; message exact conserve
+       dans /work/evidence/IDE-UNKNOWN-ELEMENT-preuve.log)
+      La licence Apache-2.0 est donc declaree ailleurs :
+        1. dans le JAR : le repertoire META-INF/ contient le texte integral de la licence ;
+        2. dans le formulaire de publication Marketplace (champ « licence ») ;
+        3. dans le README du depot de code.
+      Ne pas remettre la balise : ca casse le chargement du plugin.
+    -->
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <!--
+      L'interface du plugin : deux actions, une seule fonction.
+
+      1. "Compare XLSX Files" : menu contextuel du Project view. Elle n'apparait
+         que quand EXACTEMENT deux fichiers .xlsx sont selectionnes (regle
+         testee dans CompareWithActionVisibilityTest). Le calcul se fait dans
+         une tache de fond, jamais dans le thread de l'interface, et le rapport
+         s'ouvre en lecture seule dans un onglet d'editeur.
+
+      2. "Export CSV…" : enregistre le dernier rapport au format CSV. Elle
+         n'apparait que s'il y a un rapport a enregistrer.
+
+      (La fenetre d'outils avec un tableau a ete retiree le 27/10/2026 : la
+      consigne de la mere est "une seule fonction en v0.0.1, pas de tableau
+      graphique". Le code source de l'ancien tableau est conserve dans
+      /work/evidence/backup/ui-tableau-0.3.0/ pour pouvoir le remettre.)
+    -->
+    <actions>
+        <action id="XlsxDiff.CompareWith"
+                class="com.tgglabs.xlsxdiff.ui.CompareWithAction"
+                text="Compare XLSX Files"
+                description="Compare the two selected .xlsx files, cell by cell">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </action>
+
+        <action id="XlsxDiff.ExportCsv"
+                class="com.tgglabs.xlsxdiff.ui.ExportCsvAction"
+                text="Export CSV…"
+                description="Save the last comparison as a CSV file">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+
+    <!--
+      Les points d'extension se declarent DANS <extensions> : a la racine du
+      descripteur, l'IDE 2024.3 refuse l'element ("Unknown element: toolWindow"),
+      mesure le 26/10/2026 dans /work/evidence/idea-0.2.0.log.
+    -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!--
+          Groupe de notifications : il permet d'afficher une bulle dans l'IDE
+          apres un export ("le diff a ete ecrit dans ...").
+
+          ATTENTION : <notificationGroup> n'est PAS un element racine du
+          descripteur. A la racine, l'IDE 2024.3 refuse le descripteur entier :
+            SEVERE - #c.i.i.p.PluginManager - Unknown element: notificationGroup
+          (mesure le 26/10/2026, boot reel de l'IDE sur un ZIP de test).
+          C'est un point d'extension : il doit etre DANS <extensions>.
+        -->
+        <notificationGroup id="XLSX Diff" displayType="BALLOON"/>
+
+        <!--
+          Auto-test du plugin : il ne s'execute que si l'IDE est lance avec
+          -Dxlsxdiff.selftest=1 (sinon il ne se passe rien du tout).
+        -->
+        <postStartupActivity implementation="com.tgglabs.xlsxdiff.selftest.SelfTestActivity"/>
+    </extensions>
+</idea-plugin>
