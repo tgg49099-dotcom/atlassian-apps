@@ -8,6 +8,7 @@ import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -19,6 +20,7 @@ import com.tgglabs.commithistorysearch.core.GitCommand
 import com.tgglabs.commithistorysearch.core.GitException
 import com.tgglabs.commithistorysearch.core.GitHistorySearch
 import com.tgglabs.commithistorysearch.core.GitLocator
+import com.tgglabs.commithistorysearch.core.PosixEre
 import com.tgglabs.commithistorysearch.core.SearchCancelledException
 import com.tgglabs.commithistorysearch.core.SearchSummary
 import java.awt.BorderLayout
@@ -32,6 +34,8 @@ import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.KeyStroke
 import javax.swing.JPanel
+import javax.swing.event.DocumentEvent
+import javax.swing.event.DocumentListener
 import javax.swing.table.AbstractTableModel
 
 data class HistorySearchState(
@@ -68,9 +72,15 @@ class HistorySearchDialog(private val project: Project) : DialogWrapper(project)
 
     private val queryField = JBTextField(28)
     private val caseSensitive = JBCheckBox("Case sensitive")
-    private val regexMode = JBCheckBox("Regular expression")
+    private val regexMode = JBCheckBox(PosixEre.REGEX_LABEL)
     private val searchButton = JButton("Search")
     private val status = JBLabel("Type a text and press Search.")
+    /**
+     * The warning about the pattern of the user: git compiles it with POSIX ERE, which
+     * does not know everything Java knows. It is displayed IN the window, under the input,
+     * and not written in a log nobody reads.
+     */
+    private val regexWarning = JBLabel("")
     private val model = CommitTableModel()
     private val table = JBTable(model)
 
@@ -80,6 +90,12 @@ class HistorySearchDialog(private val project: Project) : DialogWrapper(project)
         loadSettings()
         searchButton.addActionListener { startSearch() }
         queryField.addActionListener { startSearch() }
+        regexMode.addActionListener { updateRegexWarning() }
+        queryField.document.addDocumentListener(object : DocumentListener {
+            override fun insertUpdate(e: DocumentEvent) = updateRegexWarning()
+            override fun removeUpdate(e: DocumentEvent) = updateRegexWarning()
+            override fun changedUpdate(e: DocumentEvent) = updateRegexWarning()
+        })
         table.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
                 if (e.clickCount == 2) openSelectedDiff()
@@ -92,6 +108,7 @@ class HistorySearchDialog(private val project: Project) : DialogWrapper(project)
             JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
         )
         init()
+        updateRegexWarning()
     }
 
     private fun loadSettings() {
@@ -121,22 +138,47 @@ class HistorySearchDialog(private val project: Project) : DialogWrapper(project)
 
     override fun createCenterPanel(): JComponent {
         val panel = JPanel(BorderLayout(8, 8))
+        val top = JPanel(BorderLayout(6, 2))
         val input = JPanel(FlowLayout(FlowLayout.LEFT, 6, 0))
         input.add(JBLabel("Find:"))
         input.add(queryField)
         input.add(caseSensitive)
         input.add(regexMode)
         input.add(searchButton)
-        panel.add(input, BorderLayout.NORTH)
+        top.add(input, BorderLayout.NORTH)
+        // The warning is a LABEL of the window: the user must SEE it, not find it in a log.
+        top.add(regexWarning, BorderLayout.SOUTH)
+        panel.add(top, BorderLayout.NORTH)
         panel.add(JBScrollPane(table), BorderLayout.CENTER)
         panel.add(status, BorderLayout.SOUTH)
         panel.preferredSize = Dimension(860, 440)
         return panel
     }
 
+    /**
+     * Shows, IN the window, what git cannot do with the pattern of the user.
+     *
+     * git compiles the pattern of `-G` with POSIX ERE: `\d` is not a class there, and the
+     * lookaheads and the backreferences do not exist at all. Without this warning the user
+     * typed a pattern, got no result, and had no idea why.
+     */
+    private fun updateRegexWarning() {
+        val warnings = if (regexMode.isSelected) PosixEre.warnings(queryField.text) else emptyList()
+        regexWarning.text = warnings.joinToString("  ")
+        if (warnings.isNotEmpty()) {
+            regexWarning.foreground = JBColor.RED
+            regexWarning.toolTipText = warnings.joinToString("\n")
+        } else {
+            regexWarning.toolTipText = null
+        }
+    }
+
     private fun startSearch() {
-        val query = queryField.text.trim()
-        if (query.isEmpty()) {
+        // The query is used AS IT IS: trimming it would make it impossible to search a
+        // text that starts with spaces (an indentation). Only the "is it empty?" test
+        // ignores the spaces.
+        val query = queryField.text
+        if (query.trim().isEmpty()) {
             status.text = "Type the text to search for."
             return
         }
@@ -196,7 +238,12 @@ class HistorySearchDialog(private val project: Project) : DialogWrapper(project)
         val hash = row.commit.hash
         ProgressManager.getInstance().run(object : Task.Backgroundable(project, "Load diff", false) {
             override fun run(indicator: ProgressIndicator) {
-                val before = GitCommand.runOrNull(git, root, listOf("show", "$hash^:$path")) ?: ""
+                // A file RENAMED by the commit has two paths: the new one (the path of the
+                // file today) and the old one (its path in the parent commit). The "before"
+                // side must be read with the OLD path: with the new one, `git show` fails
+                // and the diff opens EMPTY (defect reported on 27/10, 28/10 and 30/10).
+                val beforePath = row.file.beforePath
+                val before = GitCommand.runOrNull(git, root, listOf("show", "$hash^:$beforePath")) ?: ""
                 val after = GitCommand.runOrNull(git, root, listOf("show", "$hash:$path")) ?: ""
                 val oldText = before
                 val newText = after

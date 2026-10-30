@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "com.tgglabs"
-version = "0.0.1"
+version = "0.0.2"
 
 repositories {
     mavenCentral()
@@ -52,13 +52,17 @@ intellijPlatform {
             "directly in the IDE. Equivalent of 'git log -S' and 'git log -G': the commits where " +
             "the string was added, removed or modified are listed, and the diff of the matching file " +
             "opens in the IDE diff viewer. The IDE searches commit messages and hashes natively; " +
-            "this plugin searches what the commits actually changed. Limit: the scan covers the " +
+            "this plugin searches what the commits actually changed. Regular expressions are " +
+            "POSIX ERE, like 'git -G': use [0-9] and not \\d. Limit: the scan covers the " +
             "whole history of the current branch and skips merge commits; the result list shows at " +
             "most the 500 most recent matching commits. The search runs in the background and can " +
             "be cancelled."
-        changeNotes = "First release: search a string in the diffs of your Git history (merge " +
-            "commits are skipped), list the matching commits and files, and open the diff of a " +
-            "result in the IDE."
+        changeNotes = "0.0.2 - Fixes: the diff of a RENAMED file now opens with its real " +
+            "'before' side (the old path of the file is used); the regular expressions are " +
+            "POSIX ERE, like 'git -G' (\\d is converted to [0-9], and the constructs that POSIX " +
+            "ERE cannot do are now warned about in the window). 0.0.1 - First release: search a " +
+            "string in the diffs of your Git history (merge commits are skipped), list the matching " +
+            "commits and files, and open the diff of a result in the IDE."
         ideaVersion {
             sinceBuild = "243"
             untilBuild = "263.*"

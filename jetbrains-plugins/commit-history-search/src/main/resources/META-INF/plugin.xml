@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.tgglabs.commithistorysearch</id>
     <name>Commit History Search</name>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <vendor email="tgg.apps.support@gmail.com" url="https://plugins.jetbrains.com/vendor/tgg-labs">Tgg Labs</vendor>
 
     <description>Search for a text string inside the diffs of your Git commit history, directly in the IDE.
@@ -9,11 +9,16 @@ Equivalent of 'git log -S' and 'git log -G': the commits where the string was ad
 modified are listed, and the diff of the matching file opens in the IDE diff viewer.
 The IDE searches commit messages and hashes natively; this plugin searches what the commits actually
 changed.
+Regular expressions are POSIX ERE, like 'git -G': use [0-9] and not \d.
 Limit: the scan covers the whole history of the current branch and skips merge commits; the result
 list shows at most the 500 most recent matching commits. The search runs in the background and can
 be cancelled.</description>
 
-    <change-notes>First release: search a string in the diffs of your Git history (merge commits are
+    <change-notes>0.0.2 - Fixes: the diff of a RENAMED file now opens with its real 'before' side
+(the old path of the file is used); the regular expressions are POSIX ERE, like 'git -G' (\d is
+converted to [0-9], and the constructs that POSIX ERE cannot do are now warned about in the
+window).
+0.0.1 - First release: search a string in the diffs of your Git history (merge commits are
 skipped), list the matching commits and files, and open the diff of a result in the IDE.</change-notes>
 
     <depends>com.intellij.modules.platform</depends>

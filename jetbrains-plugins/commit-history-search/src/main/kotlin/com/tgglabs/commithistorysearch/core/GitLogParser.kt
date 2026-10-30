@@ -14,12 +14,19 @@ enum class ChangeKind(val label: String) {
 
 /**
  * One file touched by a commit, with the number of matching lines added / removed.
+ *
+ * @param path the path of the file AFTER the commit (the path it has today)
+ * @param oldPath the path of the file BEFORE the commit when the commit RENAMED it
+ *   (null when the file was not renamed). It is needed to read the "before" side of the
+ *   diff: `git show <hash>^:<path>` fails for a renamed file, because the new path does
+ *   not exist in the parent commit.
  */
 data class FileHit(
     val path: String,
     val addedMatches: Int,
     val removedMatches: Int,
-    val sample: String?
+    val sample: String?,
+    val oldPath: String? = null
 ) {
     val change: ChangeKind
         get() = when {
@@ -28,6 +35,14 @@ data class FileHit(
             addedMatches > 0 && removedMatches > 0 -> ChangeKind.MODIFIED
             else -> ChangeKind.UNKNOWN
         }
+
+    /**
+     * The path of the file in the PARENT of the commit: the old path when the file was
+     * renamed, the current path otherwise. This is the path to give to
+     * `git show <hash>^:<path>` to read the file before the commit.
+     */
+    val beforePath: String
+        get() = oldPath ?: path
 }
 
 /**
@@ -94,6 +109,8 @@ object GitLogParser {
      */
     fun parsePatch(patch: String, matcher: (String) -> Boolean): List<FileHit> {
         val hits = LinkedHashMap<String, Accumulator>()
+        // The path of the file BEFORE the commit, when the commit renamed it.
+        val oldPaths = LinkedHashMap<String, String?>()
         var oldPath: String? = null
         var newPath: String? = null
         var current: String? = null
@@ -116,7 +133,15 @@ object GitLogParser {
                     newPath = pathOf(line.substring(4))
                     val curr = newPath ?: oldPath
                     current = curr
-                    if (curr != null) hits.getOrPut(curr) { Accumulator() }
+                    if (curr != null) {
+                        hits.getOrPut(curr) { Accumulator() }
+                        // "--- a/old.txt" comes just before "+++ b/new.txt": the old path is
+                        // known here. It is kept so that the "before" side of the diff of a
+                        // RENAMED file can be read with `git show <hash>^:<old path>`.
+                        // It is kept only when it is really another path: a file that was
+                        // not renamed has the same path before and after the commit.
+                        oldPaths[curr] = if (oldPath != null && oldPath != curr) oldPath else null
+                    }
                     continue
                 }
                 if (line.startsWith("rename from ")) {
@@ -126,6 +151,9 @@ object GitLogParser {
                 if (line.startsWith("rename to ")) {
                     newPath = pathOf(line.substring("rename to ".length))
                     current = newPath
+                    if (newPath != null) {
+                        oldPaths[newPath] = if (oldPath != null && oldPath != newPath) oldPath else null
+                    }
                     continue
                 }
             }
@@ -156,7 +184,8 @@ object GitLogParser {
                     path,
                     accumulator.added,
                     accumulator.removed,
-                    accumulator.sampleAdded ?: accumulator.sampleRemoved
+                    accumulator.sampleAdded ?: accumulator.sampleRemoved,
+                    oldPaths[path]
                 )
             }
     }

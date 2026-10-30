@@ -9,6 +9,10 @@ import java.util.regex.Pattern
  *
  * The scan covers the whole history of the current branch (minus the merge commits): only the
  * number of results SHOWN is capped, see [MAX_COMMITS].
+ *
+ * In "regular expression" mode the pattern of the user is a JAVA regular expression for the
+ * filter of the lines (see [matcherPattern]), and a POSIX ERE for git (see [PosixEre.toEre]):
+ * the two syntaxes are not the same, and git is the one that decides which commits are found.
  */
 class GitHistorySearch(
     private val root: File,
@@ -59,6 +63,10 @@ class GitHistorySearch(
     /**
      * The pattern used to tell whether a diff line matches. In text mode the query is a
      * literal: it is escaped so that git and Java agree on what a match is.
+     *
+     * In regular expression mode the pattern is the one of the USER, unchanged: the Java
+     * filter must understand `\d` (it does) and the conversion to POSIX ERE (which git
+     * understands) is done for git only, see [PosixEre.toEre].
      */
     private val matcherPattern: Pattern = if (regex) {
         val flags = if (ignoreCase) Pattern.CASE_INSENSITIVE or Pattern.UNICODE_CASE else 0
@@ -90,14 +98,10 @@ class GitHistorySearch(
             return emptyList()
         }
         val output = try {
-            GitCommand.run(git, root, buildArguments(perlRegex = regex), cancelled)
+            GitCommand.run(git, root, buildArguments(), cancelled)
         } catch (e: GitTimeoutException) {
-            // A timeout must not be retried: the fallback would pay the maximum delay twice.
+            // A timeout must not be retried: it would pay the maximum delay twice.
             throw e
-        } catch (e: GitException) {
-            // Some git builds are compiled without PCRE: fall back to POSIX extended regexps.
-            if (!regex) throw e
-            GitCommand.run(git, root, buildArguments(perlRegex = false), cancelled)
         }
         return GitLogParser.parse(output, matcher)
     }
@@ -108,7 +112,7 @@ class GitHistorySearch(
     private fun hasCommit(git: File, cancelled: () -> Boolean): Boolean =
         GitCommand.runOrNull(git, root, listOf("rev-parse", "--verify", "--quiet", "HEAD"), cancelled) != null
 
-    fun buildArguments(perlRegex: Boolean = regex): List<String> {
+    fun buildArguments(): List<String> {
         val args = ArrayList<String>()
         // git escapes the path of the files whose name is not ASCII ("caf\303\251.txt").
         // The escaped path cannot be given back to git, so the diff of such a file would
@@ -131,12 +135,17 @@ class GitHistorySearch(
         // changing that number was missed, while the plugin promises the commits where
         // the text was "added, removed or modified". -G matches the text in the added
         // and in the removed lines, so a modification is found too.
-        if (perlRegex) args.add("--perl-regexp") else args.add("--extended-regexp")
+        //
+        // git compiles the pattern of -G with POSIX EXTENDED regular expressions, and
+        // `--perl-regexp` does NOT change that (measured on 30/10/2026 on git 2.39.5 and
+        // git 2.43 : `-G'\d+'` finds nothing, with or without --perl-regexp). The pattern
+        // is therefore converted to POSIX ERE before it is given to git.
+        args.add("--extended-regexp")
         // A user regex is case sensitive for git unless -i is given (the Java filter is not):
         // without it, commits that differ only by case are missed.
         if (regex && ignoreCase) args.add("--regexp-ignore-case")
         args.add(PRETTY)
-        args.add("-G" + if (regex) query else literalToRegex(query, ignoreCase))
+        args.add("-G" + if (regex) PosixEre.toEre(query) else literalToRegex(query, ignoreCase))
         return args
     }
 }

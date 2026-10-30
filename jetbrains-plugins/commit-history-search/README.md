@@ -11,15 +11,16 @@ correspondances les plus récentes** : ce plafond limite la taille de la liste, 
 **pas** la profondeur du balayage. Ce point a été **mesuré** le 29/10/2026 (`git 2.39.5`) et
 **prouvé par des tests** : voir « Ce qui a été vérifié » plus bas.
 
-**État au 30/10/2026 04:53 :** **le texte public du cycle 13 était faux** — il annonçait « the
-scan stops after the 500 most recent commits ». C'est corrigé partout (descripteur livré, Gradle,
-`description.md`, paquet Tgg) et **verrouillé par des tests**. **44** tests verts. ZIP reconstruit
-le 30/10 à 04:53 : les **2 défauts de la relecture hostile du 30/10 00:25** (pager de git et
-entrée standard de l'enfant, annulation réactive et délai maximal) **et les 2 défauts de la
-relecture du cycle 88** (« Case sensitive » : les lignes modifiées étaient ratées ; nom de
-fichier non-ASCII : le diff s'ouvrait vide) sont corrigés, **pré-vol vert**,
-**plugin vérifié chargé dans un vrai IDE avec le build livré**, et **réglages vérifiés
-persistants d'une session IDE à l'autre** (preuve par captures).
+**État au 30/10/2026 09:24 — version 0.0.2 :** les **3 points de la revue du 30/10 08:00**
+sont traités : le **fichier renommé** (le diff s'ouvrait avec un « avant » vide), la **regex
+POSIX** (git ne comprend pas `\d` : la recherche ne trouvait rien, sans message) et
+l'**annulation** (prouvée par un test, le code était déjà correct : le jury avait lu la version
+du 28/10). S'y ajoutent 2 corrections de propreté (chemin de JDK retiré du dépôt public,
+requête qui n'est plus trimée). **65** tests verts, chacun avec sa **contre-épreuve rouge**.
+ZIP 0.0.2 reconstruit le 30/10 à 09:24, **pré-vol vert**, **plugin vérifié chargé dans un vrai
+IDE**, **réglages vérifiés persistants d'une session IDE à l'autre** (preuve par captures).
+Les correctifs des cycles 19 et 89 (pager, entrée standard, annulation, délai maximal, pickaxe
+`-G`, nom de fichier non-ASCII) sont **conservés**.
 
 ## Les 2 défauts corrigés le 30/10/2026 (relecture hostile)
 
@@ -59,16 +60,40 @@ Le fichier de test est **pur ASCII** (`"café.txt"`) et la JVM de test force
 défaut non-ASCII ne pourrait pas être reproduit du tout.
 
 
+## Les 3 points de la revue du 30/10/2026 08:00 corrigés (version 0.0.2)
+
+| Point de la revue | Verdict | Correction | Test qui la prouve |
+|---|---|---|---|
+| **1. Fichier renommé.** `git show <hash>^:<chemin>` utilise toujours le **nouveau** chemin : pour un fichier renommé par le commit, le « avant » du diff est **vide** (le chemin n'existe pas dans le commit parent). Signalé les 27, 28 et 30/10. | **juste** | Le chemin **avant** sort du modèle : `FileHit.oldPath` et `FileHit.beforePath` (« le chemin du fichier dans le commit parent »). La fenêtre lit le « avant » avec `git show <hash>^:<beforePath>` et le « après » avec `git show <hash>:<path>`. | `RenamedFileTest` : « the before side of the diff of a renamed file is not empty », « a file that was not renamed keeps its path before the commit » — **dépôt git réel** (fichier renommé + commit + modification), **binaire git réel**, et le « avant » est relu avec git. |
+| **2. Regex POSIX.** git compile `-G` en **ERE POSIX** : `\d` n'y est pas une classe, et `--perl-regexp` ne change rien (mesuré sur git 2.39.5 et 2.43 : `-G'\d+'` → **0 commit**, avec ou sans `--perl-regexp`). Le filtre Java, lui, comprend `\d` : l'utilisateur voyait « ça matche » et n'obtenait **rien, sans message**. | **juste** | Le motif est **converti en ERE POSIX** avant d'être donné à git (`\d`→`[0-9]`, `\D`→`[^0-9]`, `\w`→`[_[:alnum:]]`, `\W`→`[^_[:alnum:]]`, `\s`→`[[:space:]]`, `\S`→`[^[:space:]]]`, hors crochets). `--perl-regexp` et son repli sont **supprimés**. La fenêtre **affiche** l'avertissement quand le motif utilise une construction que POSIX ERE ne sait pas faire (lookahead, backreference, drapeau inline) : l'avertissement est **visible dans la fenêtre**, pas dans un log. L'intitulé de la case et la description Marketplace disent « POSIX ERE (comme `git -G`) : utilisez `[0-9]` et non `\d` ». | `GitPickaxeDefectsTest` : « a regular expression finds the digits that POSIX ERE does not know » (dépôt réel : `\d+` doit trouver le commit « val = 42 ») ; `PosixEreTest` : 12 tests (conversion, ligne de commande, avertissements, intitulé) ; `DialogWiringTest` : « the window shows the warning about the POSIX ERE », « the checkbox of the regular expression mode says POSIX ERE ». |
+| **3. Annulation.** Le jury dit que l'annulation n'est testée qu'entre deux lignes de sortie : le bouton ne réagirait pas pendant que git est silencieux. | **faux sur le code actuel** : la lecture est dans un thread dédié et le drapeau est testé toutes les 200 ms. Le jury a lu la version du 28/10. | **Le code n'est pas refait** : c'est le **test** qui est écrit, pour le **prouver**. | `SearchCancellationTest` : « a silent git command is cancelled in less than two seconds » — une **vraie** commande git (un alias qui dort sans écrire rien), lancée en arrière-plan, annulée au bout de 300 ms : `SearchCancelledException` en **moins de 2 s**. |
+
+**Contre-épreuve rouge → vert** (30/10/2026 08:30 → 09:20) :
+
+- **8 tests ROUGE** sur le code du 30/10 08:20 (`/work/build_red_cycle90.log`) : les 2 de
+  `RenamedFileTest`, celui de `GitPickaxeDefectsTest` sur `\d+`, celui de `PosixEreTest` sur
+  `--perl-regexp`, et les 4 de `DialogWiringTest`.
+- **Contre-épreuve de l'annulation** : le même test **échoue** sur le `GitCommand.kt` du 28/10
+  (celui que le jury a lu) — la commande silencieuse n'était annulée qu'à la fin, 10 s plus
+  tard (`/work/build_red_cycle90_cancel.log`) — et **passe** sur le code actuel.
+- **65 tests verts** après les correctifs (`/work/build_green_cycle90.log`).
+
+**2 corrections de propreté** (revue du 30/10 08:00) : `org.gradle.java.home=/work/tools/jdk`
+retiré de `gradle.properties` (un chemin de ma machine dans un dépôt public : un tiers ne
+pouvait pas compiler tel quel) ; les chemins de `scripts/contre_epreuve.py` passent par
+l'environnement ; et la requête n'est **plus trimée** (une indented line qui commence par des
+espaces est maintenant trouvable).
+
 ## Le livrable
 
 | | |
 |---|---|
-| Fichier à téléverser | `commit-history-search-0.0.1.zip` (1 672 104 octets, reconstruit le 30/10/2026 à 04:53) |
-| md5 | `12c7284de811f8166020e0d428288550` |
-| sha256 | `e8b6b89e13fbf28e29ae257f90667c320533c557ee8580be06874fac669aa40e` |
-| jar interne `commit-history-search-0.0.1.jar` | 70 046 octets — md5 `b141abe3b704a75411cd4fef7ccd3b3d` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
+| Fichier à téléverser | `commit-history-search-0.0.2.zip` (1 677 236 octets, reconstruit le 30/10/2026 à 09:24) |
+| md5 | `f24d3ca2716acf4cf7826b6983c2a758` |
+| sha256 | `45b40cb28f94c527a32961ea18d362d03e0566b8e276d5d9bdbe3d67c27b86a5` |
+| jar interne `commit-history-search-0.0.2.jar` | 75 357 octets — md5 `f768fb3e3c1282b94e7d685076ab3a2b` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
 | Nom public | `Commit History Search` (21 caractères, sans mot interdit) |
-| Version | `0.0.1` |
+| Version | `0.0.2` |
 | Plugin ID (xmlId) | `com.tgglabs.commithistorysearch` |
 | Prix | gratuit (0 $) |
 
@@ -82,7 +107,7 @@ serveur le cherche) ; la copie ci-dessus est le fichier à joindre.
 | `plugin.xml` | le descripteur livré (identique à celui du jar) |
 | `pluginIcon.svg`, `pluginIcon_dark.svg` | les deux logos 40×40 |
 | `LICENSE.txt` | Apache 2.0 (déclarée ici, **pas** dans le `plugin.xml`) |
-| `commit-history-search-0.0.1.zip` | **le livrable** à téléverser |
+| `commit-history-search-0.0.2.zip` | **le livrable** à téléverser |
 | `preuve_ide_chargement.log` | la ligne exacte du log de l'IDE + les empreintes |
 | `description.md` | la description et les change-notes à coller dans le formulaire Marketplace |
 | `vendor_compte.json` | le compte éditeur lu sur l'API publique (adresse **non recopiée**) |
@@ -96,7 +121,7 @@ serveur le cherche) ; la copie ci-dessus est le fichier à joindre.
    ⚠️ **PAS « Upload plugin »** : « Upload plugin » ajoute une version à un plugin déjà listé
    (c'est ce qui a été fait pour « ML Experiment Cockpit », pluginId 35416). Ici c'est un plugin
    **nouveau**, avec un `plugin.xml id` différent : il faut une nouvelle fiche.
-2. Téléverser `commit-history-search-0.0.1.zip`.
+2. Téléverser `commit-history-search-0.0.2.zip` (et **jamais** le 0.0.1).
 3. Me donner le `pluginId` numérique de la nouvelle fiche → je le déclare dans
    `/rapports/produits.json` (plateforme `jetbrains`) et le serveur relèvera les vrais
    téléchargements chaque matin.
@@ -130,7 +155,7 @@ n'a pas encore de fiche**, donc pas de `pluginId` à déclarer.
   sensitive » cochée** et la **requête restaurée** (`MAGIC_TOKEN_9F3A`). Captures :
   `/work/evidence/persistance-ide/` (4 PNG) ; la valeur persistée est dans
   `.idea/workspace.xml` (`com.tgglabs.commithistorysearch.caseSensitive` = `true`).
-- **44 tests verts** (`gradle test buildPlugin` : 44 PASSED, 0 échec,
+- **65 tests verts** (`gradle test buildPlugin` : 65 PASSED, 0 échec,
   0 erreur, 0 ignoré ; comptés sur les rapports XML JUnit de `build/test-results/test/`, pas
   recopiés d'un rapport).
 - **Patch de la revue du jury appliqué et prouvé le 28/10/2026 09:04** : en mode *regular

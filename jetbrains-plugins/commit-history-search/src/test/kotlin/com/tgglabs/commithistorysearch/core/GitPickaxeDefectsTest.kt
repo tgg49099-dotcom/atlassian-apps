@@ -7,8 +7,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The two defects found by the hostile review of 30/10/2026. Each test here FAILS on
- * the code of 29/10 and PASSES on the fixed code.
+ * The defects found by the hostile review of 30/10/2026. Each test here FAILS on
+ * the code of 29/10 (or of 30/10 08:20 for the last one) and PASSES on the fixed code.
  *
  * A. "Case sensitive" mode was asking git for `git log -S`, whose semantics are "the
  *    NUMBER of occurrences changed": a line that is MODIFIED without changing that
@@ -16,6 +16,9 @@ import java.io.File
  *    "added, removed or modified".
  * B. A file whose name is not ASCII: git escapes the path in octal ("caf\303\251.txt")
  *    and the path was never decoded, so the diff of the file opened EMPTY.
+ * C. git compiles the pattern of `-G` with POSIX ERE: `\d` is not a class there, and
+ *    `--perl-regexp` does not change that. The Java filter of the plugin understands
+ *    `\d`, so the user saw "it matches" and got NOTHING at all.
  *
  * These tests build real repositories and run the real git: they measure the behaviour
  * that is actually shipped, not only the parser.
@@ -75,6 +78,28 @@ class GitPickaxeDefectsTest {
             "the diff of the accented file must not be empty (content: $content)",
             content.contains("the needle is here")
         )
+    }
+
+    @Test
+    fun `a regular expression finds the digits that POSIX ERE does not know`() {
+        val directory = repository()
+        write(directory, "a.txt", "val = 42\n")
+        commit(directory, "add a value")
+
+        // git compiles the pattern of -G with POSIX EXTENDED regular expressions, and
+        // `--perl-regexp` does NOT change that (measured on 30/10/2026 on git 2.39.5 and
+        // on git 2.43 : `-G'\d+'` finds NOTHING, with or without --perl-regexp).
+        // The Java filter of the plugin understands `\d`, so the user who typed `\d+` saw
+        // the filter say "it matches" and got no result at all, without any message.
+        val hits = GitHistorySearch(directory, "\\d+", regex = true).search()
+
+        assertEquals(
+            "the commit that adds 42 must be found by the pattern \\d+ " +
+                "(hits: ${hits.map { it.subject }})",
+            1,
+            hits.size
+        )
+        assertEquals("add a value", hits[0].subject)
     }
 
     // ------------------------------------------------------------------ helpers

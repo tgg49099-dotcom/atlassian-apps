@@ -186,6 +186,26 @@ class GitHistorySearchTest {
     }
 
     @Test
+    fun `a text that starts with spaces is found`() {
+        val repo = buildRepository()
+        assumeTrue("git is not available", repo != null)
+        val directory = repo!!
+
+        // The window must not trim the query: an indented line starts with spaces.
+        write(directory, "a.txt", "hello\n    the needle is here\n")
+        commit(directory, "add the indented needle")
+
+        val hits = GitHistorySearch(directory, "    the needle").search()
+
+        assertEquals(
+            "a text that starts with spaces must be findable (hits: ${hits.map { it.subject }})",
+            1,
+            hits.size
+        )
+        assertEquals("add the indented needle", hits[0].subject)
+    }
+
+    @Test
     fun `a text that never appears returns no commit`() {
         val repo = buildRepository()
         assumeTrue("git is not available", repo != null)
