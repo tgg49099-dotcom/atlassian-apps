@@ -11,11 +11,13 @@ correspondances les plus récentes** : ce plafond limite la taille de la liste, 
 **pas** la profondeur du balayage. Ce point a été **mesuré** le 29/10/2026 (`git 2.39.5`) et
 **prouvé par des tests** : voir « Ce qui a été vérifié » plus bas.
 
-**État au 30/10/2026 00:55 :** **le texte public du cycle 13 était faux** — il annonçait « the
+**État au 30/10/2026 04:53 :** **le texte public du cycle 13 était faux** — il annonçait « the
 scan stops after the 500 most recent commits ». C'est corrigé partout (descripteur livré, Gradle,
-`description.md`, paquet Tgg) et **verrouillé par des tests**. **42** tests verts. ZIP reconstruit
-le 30/10 (les **2 défauts de la relecture hostile du 30/10 00:25** sont corrigés : pager de git
-et entrée standard de l'enfant, annulation réactive et délai maximal), **pré-vol 24/24 vert**,
+`description.md`, paquet Tgg) et **verrouillé par des tests**. **44** tests verts. ZIP reconstruit
+le 30/10 à 04:53 : les **2 défauts de la relecture hostile du 30/10 00:25** (pager de git et
+entrée standard de l'enfant, annulation réactive et délai maximal) **et les 2 défauts de la
+relecture du cycle 88** (« Case sensitive » : les lignes modifiées étaient ratées ; nom de
+fichier non-ASCII : le diff s'ouvrait vide) sont corrigés, **pré-vol vert**,
 **plugin vérifié chargé dans un vrai IDE avec le build livré**, et **réglages vérifiés
 persistants d'une session IDE à l'autre** (preuve par captures).
 
@@ -33,14 +35,38 @@ même pas sur le code du 29/10 : `GitCommand.run(...)` n'y avait **aucun** argum
 (le `GitCommand.kt` public du 29/10, dans le dépôt, le montre).
 
 
+## Les 2 défauts corrigés le 30/10/2026 à 04:34 (relecture hostile, cycle 88)
+
+| Défaut | Correction | Test qui la prouve |
+|---|---|---|
+| **Une ligne modifiée était ratée en mode « Case sensitive ».** Le plugin demandait `git log -Sfoo`, dont la sémantique est « le **nombre** d'occurrences a changé » : une ligne modifiée sans changement de ce nombre était **manquée**, alors que le texte public promet « added, removed **or modified** ». | Le pickaxe est **toujours `-G`** (avec le littéral échappé) : `-G` cherche le texte dans les lignes **ajoutées et supprimées**, donc une modification est trouvée. Le mode par défaut (insensible à la casse) ne change pas. | `GitPickaxeDefectsTest` : « a modified line is found when the search is case sensitive » |
+| **Le diff d'un fichier dont le nom n'est pas ASCII s'ouvrait VIDE.** git échappe le chemin en octal (`"b/caf\303\251.txt"`) et le chemin n'était jamais décodé → `git show` échouait → l'IDE ouvrait un diff vide. | `git log` est appelé avec `-c core.quotePath=false` (le chemin réel dans le diff) **et** `unquote()` décode maintenant les échappements octal (les octets du nom, lus en UTF-8). | `GitPickaxeDefectsTest` : « the diff of a file whose name is not ASCII is not empty » |
+
+**Contre-épreuve rouge → vert** (30/10/2026 04:44 → 04:51) : les 2 tests de
+`GitPickaxeDefectsTest` **échouent tous les deux** sur le code du 29/10
+(`/work/build_red_cycle89.log`) et **passent tous les deux** après le correctif. Messages
+d'échec exacts sur l'ancien code :
+
+```
+a modified line is found when the search is case sensitive
+  java.lang.AssertionError: the commit that modified the line must be found (hits: [A: add foo]) expected:<2> but was:<1>
+the diff of a file whose name is not ASCII is not empty
+  org.junit.ComparisonFailure: the path of the file must be decoded expected:<caf[é].txt> but was:<caf[\303\251].txt>
+```
+
+Le fichier de test est **pur ASCII** (`"café.txt"`) et la JVM de test force
+`LANG=C.UTF-8` : sans cela, le conteneur (locale POSIX) créerait « caf?.txt » et le
+défaut non-ASCII ne pourrait pas être reproduit du tout.
+
+
 ## Le livrable
 
 | | |
 |---|---|
-| Fichier à téléverser | `commit-history-search-0.0.1.zip` (1 671 499 octets, reconstruit le 30/10/2026 à 00:57) |
-| md5 | `e2c35a4535097495e3ea29b1ff855484` |
-| sha256 | `b35dc85d49e3fb901d123f077f1c34f4fcb62ed12d0e7b84db1f64909c01df8b` |
-| jar interne `commit-history-search-0.0.1.jar` | 69 474 octets — md5 `cde740c08b520a35ba0d5047771b2acf` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
+| Fichier à téléverser | `commit-history-search-0.0.1.zip` (1 672 104 octets, reconstruit le 30/10/2026 à 04:53) |
+| md5 | `12c7284de811f8166020e0d428288550` |
+| sha256 | `e8b6b89e13fbf28e29ae257f90667c320533c557ee8580be06874fac669aa40e` |
+| jar interne `commit-history-search-0.0.1.jar` | 70 046 octets — md5 `b141abe3b704a75411cd4fef7ccd3b3d` (vérifié **par le contenu du ZIP**, pas seulement sur disque) |
 | Nom public | `Commit History Search` (21 caractères, sans mot interdit) |
 | Version | `0.0.1` |
 | Plugin ID (xmlId) | `com.tgglabs.commithistorysearch` |
@@ -104,7 +130,7 @@ n'a pas encore de fiche**, donc pas de `pluginId` à déclarer.
   sensitive » cochée** et la **requête restaurée** (`MAGIC_TOKEN_9F3A`). Captures :
   `/work/evidence/persistance-ide/` (4 PNG) ; la valeur persistée est dans
   `.idea/workspace.xml` (`com.tgglabs.commithistorysearch.caseSensitive` = `true`).
-- **42 tests verts** (`gradle test buildPlugin --rerun-tasks` : 42 PASSED, 0 échec,
+- **44 tests verts** (`gradle test buildPlugin` : 44 PASSED, 0 échec,
   0 erreur, 0 ignoré ; comptés sur les rapports XML JUnit de `build/test-results/test/`, pas
   recopiés d'un rapport).
 - **Patch de la revue du jury appliqué et prouvé le 28/10/2026 09:04** : en mode *regular
@@ -149,8 +175,14 @@ n'a pas encore de fiche**, donc pas de `pluginId` à déclarer.
 
 ```
 cd /work/produits/CommitHistorySearch/source
-JAVA_HOME=/work/tools/jdk /work/tools/gradle-8.10.2/bin/gradle test buildPlugin --offline
+JAVA_HOME=/work/tools/jdk /work/tools/gradle-8.10.2/bin/gradle test buildPlugin --offline \
+  -I /work/local-ide.init.gradle.kts
 ```
+
+⚠️ Le script d'init `-I /work/local-ide.init.gradle.kts` sert l'IDE 2024.3 **depuis le
+dépôt local** `/work/ide-repo/` (le cache Gradle du conteneur a été purgé le 30/10) : le
+tarball est **bit identique** à celui du site officiel de JetBrains. Ce script ne change
+**ni le code ni `build.gradle.kts`** du produit.
 
 ⚠️ `gradle build` **ne produit pas** le ZIP : il faut lancer `buildPlugin`.
 Le ZIP doit être **reconstruit après** toute modification des sources (le pré-vol refuse un ZIP

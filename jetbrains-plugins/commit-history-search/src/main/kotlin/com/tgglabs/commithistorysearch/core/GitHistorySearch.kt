@@ -4,8 +4,8 @@ import java.io.File
 import java.util.regex.Pattern
 
 /**
- * The pickaxe search itself: the equivalent of `git log -S<text>` (literal, case sensitive)
- * or `git log -G<regex>` (regular expression) run over the whole history of a repository.
+ * The pickaxe search itself: the equivalent of `git log -G<text>` (a literal, escaped, or a
+ * regular expression) run over the whole history of a repository.
  *
  * The scan covers the whole history of the current branch (minus the merge commits): only the
  * number of results SHOWN is capped, see [MAX_COMMITS].
@@ -110,6 +110,11 @@ class GitHistorySearch(
 
     fun buildArguments(perlRegex: Boolean = regex): List<String> {
         val args = ArrayList<String>()
+        // git escapes the path of the files whose name is not ASCII ("caf\303\251.txt").
+        // The escaped path cannot be given back to git, so the diff of such a file would
+        // open empty. core.quotePath=false gives the real path in the diff.
+        args.add("-c")
+        args.add("core.quotePath=false")
         // `git log` starts a pager (less) when it can: in the IDE there is no terminal to
         // interact with, so the pager would wait for a keyboard input that never comes
         // (the IDE freezes) and it would pollute the captured output with its escape codes.
@@ -121,18 +126,17 @@ class GitHistorySearch(
         args.add("-U0")
         args.add("-p")
         args.add("--max-count=$MAX_COMMITS")
-        // git log -S is a literal, case sensitive pickaxe: it is used as is when the search
-        // is a plain text and the case matters. Every other case goes through -G.
-        val usePickaxeS = !regex && !ignoreCase
-        if (!usePickaxeS) {
-            if (perlRegex) args.add("--perl-regexp") else args.add("--extended-regexp")
-        }
+        // The pickaxe is ALWAYS -G. `git log -S` only reports the commits where the
+        // NUMBER of occurrences of the text changed: a line that is modified without
+        // changing that number was missed, while the plugin promises the commits where
+        // the text was "added, removed or modified". -G matches the text in the added
+        // and in the removed lines, so a modification is found too.
+        if (perlRegex) args.add("--perl-regexp") else args.add("--extended-regexp")
         // A user regex is case sensitive for git unless -i is given (the Java filter is not):
         // without it, commits that differ only by case are missed.
         if (regex && ignoreCase) args.add("--regexp-ignore-case")
         args.add(PRETTY)
-        val pickaxe = if (usePickaxeS) "-S$query" else "-G" + if (regex) query else literalToRegex(query, ignoreCase)
-        args.add(pickaxe)
+        args.add("-G" + if (regex) query else literalToRegex(query, ignoreCase))
         return args
     }
 }

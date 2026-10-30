@@ -73,4 +73,10 @@ tasks.test {
         showStandardStreams = true
     }
     maxHeapSize = "256m"
+    // Les tests creent des fichiers dont le nom n'est pas ASCII : la JVM doit encoder
+    // les noms de fichiers ET les arguments de la ligne de commande en UTF-8. Sans cela
+    // le nom devient "caf?.txt" dans un conteneur en locale POSIX, et le defaut du nom
+    // non ASCII ne peut pas etre reproduit du tout.
+    environment("LANG", "C.UTF-8")
+    environment("LC_ALL", "C.UTF-8")
 }

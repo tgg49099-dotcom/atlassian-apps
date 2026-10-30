@@ -1,5 +1,7 @@
 package com.tgglabs.commithistorysearch.core
 
+import java.io.ByteArrayOutputStream
+
 /**
  * How a commit changed the searched string in one file.
  */
@@ -168,12 +170,56 @@ object GitLogParser {
         return path.ifEmpty { null }
     }
 
-    /** git quotes exotic paths: "src/a\"b.kt" */
+    /**
+     * git quotes exotic paths: "src/a\"b.kt" and, when core.quotePath is on, the bytes of
+     * a name that is not ASCII in octal: "caf\303\251.txt".
+     *
+     * Without decoding the escapes, the path of such a file is wrong, `git show` cannot
+     * find it and the diff of the file opens EMPTY. The octal escapes are BYTES of the
+     * name: they are collected as bytes and decoded as UTF-8 at the end.
+     */
     private fun unquote(path: String): String {
-        if (path.length >= 2 && path.startsWith('"') && path.endsWith('"')) {
-            return path.substring(1, path.length - 1).replace("\\\"", "\"").replace("\\\\", "\\")
+        if (path.length < 2 || !path.startsWith('"') || !path.endsWith('"')) return path
+        val body = path.substring(1, path.length - 1)
+        val bytes = ByteArrayOutputStream()
+        var i = 0
+        while (i < body.length) {
+            val ch = body[i]
+            if (ch == '\\' && i + 1 < body.length) {
+                val next = body[i + 1]
+                if (next in '0'..'7') {
+                    // octal escape: one to three digits, the value is one byte of the name
+                    var value = 0
+                    var digits = 0
+                    var j = i + 1
+                    while (j < body.length && digits < 3 && body[j] in '0'..'7') {
+                        value = value * 8 + (body[j] - '0')
+                        j++
+                        digits++
+                    }
+                    bytes.write(value)
+                    i = j
+                    continue
+                }
+                // \" \\ \t \n ... : the escaped character itself
+                val decoded = when (next) {
+                    'a' -> '\u0007'
+                    'b' -> '\b'
+                    't' -> '\t'
+                    'n' -> '\n'
+                    'v' -> '\u000b'
+                    'f' -> '\u000c'
+                    'r' -> '\r'
+                    else -> next
+                }
+                bytes.write(decoded.toString().toByteArray(Charsets.UTF_8))
+                i += 2
+                continue
+            }
+            bytes.write(ch.toString().toByteArray(Charsets.UTF_8))
+            i++
         }
-        return path
+        return String(bytes.toByteArray(), Charsets.UTF_8)
     }
 
     private class Accumulator {
