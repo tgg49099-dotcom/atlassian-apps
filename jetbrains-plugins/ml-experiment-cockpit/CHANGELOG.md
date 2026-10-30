@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.20] — 2026-10-30
+
+Four defects measured by the code review of 2026-10-30 on the **published 0.0.19**
+(plugin 35416), all fixed **in this single version** (one review, one upload).
+
+### Fixed
+- **The Optuna and Models trees showed the raw Kotlin dump instead of the
+  label.** Those two trees have no cell renderer, so Swing printed the
+  generated data-class `toString()` — `StudyNode(summary=StudySummary(id=1,
+  name=demo, direction=minimize))` and
+  `RegisteredModelNode(model=RegisteredModel(name=…, …), label=…)`. The label
+  was computed and stored in the node but never displayed. Every tree payload
+  of the plugin now returns its readable label from `toString()`, the rule
+  already used by the Experiments tree since 0.0.15.
+- **The Optuna bar chart applied the opposite of its own algorithm.** The
+  heuristic is documented as “prefer the parameter that takes the most distinct
+  values, and among ties prefer a numeric one”, but the code sorted by
+  `numeric` **first** and by `distinct` second: a parameter with a single
+  numeric value won over one that took ten different values. The sort is now
+  `distinct` first, `numeric` only as the tie-breaker.
+- **A mistyped Optuna URI produced « Unexpected error » instead of
+  « Failed to load studies ».** `OptunaClient.get()` built the request
+  *outside* its `try`, so `HttpRequest.Builder.build()` threw a raw
+  `IllegalArgumentException("invalid URI scheme localhost")` — not an
+  `OptunaException` — and the tab fell into its generic error branch. The
+  request is now built inside the `try`, so the message is the actionable
+  « Failed to load studies: invalid URI scheme localhost ».
+- **Optuna trials valued `inf` / `-inf` were dropped.** The dashboard sends
+  those values as **strings** (Python's `repr(float('inf'))` is `inf`), and a
+  string was read as “not a number” → `null` → the trial displayed « — » and
+  was excluded from the ranking. They are now read as `±Infinity`. `NaN` is
+  deliberately still excluded, since it cannot be ordered.
+
+### Tests
+- 4 new counter-proof tests in `Regression0020Test` (one per defect): each is
+  **red** on the previous code and **green** on this one.
+- The 3 test files of the Jules cross-review (`MlflowClientTest`,
+  `OptunaClientTest`, `WandbClientTest`) were integrated, ported from JUnit 4
+  to JUnit 5 so that they are actually compiled and executed.
+
+### Bumped
+- `pluginVersion` 0.0.19 → 0.0.20 (release notes of the new version).
+
 ## [0.0.19] — 2026-10-30
 
 ### Fixed

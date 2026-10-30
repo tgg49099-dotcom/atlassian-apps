@@ -241,42 +241,6 @@ class OptunaToolWindowPanel(
         return sorted.take(5)
     }
 
-    /**
-     * Pick the most "interesting" hyperparameter to show as a bar chart.
-     * Heuristic (v0.0.4 MVP):
-     *   1. Prefer the param that takes the most distinct values.
-     *   2. Among ties, prefer numeric (int / float) over string.
-     *   3. Empty result for studies with no params.
-     */
-    private fun pickBarChart(trials: List<Trial>): BarChartData {
-        val allParams: Map<String, List<String>> = trials
-            .flatMap { it.params.entries }
-            .groupBy({ it.key }, { it.value })
-        if (allParams.isEmpty()) return BarChartData(emptyList(), "")
-
-        data class Cand(val name: String, val distinct: Int, val numeric: Boolean)
-        val candidates = allParams.map { (k, vs) ->
-            Cand(
-                name = k,
-                distinct = vs.toSet().size,
-                numeric = vs.all { v -> v.toDoubleOrNull() != null }
-            )
-        }
-        val best = candidates
-            .sortedWith(compareByDescending<Cand> { it.numeric }.thenByDescending { it.distinct })
-            .first()
-        val counts: Map<String, Int> = trials
-            .mapNotNull { it.params[best.name] }
-            .groupingBy { it }
-            .eachCount()
-        // Keep top 8 to fit the chart height comfortably.
-        val buckets = counts.entries
-            .sortedByDescending { it.value }
-            .take(8)
-            .map { BarBucket(label = it.key, count = it.value) }
-        return BarChartData(buckets, best.name)
-    }
-
     private fun renderStudySummary(summary: StudySummary, study: Study): String {
         val sb = StringBuilder()
         sb.append("<html><body style='font-family:monospace'>")
@@ -340,8 +304,27 @@ class OptunaToolWindowPanel(
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
-    /** Tree-node payload. */
-    data class StudyNode(val summary: StudySummary)
+    /**
+     * Tree-node payload.
+     *
+     * v0.0.20 — **the tree of the Optuna tab had no cell renderer**, so Swing
+     * printed the generated data-class `toString()`:
+     * `StudyNode(summary=StudySummary(id=1, name=demo, direction=minimize))`.
+     * `toString()` now returns the readable label, exactly like
+     * `MlflowToolWindowPanel.ExperimentNode` / `RunNode` do since 0.0.15 —
+     * one single way to display a tree payload across the whole plugin.
+     */
+    data class StudyNode(val summary: StudySummary) {
+        /** e.g. `demo  (minimize)`. */
+        val label: String
+            get() {
+                val shown = summary.name.ifEmpty { "study #${summary.id}" }
+                val direction = summary.direction.ifEmpty { "minimize" }
+                return "$shown  ($direction)"
+            }
+
+        override fun toString(): String = label
+    }
 
     /** Bar-chart payload. */
     data class BarChartData(val buckets: List<BarBucket>, val paramName: String)
@@ -354,6 +337,61 @@ class OptunaToolWindowPanel(
     private class NonEditableTableModel(columns: Array<Any>) :
         DefaultTableModel(columns, 0) {
         override fun isCellEditable(row: Int, column: Int): Boolean = false
+    }
+
+    /**
+     * Pure helpers of the Optuna tab, kept in a companion object so that the
+     * unit tests can call them **without** instantiating a Swing panel.
+     */
+    companion object {
+        /**
+         * Pick the most "interesting" hyperparameter to show as a bar chart.
+         * Heuristic (v0.0.4 MVP):
+         *   1. Prefer the param that takes the most distinct values.
+         *   2. Among ties, prefer numeric (int / float) over string.
+         *   3. Empty result for studies with no params.
+         *
+         * v0.0.20 — **the two criteria were applied in the wrong order.**
+         * The code sorted by `numeric` FIRST and by `distinct` second, i.e. it
+         * did the opposite of what this comment (and the original spec) says: a
+         * parameter with a single numeric value (`learning_rate = 0.01`) won over
+         * a parameter that took ten different string values (`optimizer`).
+         * The sort is now `distinct` first, `numeric` only as the tie-breaker.
+         *
+         * The function moved to the companion object (and became `internal`)
+         * so that the unit test can call it **without** building a Swing panel:
+         * it is a pure function of its argument and touches no instance state.
+         */
+        internal fun pickBarChart(trials: List<Trial>): BarChartData {
+            val allParams: Map<String, List<String>> = trials
+                .flatMap { it.params.entries }
+                .groupBy({ it.key }, { it.value })
+            if (allParams.isEmpty()) return BarChartData(emptyList(), "")
+
+            data class Cand(val name: String, val distinct: Int, val numeric: Boolean)
+            val candidates = allParams.map { (k, vs) ->
+                Cand(
+                    name = k,
+                    distinct = vs.toSet().size,
+                    numeric = vs.all { v -> v.toDoubleOrNull() != null }
+                )
+            }
+            // v0.0.20 — « most distinct values » FIRST, « numeric » only as the
+            // tie-breaker (before: the exact opposite).
+            val best = candidates
+                .sortedWith(compareByDescending<Cand> { it.distinct }.thenByDescending { it.numeric })
+                .first()
+            val counts: Map<String, Int> = trials
+                .mapNotNull { it.params[best.name] }
+                .groupingBy { it }
+                .eachCount()
+            // Keep top 8 to fit the chart height comfortably.
+            val buckets = counts.entries
+                .sortedByDescending { it.value }
+                .take(8)
+                .map { BarBucket(label = it.key, count = it.value) }
+            return BarChartData(buckets, best.name)
+        }
     }
 }
 

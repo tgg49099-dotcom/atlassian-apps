@@ -3,6 +3,8 @@ package com.slot5.mlexp
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
@@ -67,5 +69,53 @@ class MlflowClientTest {
         } finally {
             server.stop(0)
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Tests de Jules (revue croisee, tache 13614161511429318484) — recus par
+    // le patch /work/jules/13614161511429318484.patch.
+    //
+    // Portage mecanique JUnit 4 -> JUnit 5 (30/10/2026, cycle 87) :
+    // `org.junit.Assert.*` / `org.junit.Test` -> `org.junit.jupiter.api.*`.
+    // Le projet ne declare `junit:junit:4.13.2` qu'en `testRuntimeOnly` et
+    // n'a pas de `junit-vintage-engine` : sans portage, ces tests ne seraient
+    // ni compiles ni EXECUTES (ils passeraient en silence).
+    //
+    // Ils ne testent pas le code de production : ils verifient leurs propres
+    // expressions regulieres locales. Conserves tels quels.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Jules - nombre en notation scientifique dans un JSON compact")
+    fun testRegexParsingScientificNotationAndCompactJson() {
+        // MLflow emits compact JSON without spaces around colons/commas
+        val json = """{"metrics":[{"key":"learning_rate","value":1e-05,"timestamp":1600000000000,"step":0},{"key":"loss","value":-1.5E+02,"timestamp":1600000001000,"step":1}]}"""
+
+        val historyPointRegex = Regex(
+            """\{[^}]*"value":(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)[^}]*"timestamp":(\d+)[^}]*"step":(\d+)"""
+        )
+
+        val matches = historyPointRegex.findAll(json).toList()
+        assertEquals(2, matches.size)
+
+        assertEquals("1e-05", matches[0].groupValues[1])
+        assertEquals("1600000000000", matches[0].groupValues[2])
+        assertEquals("0", matches[0].groupValues[3])
+
+        assertEquals("-1.5E+02", matches[1].groupValues[1])
+        assertEquals("1600000001000", matches[1].groupValues[2])
+        assertEquals("1", matches[1].groupValues[3])
+    }
+
+    @Test
+    @DisplayName("Jules - nom de modele dans un JSON compact")
+    fun testModelVersionParsingCompactJson() {
+        // Compact JSON emitted by MLflow 2.x
+        val modelBlock = """{"name":"my_model","version":"1","creation_timestamp":1700000000000,"current_stage":"Production","status":"READY"}"""
+
+        val regModelNameRegex = Regex(""""name":"([^"]+)"""")
+        val match = regModelNameRegex.find(modelBlock)
+        assertNotNull(match)
+        assertEquals("my_model", match!!.groupValues[1])
     }
 }

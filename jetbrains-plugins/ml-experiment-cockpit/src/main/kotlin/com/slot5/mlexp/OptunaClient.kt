@@ -139,9 +139,33 @@ class OptunaClient(private val baseUri: String) {
     private fun firstString(j: Json, key: String): String =
         j.arr(key).firstOrNull()?.let { (it as? Json.Str)?.value } ?: ""
 
-    /** First element of the array [key], when it is a number. */
+    /**
+     * First element of the array [key], when it is a number.
+     *
+     * v0.0.20 — **Optuna sends `±inf` as a STRING, not as a JSON number.**
+     * Python's `repr(float('inf'))` is `'inf'` and `repr(float('-inf'))` is
+     * `'-inf'`; the Optuna Dashboard serialises the trial values that way, so
+     * the body contains `"values": ["inf"]`. Before this fix the string was
+     * read as "not a number" → `null` → the trial was displayed as « — » and
+     * **excluded from the ranking** (`pickTopTrials` keeps only the trials
+     * whose value is not null), i.e. the best trial of an unbounded
+     * optimisation was silently dropped.
+     *
+     * `NaN` is deliberately **not** mapped: a NaN cannot be ordered, so a NaN
+     * trial stays `null` and stays out of the ranking (as before).
+     */
     private fun firstDouble(j: Json, key: String): Double? =
-        j.arr(key).firstOrNull()?.let { (it as? Json.Num)?.asDouble }
+        j.arr(key).firstOrNull()?.let { e ->
+            when (e) {
+                is Json.Num -> e.asDouble
+                is Json.Str -> when (e.value.trim().lowercase()) {
+                    "inf", "+inf", "infinity", "+infinity" -> Double.POSITIVE_INFINITY
+                    "-inf", "-infinity" -> Double.NEGATIVE_INFINITY
+                    else -> null
+                }
+                else -> null
+            }
+        }
 
     /**
      * Parses a JSON body into a [Json] tree, or throws [OptunaException] when
@@ -160,15 +184,27 @@ class OptunaClient(private val baseUri: String) {
         )
     }
 
+    /**
+     * v0.0.20 — **the request is built INSIDE the `try`.**
+     *
+     * Before, `URI.create(endpoint)` and `HttpRequest…build()` were outside
+     * the `try`: a mistyped base URI (`localhost:8080` instead of
+     * `http://localhost:8080`) made `HttpRequest.Builder.build()` throw a raw
+     * `IllegalArgumentException("invalid URI scheme localhost")`, which is
+     * **not** an `OptunaException` — so the Optuna tab fell into its generic
+     * `catch (t: Throwable)` branch and showed
+     * « Unexpected error: invalid URI scheme localhost »
+     * instead of « Failed to load studies: … ».
+     */
     private fun get(path: String): String {
         val endpoint = baseUri.trimEnd('/') + path
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(endpoint))
-            .timeout(Duration.ofSeconds(10))
-            .header("Accept", "application/json")
-            .GET()
-            .build()
         return try {
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .GET()
+                .build()
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             val status = response.statusCode()
             val body = response.body().orEmpty()

@@ -224,9 +224,24 @@ class ModelRegistryToolWindowPanel(
         .replace("<", "&lt;")
         .replace(">", "&gt;")
 
-    /** Tree-node payload types. Carried as DefaultMutableTreeNode.userObject. */
-    data class RegisteredModelNode(val model: RegisteredModel, val label: String)
-    data class ModelVersionNode(val version: ModelVersion, val label: String)
+    /**
+     * Tree-node payload types. Carried as DefaultMutableTreeNode.userObject.
+     *
+     * v0.0.20 — **the tree of the Models tab had no cell renderer**, so Swing
+     * printed the generated data-class `toString()`:
+     * `RegisteredModelNode(model=RegisteredModel(name=…, …), label=…)`.
+     * The label was computed and stored in the node but never displayed.
+     * `toString()` now returns that label, exactly like
+     * `MlflowToolWindowPanel.ExperimentNode` / `RunNode` do since 0.0.15 —
+     * one single way to display a tree payload across the whole plugin.
+     */
+    data class RegisteredModelNode(val model: RegisteredModel, val label: String) {
+        override fun toString(): String = label
+    }
+
+    data class ModelVersionNode(val version: ModelVersion, val label: String) {
+        override fun toString(): String = label
+    }
 
     companion object {
         private val ISO_FMT: DateTimeFormatter =

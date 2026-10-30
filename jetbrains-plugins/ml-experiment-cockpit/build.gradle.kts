@@ -115,6 +115,13 @@ intellijPlatform {
             <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
         """.trimIndent()
         changeNotes = """
+            <h3>0.0.20 — Four display and read defects fixed.</h3>
+            <ul>
+                <li>Optuna and Models trees now show the readable label of each row (study name, model name, version) instead of the raw Kotlin dump (<code>StudyNode(summary=…)</code>).</li>
+                <li>The Optuna bar chart now picks the hyperparameter that takes the most distinct values, as documented; the numeric tie-breaker is only used when two parameters have the same number of values.</li>
+                <li>A mistyped Optuna URI (for example <code>localhost:8080</code> without <code>http://</code>) is now reported as <code>Failed to load studies</code> instead of <code>Unexpected error</code>.</li>
+                <li>Optuna trials whose value is <code>inf</code> or <code>-inf</code> (sent as a string by the dashboard) are now read as <code>Infinity</code> and <code>-Infinity</code>; they used to show as “—” and to be left out of the ranking.</li>
+            </ul>
             <h3>0.0.19 — Malformed numbers are reported as invalid JSON.</h3>
             <ul>
                 <li>Numbers are now read with the exact JSON grammar (RFC 8259). A response holding a malformed number (for example <code>1.</code>, <code>1e</code> or <code>01</code>) is rejected as invalid JSON: the plugin now says that the server did not answer JSON, instead of failing with an opaque conversion error such as <code>For input string: "1."</code>.</li>

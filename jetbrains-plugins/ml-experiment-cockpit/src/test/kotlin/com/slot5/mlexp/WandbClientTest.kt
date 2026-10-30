@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.DisplayName
@@ -128,5 +129,38 @@ class WandbClientTest {
         } finally {
             server.stop(0)
         }
+    }
+
+    // ---------------------------------------------------------------------
+    // Test de Jules (revue croisee, tache 13614161511429318484) — recu par
+    // le patch /work/jules/13614161511429318484.patch.
+    //
+    // Portage mecanique JUnit 4 -> JUnit 5 (30/10/2026, cycle 87) :
+    // `org.junit.Assert.*` / `org.junit.Test` -> `org.junit.jupiter.api.*`.
+    // Le projet ne declare `junit:junit:4.13.2` qu'en `testRuntimeOnly` et
+    // n'a pas de `junit-vintage-engine` : sans portage, ce test ne serait ni
+    // compile ni EXECUTE (il passerait en silence).
+    //
+    // Il ne teste pas le code de production : il verifie sa propre expression
+    // reguliere locale. Conserve tel quel.
+    // ---------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Jules - metriques de resume W&B avec guillemets echappes")
+    fun testSummaryMetricsExtractionWithEscapedQuotes() {
+        val summaryMetricsRegex = Regex(""""summaryMetrics":\s*"((?:[^"\\]|\\.)*)"""")
+        val summaryKvRegex = Regex("""(?:\\)?"([A-Za-z_][A-Za-z0-9_]*)(?:\\)?"(?:\\)?:\s*(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|(?:\\)?"[^"]*"(?:\\)?|true|false|null)""")
+
+        val json = """{"summaryMetrics":"{\"accuracy\":0.95,\"model\":\"resnet50\",\"loss\":1e-4}"}"""
+
+        val match = summaryMetricsRegex.find(json)
+        assertNotNull(match)
+        val rawMetrics = match!!.groupValues[1]
+        assertEquals("""{\"accuracy\":0.95,\"model\":\"resnet50\",\"loss\":1e-4}""", rawMetrics)
+
+        val pairs = summaryKvRegex.findAll(rawMetrics).map { it.groupValues[1] to it.groupValues[2] }.toMap()
+        assertEquals("0.95", pairs["accuracy"])
+        assertEquals("""\"resnet50\"""", pairs["model"])
+        assertEquals("1e-4", pairs["loss"])
     }
 }
