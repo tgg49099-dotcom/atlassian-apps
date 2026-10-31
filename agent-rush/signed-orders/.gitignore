@@ -1,0 +1,70 @@
+# ── Secrets : never commit any of this ─────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+secrets.*
+!docs/*.pub.pem
+# Ed25519 private keys (the public key is committed on purpose)
+*private*.pem
+*.ed25519
+*.ed25519.pub
+id_ed25519
+id_ed25519.pub
+# Vultr / inference credentials
+vultr*.json
+.vultr/
+*.vultr-credentials
+
+# ── Runtime data ───────────────────────────────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+journal/
+journal*.jsonl
+!docs/journal.example.jsonl
+sandbox/
+sandboxes/
+*.tar
+*.tar.gz
+snapshots/
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# ── Tooling / IDE ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+
+# ── Captures, logs and scratch (never in the public repository) ───────────
+*.log
+captures/
+out/
+scratch/
+*.mp4
+*.mov
+*.mkv
+tmp/
