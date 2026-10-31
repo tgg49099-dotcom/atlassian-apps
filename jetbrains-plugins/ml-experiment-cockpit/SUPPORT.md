@@ -29,7 +29,8 @@ it sends nothing anywhere except to the servers you configure (see
    - the exact message shown in the tool window;
    - the server and its version (MLflow `>= 2.0`, Optuna Dashboard, W&B).
 3. **GitHub issue** — the repository is public
-   (`github.com/tgg49099-dotcom/jetbrains-plugins`). Use the label `question`
+   (`https://github.com/tgg49099-dotcom/atlassian-apps`; the sources of this
+   plugin are in `jetbrains-plugins/ml-experiment-cockpit`). Use the label `question`
    for a question, `bug` for a defect, `enhancement` for an idea. **Do not paste
    credentials or confidential experiment data in a public issue.** For a
    security problem, do not open an issue: see [SECURITY.md](SECURITY.md).
