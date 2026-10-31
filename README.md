@@ -12,6 +12,50 @@ Radius Zero**.
 
 ---
 
+## Status — read this first
+
+| Date | State of this repository |
+|---|---|
+| **31 October 2026** | The **design** ([`DESIGN.md`](DESIGN.md)) and the **code skeleton** (`signedorders/`) are published. Every unfinished part is marked `TODO(build-window)`. |
+| **3–8 November 2026** | The official build window: the implementation is written, tested and deployed on a Vultr VM. |
+| **8 November 2026** | Demo URL, demo video and slides are recorded and the project is submitted on lablab.ai. |
+
+This is deliberate: the hackathon's own rules require the submission to be **original**, and
+the implementation is therefore written from scratch during the official window. The skeleton
+publishes the *contracts* — the interfaces, the types, the rules and the tests to be written —
+so the architecture can be reviewed before the code exists.
+
+---
+
+## The idea, in one paragraph
+
+Give an agent a mission in plain language. It **reads the documentation and the repository**
+of the target service, works out what is wrong, and **executes a verifiable task**: fix the
+code, re-run the tests, restart the service, prove it is alive again. Every step it wants to
+take becomes an **order** — a written, signed, auditable request — and every step it is *not*
+allowed to take is refused by the control plane, not by the model's good intentions.
+
+```
+"The checkout-api service is failing. Find the cause, fix it, and prove it works.
+ You must not touch customer data."
+```
+
+```
+read  /var/log/checkout-api.log       low      AUTO-EXECUTED
+read  docs/checkout-api.md            low      AUTO-EXECUTED
+write sandbox://sb-42:/app/config.py  low      AUTO-EXECUTED
+exec  pytest -q                       low      AUTO-EXECUTED      → 1 failed
+exec  pytest -q                       low      AUTO-EXECUTED      → 1 passed  (error fed back to the model)
+apply patch:/app/config.py            medium   AUTO-EXECUTED      (snapshot taken first)
+restart checkout-api                  medium   AUTO-EXECUTED
+GET   http://checkout-api/health      low      AUTO-EXECUTED      → 200
+```
+
+The receipts are artefacts, not prose: the diff, the test output, the exit code, the HTTP
+status, the screenshot, and the hash-chained journal.
+
+---
+
 ## The problem
 
 Agents that do real work — writing and running code, driving a browser, touching data — have
@@ -50,29 +94,6 @@ Three properties fall out of this separation:
 3. **Some things are never approvable.** Orders that are *dangerous by nature* (reading
    secrets, escaping the sandbox) are refused by the policy with **no human override**;
    they are a different kind of refusal from a high-risk order waiting for approval.
-
-## What the agent actually does
-
-Give it a mission in plain language. It works in a fresh sandbox, in a loop, and every step
-it wants to take becomes a signed order:
-
-```
-"The checkout-api service is failing. Find the cause, fix it, and prove it works.
- You must not touch customer data."
-```
-
-```
-read  /var/log/checkout-api.log     low      AUTO-EXECUTED
-write sandbox://sb-42:/app/config.py low      AUTO-EXECUTED
-exec  pytest -q                     low      AUTO-EXECUTED      → 1 failed
-exec  pytest -q                     low      AUTO-EXECUTED      → 1 passed   (error fed back to the model)
-apply patch:/app/config.py          medium   AUTO-EXECUTED      (snapshot taken first)
-restart checkout-api                medium   AUTO-EXECUTED
-GET   http://checkout-api/health    low      AUTO-EXECUTED      → 200
-```
-
-The receipts are artefacts, not prose: the diff, the test output, the exit code, the HTTP
-status, the screenshot, and the hash-chained journal.
 
 ## The containment moment
 
@@ -116,41 +137,91 @@ is what the agent did" can be checked instead of believed.
 
 ---
 
-## Stack
+## How Vultr powers this
 
-| Layer | Choice |
+> *Required by the challenge brief: “In your public GitHub README, explain the Vultr services
+> and infrastructure used.”*
+
+| Vultr service | How Signed Orders uses it |
 |---|---|
-| Infrastructure | **Vultr Cloud Compute** (Ubuntu 24.04) — the control plane *is* the backend |
-| Inference | **Vultr Serverless Inference** (`https://api.vultrinference.com/v1`, OpenAI-compatible) |
-| Sandboxes | **Docker** + **Microsandbox** (`msb`) |
-| API / UI | FastAPI + uvicorn, Jinja2 + vanilla JS, Server-Sent Events |
-| Journal | SQLite (WAL) + append-only JSONL, hash-chained |
-| Signing | Ed25519 (`cryptography`) |
+| **Vultr Cloud Compute** (Ubuntu 24.04 VM) | The control plane **is** the backend: the FastAPI app, the SQLite database, the Ed25519 key, the journal and the two sandbox backends all run on one Vultr VM. The web application is served from that VM (see the demo URL in the submission). |
+| **Vultr Serverless Inference** (`https://api.vultrinference.com/v1`, OpenAI-compatible) | The **only** place a model is called: the agent loop. Required by the challenge for Challenge 1. Two roles: a fast text model for the agent loop, and a **vision** model that verifies the screenshot of the repaired service. The key never leaves the control-plane process and never enters a sandbox. |
+| **Agent sandboxing on Vultr** (Docker / Microsandbox) | Every order runs in a container (namespaces + cgroups) or in a `msb` microVM with its own kernel, created fresh per task and destroyed at the end. The sandbox is *never* inside the application process. |
+| **Vultr API** (optional) | Listed by the challenge as the way to create *throwaway instances*; the implementation keeps a backend interface for it (an ephemeral VM instead of a container) if time allows during the build window. |
+| **Hackathon credits** | $200 of free Vultr credits per participant cover the VM and the inference calls for the whole build. The project does not depend on any GPU (none are available for this event). |
+
+Deployment shape (one VM, two processes, one URL):
+
+```
+                    ┌──────────────────────── Vultr VM (Ubuntu 24.04) ─────────────────────────┐
+  browser  ───────▶ │  signedorders (FastAPI + UI + SSE)  :8000  ── signedorders api         │
+                    │        │                                                             │
+                    │        ├── signedorders worker  (agent loop → Serverless Inference)    │
+                    │        ├── signedorders executor (signed orders only)                 │
+                    │        ├── docker / msb sandboxes (one per task, destroyed after)      │
+                    │        └── SQLite (WAL) + journal.jsonl (hash-chained)                │
+                    └──────────────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Install and run
 
-<!-- TODO(3-nov): replace with the verified commands and their real output -->
+The repository is a skeleton today; the commands below become real during the build window.
 
 ```bash
-git clone https://github.com/<owner>/signed-orders
-cd signed-orders
-# TODO(3-nov): the one-command install
+git clone --branch signed-orders https://github.com/tgg49099-dotcom/atlassian-apps.git
+cd signed-orders                     # the branch root *is* the project
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e ".[dev]"             # TODO(build-window): verified command + real output
+```
+
+Running the control plane (once implemented):
+
+```bash
+cp .env.example .env                 # names only; the values live on the host
+signedorders init-key                # generates the Ed25519 key on the host (never committed)
+signedorders serve                   # API + UI on :8000
+signedorders verify journal.jsonl    # offline verification, no secret needed
 ```
 
 ## Repository layout
 
-<!-- TODO(3-nov): final tree once the code lands -->
-
 ```
 signed-orders/
-├── LICENSE
-├── README.md
-├── ...
+├── DESIGN.md              the architecture: data flow, policy, signing, journal, UI
+├── README.md              this file
+├── LICENSE                MIT
+├── .env.example           variable names only, never a value
+├── pyproject.toml         dependencies and the console entry point
+├── signedorders/
+│   ├── __main__.py        CLI: serve | init-key | verify | replay | preflight
+│   ├── api.py             FastAPI app (POST /orders, approvals, journal, SSE)
+│   ├── config.py          configuration read from the environment
+│   ├── models.py          Order, Decision, Risk, Action, Verdict, Task
+│   ├── orders.py          the order lifecycle: request → verdict → signature/queue
+│   ├── policy.py          the auditable risk rules (no model in this loop)
+│   ├── quotas.py          the budgets (orders, CPU, bytes, tokens, sandboxes)
+│   ├── journal.py         append-only, hash-chained JSONL + offline verification
+│   ├── signer.py          Ed25519 signatures (private key stays on the host)
+│   ├── replay.py          re-run a recorded task in a fresh sandbox and compare
+│   ├── preflight.py       secret scanner, run before every commit
+│   ├── agent/worker.py    the LLM loop against Vultr Serverless Inference
+│   ├── sandbox/           SandboxBackend + Docker and Microsandbox backends
+│   └── ui/                the web UI (FastAPI + SSE)
+└── tests/                 the specification of the invariants (policy, journal, quotas)
 ```
 
 ## Tests
 
-<!-- TODO(3-nov): the real test count and how to run them -->
+```bash
+pytest                # TODO(build-window): the real count and the real output
+```
+
+The test files published today are the **specification**: the table of policy cases
+(`tests/test_policy.py`), the hash-chain properties (`tests/test_journal_chain.py`), the
+quota semantics (`tests/test_quotas.py`) and the canonical form of the signed order
+(`tests/test_models.py`).
 
 ## Security notes
 
@@ -162,6 +233,8 @@ signed-orders/
   fictional.
 - `preflight` runs before every commit and fails the build on a secret-looking pattern, a
   private key, or an internal address.
+- The demo video shows only the web UI: no SSH session, no IP address, no terminal on the
+  host.
 
 ## License
 

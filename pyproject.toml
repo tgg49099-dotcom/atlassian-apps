@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "signed-orders"
+version = "0.1.0.dev0"
+description = "Containment-first control plane for autonomous agents: every privileged action becomes a written, signed, verifiable order."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Signed Orders contributors" }]
+keywords = ["agent", "sandbox", "containment", "vultr", "ai"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Security",
+]
+
+# TODO(build-window): pin the exact versions once the implementation is tested
+# on the Vultr VM (Ubuntu 24.04 ships Python 3.12).
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "httpx>=0.26",
+  "cryptography>=42.0",
+  "jinja2>=3.1",
+  "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.3"]
+
+[project.scripts]
+signedorders = "signedorders.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["signedorders*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
