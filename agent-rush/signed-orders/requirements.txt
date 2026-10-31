@@ -1,0 +1,5 @@
+# The core of Signed Orders has NO dependency: it runs on a bare Python 3.10+.
+# Only the test suite needs pytest; `cryptography` is optional and is only
+# used to cross-check the pure-Python Ed25519 implementation.
+pytest>=7.0
+# cryptography>=41.0   # optional

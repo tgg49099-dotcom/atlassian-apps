@@ -1,0 +1,30 @@
+{
+  "cap_drop": [
+    "ALL"
+  ],
+  "cpus": "1",
+  "destroy_on_exit": true,
+  "entrypoint_script": "/work/run-in-sandbox.sh",
+  "env_allowlist": [],
+  "image": "debian:bookworm-slim",
+  "memory": "256m",
+  "network": "none",
+  "pids_limit": 128,
+  "read_only": true,
+  "security_opt": [
+    "no-new-privileges"
+  ],
+  "timeout_seconds": 30,
+  "tmpfs": [
+    "/tmp:rw,noexec,nosuid,size=64m"
+  ],
+  "user": "65534:65534",
+  "volumes": [
+    {
+      "read_only": false,
+      "source": "{workspace}",
+      "target": "/work"
+    }
+  ],
+  "workdir": "/work"
+}

@@ -1,14 +1,16 @@
 """Preflight — the secret scanner that runs before every commit and deploy.
 
-It refuses to let the repository contain anything that looks like a credential:
-API keys, private keys, tokens, real hostnames or addresses of the internal
-infrastructure. The rule is simple: **the public repository must be safe to
-clone, read and fork**.
+It refuses to let the repository contain anything that looks like a
+credential: API keys, private keys, tokens, or the address of an internal
+host.  The rule is simple: **the public repository must be safe to clone,
+read and fork**.
 
-It also checks the invariants of the project itself: the public key is
-committed, the private key is not, and no ``.env`` file is tracked.
+It also checks the invariants of the project itself: no ``.env`` file is
+tracked, and no private key is present.
 
-TODO(build-window): wire it into ``pre-commit`` and into the deployment script.
+A *mention* of the pattern is not a secret: a document that explains what is
+forbidden may say ``-----BEGIN PRIVATE KEY-----`` as long as it is not a
+complete block (``BEGIN … END``).
 """
 
 from __future__ import annotations
@@ -16,20 +18,29 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+__all__ = ["FORBIDDEN_FILES", "FORBIDDEN_PATTERNS", "main", "scan_file", "scan_tree"]
+
 #: Patterns that must never appear in a tracked file.
 FORBIDDEN_PATTERNS: tuple[tuple[str, str], ...] = (
     # A real key is a complete block (BEGIN ... END). A mention of the header
     # alone — in a document that explains what is forbidden — is not a secret.
-    (r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----",
-     "cle privee"),
+    (
+        r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----",
+        "cle privee",
+    ),
     (r"\bsk-[A-Za-z0-9]{16,}", "cle style OpenAI"),
     (r"\bghp_[A-Za-z0-9]{20,}", "jeton GitHub"),
     (r"\bAKIA[0-9A-Z]{16}", "cle AWS"),
     (r"\bvultr_[A-Za-z0-9]{16,}", "cle Vultr"),
     (r"\bxox[abprs]-[A-Za-z0-9-]{10,}", "jeton Slack"),
-    (r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}", "JWT"),
-    (r"(?i)\b(api[_-]?key|secret|password|token)\s*[:=]\s*[\"'][^\"']{12,}[\"']",
-     "secret en clair"),
+    (
+        r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}",
+        "JWT",
+    ),
+    (
+        r"(?i)\b(api[_-]?key|secret|password|token)\s*[:=]\s*[\"'][^\"']{12,}[\"']",
+        "secret en clair",
+    ),
 )
 
 #: Files that must not be tracked.
@@ -53,9 +64,9 @@ def scan_file(path: Path) -> list[str]:
 
 
 def scan_tree(root: Path) -> list[str]:
-    """Scan every tracked-looking file under ``root``."""
+    """Scan every file under ``root``."""
     problems: list[str] = []
-    for path in sorted(root.rglob("*")):
+    for path in sorted(Path(root).rglob("*")):
         if not path.is_file():
             continue
         if any(part in SKIP_DIRS for part in path.parts):
@@ -67,7 +78,7 @@ def scan_tree(root: Path) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI: ``python -m signedorders.preflight [root]`` — exit 1 if a problem."""
+    """CLI: ``python3 -m signedorders.preflight [root]`` — exit 1 if a problem."""
     import sys
 
     root = Path((argv or sys.argv[1:] or ["."])[0])

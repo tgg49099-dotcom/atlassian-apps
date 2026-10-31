@@ -1,39 +1,39 @@
 """Signed Orders — a containment-first control plane for autonomous agents.
 
-The agent never gets a shell. It can only *request an order*; the control plane
-classifies the risk, enforces quotas, signs the order (Ed25519) or queues it for
-a human, and a separate executor runs it inside a fresh, isolated sandbox.
+The agent never gets a shell.  It can only *request an order*; the control
+plane classifies the risk with auditable rules, enforces the quotas, signs
+the order (Ed25519) or queues it for a human, and a separate executor runs it
+inside a fresh, isolated sandbox.
 
 Public entry points
 -------------------
-``signedorders.policy``    risk classification (auditable rules, no LLM in the loop)
-``signedorders.quotas``    per-agent / per-task budgets (orders, CPU-seconds, bytes, tokens)
+``signedorders.policy``    risk classification (named rules, no LLM in the loop)
+``signedorders.quotas``    per-agent sliding window and per-task budgets
 ``signedorders.journal``   append-only, hash-chained JSONL journal
-``signedorders.signer``    Ed25519 signatures over the journal
-``signedorders.orders``    order lifecycle: request -> verdict -> signature/human -> execution
-``signedorders.sandbox``   two interchangeable sandbox backends (Docker, Microsandbox)
-``signedorders.agent``     the LLM worker loop (Vultr Serverless Inference)
-``signedorders.replay``    re-run a recorded journal in a fresh sandbox and compare
+``signedorders.signer``    Ed25519 signatures (pure Python, RFC 8032)
+``signedorders.control``   the control plane: request -> verdict -> sign/queue
+``signedorders.sandbox``   the manifest and the two isolation backends
+``signedorders.vultr``     the Vultr Serverless Inference client (needs a key)
+``signedorders.replay``    read a journal back, in order
 ``signedorders.preflight`` secret scanner, run before every commit
 
-Status
-------
-This tree is the **skeleton**: the contracts, types and signatures between the
-components. The implementation is written during the official build window of the
-Vultr: Agent Rush Hackathon (3-8 November 2026). Every placeholder is marked
-``TODO(build-window)``; nothing here pretends to work yet.
+The core has **no third-party dependency**: ``python3 -m signedorders verify
+journal.jsonl`` works on a bare Python 3.10+.
 """
 
-__version__ = "0.1.0.dev0"
+__version__ = "0.2.0"
 
 __all__ = [
-    "policy",
-    "quotas",
+    "canonical",
+    "config",
+    "control",
+    "ed25519",
     "journal",
-    "signer",
-    "orders",
-    "sandbox",
-    "agent",
-    "replay",
+    "models",
+    "policy",
     "preflight",
+    "quotas",
+    "sandbox",
+    "signer",
+    "vultr",
 ]

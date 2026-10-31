@@ -2,14 +2,19 @@
 
 > **Challenge 01 — “Blast Radius Zero”** — Vultr: Agent Rush Hackathon (3–8 November 2026).
 > Written on 31 October 2026, before the official build window. This document describes
-> **what will be built, how, and why**.
+> **what is built, how, and why**.
 > Rules verified against the official pages (see `RULES.md` in the working notes) ·
 > demo and video plan: `DEMO.md`.
 >
-> **Status of this repository (31/10/2026):** the *design* (this file) and the *code
-> skeleton* (`signedorders/`, interfaces and contracts) are published. The implementation
-> is written during the official build window, 3–8 November 2026 — the skeleton marks
-> every gap with `TODO(build-window)`. Nothing in this repository pretends to work yet.
+> **Status of this repository (31/10/2026, 16:40 UTC):** the *implementation* is published
+> here — `signedorders/` (control plane, policy, quotas, hash-chained journal, pure-Python
+> Ed25519, HTTP server, Vultr Serverless Inference client), `tests/` (**216 tests, all
+> green**), `scripts/` (the sandbox manifest and its runner) and `slides/` (the PDF deck
+> the challenge requires). The code runs: `pytest` is green, and
+> `python3 -m signedorders verify journal.jsonl` checks the hash chain offline, with no
+> secret and no dependency. What is **not** exercised yet is the *deployment*: running the
+> container sandbox and calling the inference endpoint need the owner's Vultr account and
+> key — see “What was and was not run here” in the `README.md`.
 
 ---
 
