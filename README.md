@@ -338,6 +338,11 @@ python3 -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+> In a container image that exports `PIP_USER=1` (some CI and Docker bases do), pip refuses the
+> editable install with *« Can not perform a '--user' install. User site-packages are not visible
+> in this virtualenv. »* — use `PIP_USER=0 pip install -e ".[dev]"` there. On a normal machine the
+> command above is enough.
+
 ```bash
 pytest                                   # 217 passed, 1 skipped (218 with the reference extra)
 python3 -m signedorders policy           # the rule table
