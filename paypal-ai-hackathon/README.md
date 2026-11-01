@@ -144,6 +144,7 @@ paypal-ai-hackathon/
 ├── .gitignore           node_modules, dist, .env
 ├── index.html
 ├── package.json
+├── package-lock.json    exact dependency versions (npm ci reproduces the install)
 ├── tsconfig.json
 ├── vite.config.ts       Vite config + the dev-mode JSON API middleware
 ├── src/
@@ -156,6 +157,7 @@ paypal-ai-hackathon/
 │   ├── server.ts        zero-dependency Node server (static files + API)
 │   ├── styles.css
 │   ├── types.ts         shared types
+│   ├── vite-env.d.ts    Vite's client types
 │   └── main.tsx
 └── test/
     ├── api.test.ts
@@ -163,6 +165,9 @@ paypal-ai-hackathon/
     ├── format.test.ts
     ├── paypal.test.ts
     └── fixtures/        local JSON fixtures (no network)
+        ├── paypal-balances.json
+        ├── paypal-transactions.json
+        └── paypal-webhooks.json
 ```
 
 The test suite uses **Node's built-in test runner** (`node --test`) — no test framework is
