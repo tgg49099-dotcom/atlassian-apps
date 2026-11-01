@@ -51,10 +51,12 @@ isolation is published as data: the exact `docker run` line (`--network=none`, 2
 the manifest and the code in sync. The backend runs on a **Vultr Cloud Compute** VM
 (Ubuntu 24.04, one VM, one public URL); the only model calls go through **Vultr Serverless
 Inference**, whose key never leaves the control plane and never enters a sandbox. The
-repository ships with its own proof: **218 tests** (217 run without the optional
-`cryptography` cross-check), a cloud-init that builds the VM from
-scratch, a deployment verifier, and a single script — `bash scripts/demo-containment.sh` —
-that reproduces the containment moment end to end, with no account and no key.
+repository ships with its own proof: **218 tests — 217 passed, 1 skipped** on a bare clone
+(the 218th cross-checks the pure-Python Ed25519 against the optional `cryptography`
+library: `pip install -e ".[reference]"` gives 218 passed), a cloud-init that builds the VM
+from scratch, a deployment verifier, and a **single command** —
+`bash scripts/demo-containment.sh` — that reproduces the containment moment end to end,
+with **no account, no key and nothing to install** (it only needs Python 3).
 
 ## 4. Architecture
 
@@ -91,21 +93,23 @@ available for this event.
 |---|---|
 | **Repository (public)** | <https://github.com/tgg49099-dotcom/atlassian-apps/tree/main/agent-rush/signed-orders> |
 | **Repository — the project alone, at the root of a branch** | <https://github.com/tgg49099-dotcom/atlassian-apps/tree/signed-orders> |
+| **Slide deck (PDF, 7 pages)** | <https://github.com/tgg49099-dotcom/atlassian-apps/blob/signed-orders/slides/signed-orders.pdf> |
 | **Public demo URL** | **[À REMPLIR — Tgg]** `http://<VM-IP>:8000/health` |
 | **Demo video** | **[À REMPLIR — Tgg]** (the shot list is in `submission/DEMO-FILMEE.md`) |
 | **License** | MIT, at the root of the project |
 | **Team** | 1 person (solo submission is allowed: « Teams consist of 1–6 people ») |
+| **The proof, in one command** | `bash scripts/demo-containment.sh` — the containment moment, no account, no key, no install |
 
 ## 6. One line per official requirement of the jury
 
 | # | Requirement (verbatim) | Proof / what is left | Who | Deadline |
 |---|---|---|---|---|
 | 1 | « GitHub repository with setup and documentation » | Public repository, MIT `LICENSE` at the root of the project, `pip install -e ".[dev]"`, `pytest` (217 passed, 1 skipped), the launch command and the architecture in the README. Verified without any account: every file returns HTTP 200. | **done** | — |
-| 2 | « Vultr VM backend deployment » | `submission/DEPLOIEMENT-VULTR.md` + `deploy/cloud-init.yml` (installs everything, generates the keys **on the VM**, starts the systemd service) + `deploy/verifier-deploiement.sh` (checks the deployment answers). The commands are written and tested locally; **the VM itself is not created yet** — creating the Vultr account and paying is a human action. | **Tgg** creates the account and the VM | before 8/11 20:00 UTC |
-| 3 | « Public demo URL » | The control plane answers `/health`, `/policy`, `/orders`, `/journal/verify`. The URL is `http://<VM-IP>:8000/health`. **No URL yet**: it needs the VM of line 2. | **Tgg** | before 8/11 20:00 UTC |
+| 2 | « Vultr VM backend deployment » | `submission/DEPLOIEMENT-VULTR.md` (the exact procedure, web console or CLI, **plus a complete manual fallback**) + `deploy/cloud-init.yml` (installs everything, generates the keys **on the VM**, starts the systemd service) + `deploy/signedorders.service` (the same unit, as a file) + `deploy/verifier-deploiement.sh` (checks the deployment answers, 6 PASS). The commands are written and tested locally; **the VM itself is not created yet** — creating the Vultr account and paying is a human action. | **Tgg** creates the account and the VM | before 8/11 20:00 UTC |
+| 3 | « Public demo URL » | The control plane answers 5 read routes — `/health`, `/policy`, `/quotas`, `/orders`, `/journal/verify` — and 2 write routes. The URL is `http://<VM-IP>:8000/health`. **No URL yet**: it needs the VM of line 2. | **Tgg** | before 8/11 20:00 UTC |
 | 4 | « Recorded demo video » | The minute-by-minute script, the 5 captures and the English narration are in `submission/DEMO-FILMEE.md`. The containment moment is reproducible on any machine with `bash scripts/demo-containment.sh`. **Not recorded yet** — recording is a human action. | **Tgg** | before 8/11 20:00 UTC |
 | 5 | « Clear architecture and use-case explanation » | `DESIGN.md` (data flow, policy, signing, journal, deployment) and the README sections « The idea, in one paragraph », « How it works », « How Vultr powers this ». | **done** | — |
-| 6 | « One containment moment shown in the video » (challenge 01) | Scene 4 of the video script (1:40 → 3:00). It is a **real, reproducible** moment: the script prints the order `rm -rf /srv/data` → `queued_for_human` → **refused by the human**, the order `host:///etc/app/secret` → **refused, no override possible**, and the journal chain verified offline. The same transcript is in the repository, produced by `scripts/demo-containment.sh`. | **script done**, the video is **Tgg's** | before 8/11 20:00 UTC |
+| 6 | « One containment moment shown in the video » (challenge 01) | Scene 4 of the video script (1:40 → 3:20). It is a **real, reproducible** moment: the script prints the order `rm -rf /srv/data` → `queued_for_human` → **refused by the human**, the order `host:///etc/app/secret` → **refused (HTTP 403), no override possible**, and the journal chain verified offline. The same transcript is in the repository, produced by `bash scripts/demo-containment.sh` — one command, no account, no key, no install. | **script done**, the video is **Tgg's** | before 8/11 20:00 UTC |
 | 7 | « In your public GitHub README, explain the Vultr services and infrastructure used » | The README section « How Vultr powers this » (one table: Cloud Compute, Serverless Inference, the two sandbox backends, the API, the credits). | **done** | — |
 | 8 | « Submit on lablab.ai » + the Discord of the event | The registration and the submission are human actions (account + payment). **Everything needed to paste is in this file.** | **Tgg** | before 8/11 20:00 UTC |
 | 9 | « Submissions must be original and MIT-compliant » | The project is original, written for this event, and MIT-licensed (`LICENSE` at the root of the project). | **done** | — |

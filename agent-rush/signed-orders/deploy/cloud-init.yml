@@ -82,21 +82,23 @@ write_files:
       SIGNEDORDERS_APPROVAL_TTL_SECONDS=900
 
   # -- the systemd unit -----------------------------------------------------
+  # Identical to deploy/signedorders.service (that file exists so the manual
+  # "plan B" of submission/DEPLOIEMENT-VULTR.md can `cp` it as is).
   - path: /etc/systemd/system/signedorders.service
     permissions: '0644'
     owner: root:root
     content: |
       [Unit]
       Description=Signed Orders — containment-first control plane (HTTP API)
-      Documentation=https://github.com/tgg49099-dotcom/atlassian-apps/tree/main/agent-rush/signed-orders
+      Documentation=https://github.com/tgg49099-dotcom/atlassian-apps/tree/signed-orders
       After=network-online.target docker.service
-      Wants=network-online.target
+      Wants=network-online.target docker.service
 
       [Service]
       Type=simple
       User=signedorders
       Group=signedorders
-      WorkingDirectory=/opt/signed-orders/repo/agent-rush/signed-orders
+      WorkingDirectory=/opt/signed-orders/repo
       EnvironmentFile=/etc/signedorders/env
       ExecStart=/opt/signed-orders/.venv/bin/signedorders serve --host 0.0.0.0 --port 8000 --journal /var/lib/signedorders/journal.jsonl
       Restart=on-failure
@@ -115,17 +117,24 @@ write_files:
 runcmd:
   # -- 1. the user and its directories ----------------------------------------
   - [useradd, --system, --home-dir, /opt/signed-orders, --shell, /bin/bash, signedorders]
+  # The service runs the orders inside Docker containers: the user MUST be in
+  # the `docker` group, otherwise every sandboxed execution fails with
+  # "permission denied while trying to connect to the Docker daemon socket".
+  - [usermod, -aG, docker, signedorders]
   - [install, -d, -o, signedorders, -g, signedorders, -m, 0750, /opt/signed-orders]
   - [install, -d, -o, signedorders, -g, signedorders, -m, 0750, /var/lib/signedorders]
   # /etc/signedorders: root owns it, the service group can read what is in it.
   - [install, -d, -o, root, -g, signedorders, -m, 0750, /etc/signedorders]
 
   # -- 2. the project ---------------------------------------------------------
-  - [git, clone, --depth, '1', https://github.com/tgg49099-dotcom/atlassian-apps.git, /opt/signed-orders/repo]
+  # The `signed-orders` branch holds the project ALONE at the root of the
+  # repository (with its MIT LICENSE at the root), so the checkout is the
+  # project itself: no sub-folder, no path to remember.
+  - [git, clone, --depth, '1', --branch, signed-orders, https://github.com/tgg49099-dotcom/atlassian-apps.git, /opt/signed-orders/repo]
   - [chown, -R, signedorders:signedorders, /opt/signed-orders/repo]
 
   # -- 3. the virtualenv -----------------------------------------------------
-  - [runuser, -u, signedorders, --, bash, -c, "python3 -m venv /opt/signed-orders/.venv && /opt/signed-orders/.venv/bin/pip install --upgrade pip && /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo/agent-rush/signed-orders[dev]'"]
+  - [runuser, -u, signedorders, --, bash, -c, "python3 -m venv /opt/signed-orders/.venv && /opt/signed-orders/.venv/bin/pip install --upgrade pip && /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo[dev]'"]
   - [chown, -R, signedorders:signedorders, /opt/signed-orders/.venv]
 
   # -- 4. the keys, generated ON THE VM (never in the repository) -----------

@@ -75,7 +75,7 @@ ssh -i ~/.ssh/signed_orders_vultr root@<IP-DE-LA-VM>
 7. **SSH Key** : la clé de l'étape 2 (cocher la case *Auto Deploy*).
 8. **User Data** (le champ *cloud-init*) : **coller le contenu de
    `deploy/cloud-init.yml`** du dépôt, tel quel.
-   → <https://github.com/tgg49099-dotcom/atlassian-apps/blob/main/agent-rush/signed-orders/deploy/cloud-init.yml>
+   → <https://github.com/tgg49099-dotcom/atlassian-apps/blob/signed-orders/deploy/cloud-init.yml>
    (ou, en local : `cat deploy/cloud-init.yml`).
 9. *Deploy*.
 
@@ -112,18 +112,93 @@ vultr-cli instance list
 > exécutée ici** (aucun compte Vultr dans mon environnement) : seule sa *forme* est vérifiée
 > (page officielle `docs.vultr.com/reference/vultr-cli/instance/create`).
 
-### 3c. Si le cloud-init n'est pas possible (plan B, 4 commandes)
+### 3c. Si le cloud-init n'est pas possible (plan B — la liste exacte, dans l'ordre)
+
+> Ces commandes **remplacent** le cloud-init, elles ne s'y ajoutent pas. Elles ont été écrites
+> pour produire **exactement le même résultat** que le cloud-init (même utilisateur, mêmes
+> répertoires, même unité systemd, mêmes clés). Elles sont données **complètes** : aucune étape
+> n'est laissée « à faire plus tard ». Tout se passe **en `root`** sur la VM, après
+> `apt-get update`.
 
 ```bash
-# sur la VM, en root
-apt-get update && apt-get install -y python3 python3-venv python3-pip git curl docker.io
-git clone --depth 1 https://github.com/tgg49099-dotcom/atlassian-apps.git /opt/signed-orders/repo
-python3 -m venv /opt/signed-orders/.venv
-/opt/signed-orders/.venv/bin/pip install -e "/opt/signed-orders/repo/agent-rush/signed-orders[dev]"
-install -m 0750 -o root -g signedorders -d /etc/signedorders   # (créer l'utilisateur avant)
+# ---- 1. les paquets --------------------------------------------------------
+apt-get update
+apt-get install -y python3 python3-venv python3-pip git curl ca-certificates docker.io
+
+# ---- 2. l'utilisateur et les répertoires -----------------------------------
+useradd --system --home-dir /opt/signed-orders --shell /bin/bash signedorders
+usermod -aG docker signedorders                 # sans ça : "permission denied" sur le socket Docker
+install -d -o signedorders -g signedorders -m 0750 /opt/signed-orders
+install -d -o signedorders -g signedorders -m 0750 /var/lib/signedorders
+install -d -o root -g signedorders -m 0750 /etc/signedorders
+
+# ---- 3. le projet (branche `signed-orders` : le projet seul, à la racine) ---
+git clone --depth 1 --branch signed-orders \
+  https://github.com/tgg49099-dotcom/atlassian-apps.git /opt/signed-orders/repo
+chown -R signedorders:signedorders /opt/signed-orders/repo
+
+# ---- 4. le virtualenv ------------------------------------------------------
+runuser -u signedorders -- bash -c \
+  "python3 -m venv /opt/signed-orders/.venv && \
+   /opt/signed-orders/.venv/bin/pip install --upgrade pip && \
+   /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo[dev]'"
+chown -R signedorders:signedorders /opt/signed-orders/.venv
+
+# ---- 5. le fichier d'environnement (22 variables, aucun secret écrit ici) --
+install -m 0600 -o root -g root /dev/null /etc/signedorders/env
+cat >> /etc/signedorders/env <<'ENV'
+VULTRINFERENCE_API_KEY=
+VULTRINFERENCE_MODEL=qwen3.8-flash-next
+VULTRINFERENCE_VISION_MODEL=qwen3.8-27b
+SIGNEDORDERS_AGENT_KEY=__AGENT_KEY__
+SIGNEDORDERS_OPERATOR_KEY=__OPERATOR_KEY__
+SIGNEDORDERS_SIGNING_KEY_PATH=/etc/signedorders/signing.key
+SIGNEDORDERS_QUOTA_ORDERS_PER_WINDOW=10
+SIGNEDORDERS_QUOTA_WINDOW_SECONDS=60
+SIGNEDORDERS_QUOTA_ORDERS_PER_TASK=40
+SIGNEDORDERS_QUOTA_CPU_SECONDS_PER_TASK=120
+SIGNEDORDERS_QUOTA_BYTES_WRITTEN_PER_TASK=1048576
+SIGNEDORDERS_QUOTA_CONCURRENT_SANDBOXES=2
+SIGNEDORDERS_QUOTA_TOKENS_PER_TASK=200000
+SIGNEDORDERS_SANDBOX_BACKEND=docker
+SIGNEDORDERS_SANDBOX_IMAGE=debian:bookworm-slim
+SIGNEDORDERS_SANDBOX_MEMORY=256m
+SIGNEDORDERS_SANDBOX_CPUS=1
+SIGNEDORDERS_SANDBOX_PIDS_LIMIT=128
+SIGNEDORDERS_SANDBOX_TIMEOUT_SECONDS=30
+SIGNEDORDERS_SANDBOX_EGRESS_ALLOWLIST=
+SIGNEDORDERS_APPROVAL_CHANNEL=web
+SIGNEDORDERS_APPROVAL_TTL_SECONDS=900
+ENV
+
+# ---- 6. les clés, générées SUR LA VM --------------------------------------
+/opt/signed-orders/.venv/bin/signedorders init-key /etc/signedorders/signing.key
+chown root:signedorders /etc/signedorders/signing.key
+chmod 0640 /etc/signedorders/signing.key
+AGENT_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+OPERATOR_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+sed -i "s|__AGENT_KEY__|$AGENT_KEY|; s|__OPERATOR_KEY__|$OPERATOR_KEY|" /etc/signedorders/env
+unset AGENT_KEY OPERATOR_KEY          # les clés ne restent pas dans le shell
+
+# ---- 7. l'unité systemd (identique à celle du cloud-init) -----------------
+cp /opt/signed-orders/repo/deploy/signedorders.service /etc/systemd/system/signedorders.service
+systemctl daemon-reload
+systemctl enable --now signedorders.service
+
+# ---- 8. le port et la vérification ----------------------------------------
+ufw allow 8000/tcp || true
+sleep 5
+curl -fsS http://127.0.0.1:8000/health && echo "SIGNED ORDERS IS UP"
 ```
 
-puis reprendre la section 5 (unité systemd) et la section 6 (les clés).
+> **Note :** le plan B suppose que `deploy/signedorders.service` existe dans le dépôt. C'est le
+> cas **à partir du commit publié avec ce document** : l'unité y est extraite du cloud-init
+> pour être réutilisable telle quelle. Si le fichier n'y est pas encore, copier le bloc
+> `[Unit]/[Service]/[Install]` de la **section 5** ci-dessous dans
+> `/etc/systemd/system/signedorders.service` à la main.
+
+> **La clé d'inférence** (facultative) se colle ensuite dans `/etc/signedorders/env`, puis
+> `systemctl restart signedorders` — voir la section 8.
 
 ## 4. Étape 4 — vérifier que l'API répond
 
@@ -142,19 +217,21 @@ curl -s http://127.0.0.1:8000/health
 
 ## 5. Étape 5 — l'unité systemd (déjà dans le cloud-init)
 
-L'unité installée par le cloud-init est `deploy/` :
+L'unité installée par le cloud-init est **le fichier `deploy/signedorders.service`** du dépôt
+(littéralement le même contenu, à l'octet près — vérifié le 01/11/2026) :
 
 ```ini
 [Unit]
 Description=Signed Orders — containment-first control plane (HTTP API)
+Documentation=https://github.com/tgg49099-dotcom/atlassian-apps/tree/signed-orders
 After=network-online.target docker.service
-Wants=network-online.target
+Wants=network-online.target docker.service
 
 [Service]
 Type=simple
 User=signedorders
 Group=signedorders
-WorkingDirectory=/opt/signed-orders/repo/agent-rush/signed-orders
+WorkingDirectory=/opt/signed-orders/repo
 EnvironmentFile=/etc/signedorders/env
 ExecStart=/opt/signed-orders/.venv/bin/signedorders serve --host 0.0.0.0 --port 8000 --journal /var/lib/signedorders/journal.jsonl
 Restart=on-failure
@@ -168,6 +245,10 @@ ReadWritePaths=/var/lib/signedorders
 [Install]
 WantedBy=multi-user.target
 ```
+
+> `WorkingDirectory=/opt/signed-orders/repo` : le clone de la **branche `signed-orders`** place
+> le projet **à la racine** du dépôt (avec son `LICENSE` MIT à la racine), donc le chemin du
+> projet est simplement celui du clone.
 
 **La commande de démarrage**, donc :
 
@@ -219,14 +300,22 @@ refuser un ordre.
    ```
    Le vérificateur affiche 6 `PASS` et sort avec le code **0**.
 
-**Les 4 routes publiques** (elles sont la surface de la démo) :
+**Les 5 routes publiques en lecture** (elles sont la surface de la démo) :
 
 | Route | Ce qu'elle renvoie |
 |---|---|
 | `GET /health` | l'état, la clé **publique**, les compteurs |
 | `GET /policy` | la table des règles (14 règles nommées) |
+| `GET /quotas` | les compteurs de quota d'un agent et d'une tâche |
 | `GET /orders` | les ordres en attente et les décisions prises |
 | `GET /journal/verify` | la chaîne de hachage vérifiée **à chaud** |
+
+Et **2 routes en écriture**, qui demandent un *bearer* :
+
+| Route | Qui | Effet |
+|---|---|---|
+| `POST /orders` | l'agent (clé `SIGNEDORDERS_AGENT_KEY`) | soumet un ordre → `201` |
+| `POST /orders/<id>/approve` · `/reject` | un humain (clé `SIGNEDORDERS_OPERATOR_KEY`) | décision **signée** → `200` |
 
 ## 8. Étape 8 (optionnelle) — brancher le modèle
 
@@ -280,8 +369,9 @@ sudo systemctl reload caddy
 | `bash scripts/demo-containment.sh` | ✅ **exécuté** | la démonstration complète du moment de confinement, sortie reproduite dans `DEMO-FILMEE.md` |
 | `bash deploy/verifier-deploiement.sh <url>` | ✅ **exécuté** | 6 `PASS`, code de sortie 0 |
 | `deploy/cloud-init.yml` | ✅ **syntaxe vérifiée** | YAML valide (`python3` + PyYAML) ; chaque commande est standard sur Ubuntu 24.04 |
+| `deploy/signedorders.service` | ✅ **syntaxe vérifiée** | l'unité systemd est **identique à l'octet près** à celle écrite par le cloud-init (`diff` sur le contenu extrait du YAML → aucune différence hors commentaires) ; `systemd-analyze verify` est indiqué ci-dessous |
 | `deploy/verifier-deploiement.sh`, `scripts/demo-containment.sh` | ✅ **syntaxe vérifiée** | `bash -n` passe sur les deux |
-| Les 218 tests | ✅ **exécutés** | `pytest` → `217 passed, 1 skipped` (le 218ᵉ croise l'Ed25519 pur avec la bibliothèque optionnelle `cryptography` ; `pip install -e ".[reference]"` → `218 passed`) |
+| Les tests | ✅ **exécutés** | `pytest` → **`217 passed, 1 skipped`** (218 tests au total ; le 218ᵉ croise l'Ed25519 pur avec la bibliothèque optionnelle `cryptography` : `pip install -e ".[reference]"` → `218 passed`) |
 | La création du compte Vultr, la carte, la VM, le paiement | ❌ **pas fait** | geste humain, interdit par la consigne du cycle |
 | `vultr-cli instance create …` | ❌ **pas exécuté** | aucun compte Vultr ici ; seule la forme de la commande est vérifiée sur la documentation officielle |
 | `ssh-keygen` | ❌ **pas exécuté** | `ssh-keygen` n'existe pas dans ce conteneur |
@@ -293,5 +383,6 @@ sudo systemctl reload caddy
 | `curl: (7) Failed to connect` | le service n'écoute pas | `journalctl -u signedorders -n 50 --no-pager` |
 | `WARNING: no agent key configured` au démarrage | `/etc/signedorders/env` illisible ou clé absente | `sudo chmod 600 /etc/signedorders/env && sudo systemctl restart signedorders` |
 | `Connection timed out` depuis l'extérieur | pare-feu Vultr ou `ufw` | ouvrir TCP 8000 dans les deux |
-| `Signed Orders did not start` (message du cloud-init) | le `pip install` a échoué (réseau) | `sudo -u signedorders /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo/agent-rush/signed-orders[dev]'` puis `sudo systemctl restart signedorders` |
+| `Signed Orders did not start` (message du cloud-init) | le `pip install` a échoué (réseau) | `sudo -u signedorders /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo[dev]'` puis `sudo systemctl restart signedorders` |
+| `permission denied while trying to connect to the Docker daemon socket` | l'utilisateur du service n'est pas dans le groupe `docker` | `sudo usermod -aG docker signedorders && sudo systemctl restart signedorders` (et reconnecter la session SSH pour que le groupe soit pris en compte) |
 | le port 8000 est déjà pris | un autre service | `signedorders serve --host 0.0.0.0 --port 8080` + changer le port dans l'unité systemd |
