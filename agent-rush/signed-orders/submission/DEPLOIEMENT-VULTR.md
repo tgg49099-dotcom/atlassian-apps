@@ -281,7 +281,7 @@ sudo systemctl reload caddy
 | `bash deploy/verifier-deploiement.sh <url>` | ✅ **exécuté** | 6 `PASS`, code de sortie 0 |
 | `deploy/cloud-init.yml` | ✅ **syntaxe vérifiée** | YAML valide (`python3` + PyYAML) ; chaque commande est standard sur Ubuntu 24.04 |
 | `deploy/verifier-deploiement.sh`, `scripts/demo-containment.sh` | ✅ **syntaxe vérifiée** | `bash -n` passe sur les deux |
-| Les 218 tests | ✅ **exécutés** | `pytest` → `218 passed` |
+| Les 218 tests | ✅ **exécutés** | `pytest` → `217 passed, 1 skipped` (le 218ᵉ croise l'Ed25519 pur avec la bibliothèque optionnelle `cryptography` ; `pip install -e ".[reference]"` → `218 passed`) |
 | La création du compte Vultr, la carte, la VM, le paiement | ❌ **pas fait** | geste humain, interdit par la consigne du cycle |
 | `vultr-cli instance create …` | ❌ **pas exécuté** | aucun compte Vultr ici ; seule la forme de la commande est vérifiée sur la documentation officielle |
 | `ssh-keygen` | ❌ **pas exécuté** | `ssh-keygen` n'existe pas dans ce conteneur |
