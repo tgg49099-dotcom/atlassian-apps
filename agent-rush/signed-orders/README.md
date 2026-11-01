@@ -22,18 +22,29 @@ Radius Zero**.
 | `signedorders/signer.py` | sign / verify an order, an approval, a journal record |
 | `signedorders/journal.py` | the **hash-chained** journal: append-only, verifiable offline, replayable |
 | `signedorders/control.py` | the control plane: request → verdict → sign *or* queue for a human → execute |
-| `signedorders/server.py` | the HTTP API and the web UI: the only public surface of the control plane |
+| `signedorders/server.py` | the **HTTP API** — the only public surface of the control plane |
 | `signedorders/sandbox.py` | the **manifest** of the isolation and the exact `docker run` line it produces |
 | `scripts/run-in-sandbox.sh` | the script that runs **inside** the fresh sandbox |
 | `scripts/sandbox-manifest.json` | the manifest, published as data (a test keeps it in sync with the code) |
+| `scripts/demo-containment.sh` | **the containment moment, reproducible in one command** — no account, no key |
+| `deploy/cloud-init.yml` | the cloud-init that installs and starts everything on a Vultr Ubuntu 24.04 VM |
+| `deploy/verifier-deploiement.sh` | the script that proves a deployment answers (run it on the VM, or from anywhere) |
 | `signedorders/vultr.py` | the **Vultr Serverless Inference** client — the only place a model is called |
 | `signedorders/replay.py` | re-derive the verdicts of a journal with the rules of today |
 | `signedorders/preflight.py` | the secret scanner that runs before every commit |
-| `tests/` | **216 tests**, including the hostile ones |
+| `tests/` | **218 tests**, including the hostile ones |
 | `slides/` | the slide deck (PDF) required by the challenge |
 
 **The core has no third-party dependency.** `python3 -m signedorders verify journal.jsonl`
 works on a bare Python 3.10+, with nothing installed.
+
+**Status of the code, stated plainly.** The control plane — the policy, the quotas, the
+signatures, the journal, the sandbox manifests, the HTTP API — is **written and tested**
+(218 tests). Two parts are **written but not yet executed**: the Docker/Microsandbox
+isolation (this container has neither Docker nor KVM) and the Vultr Serverless Inference
+client (it needs the owner's key). The agent loop that drives the model is **planned for
+the build window (3 → 8 November)** and is not in the repository yet; what is in the
+repository is the part that keeps the agent contained.
 
 ---
 
@@ -265,22 +276,24 @@ but **not executed** — it needs the owner's key. Both facts are stated in the 
 
 | Vultr service | How Signed Orders uses it |
 |---|---|
-| **Vultr Cloud Compute** (Ubuntu 24.04 VM) | The control plane **is** the backend: the API and the UI, the SQLite database, the Ed25519 key, the journal and the two sandbox backends all run on one Vultr VM. The web application is served from that VM (see the demo URL in the submission). |
+| **Vultr Cloud Compute** (Ubuntu 24.04 VM) | The control plane **is** the backend: the HTTP API, the Ed25519 key, the hash-chained journal and the two sandbox backends all run on one Vultr VM. The API is served from that VM (see the demo URL in the submission). |
 | **Vultr Serverless Inference** (`https://api.vultrinference.com/v1`, OpenAI-compatible) | The **only** place a model is called: the agent loop. Required by the challenge for Challenge 1. Two roles: a fast text model for the agent loop, and a **vision** model that verifies the screenshot of the repaired service. The key (`VULTRINFERENCE_API_KEY`) is read from the environment of the control-plane process, never written to a file, never logged, and never passed to a sandbox. |
 | **Agent sandboxing on Vultr** (Docker / Microsandbox) | Every order runs in a container (namespaces + cgroups) or in an `msb` microVM with its own kernel, created fresh per task and destroyed at the end. The sandbox is *never* inside the application process. |
 | **Vultr API** (optional) | Listed by the challenge as the way to create *throwaway instances*; the implementation keeps a backend interface for it (an ephemeral VM instead of a container) if time allows during the build window. |
 | **Hackathon credits** | $200 of free Vultr credits per participant cover the VM and the inference calls for the whole build. The project does not depend on any GPU (none are available for this event). |
 
-Deployment shape (one VM, two processes, one URL):
+Deployment shape (one VM, one URL). The parts marked **(planned)** are the agent loop that
+is built during the hackathon window (3 → 8 November); everything else is in this repository
+today:
 
 ```
                     ┌──────────────────────── Vultr VM (Ubuntu 24.04) ─────────────────────────┐
-  browser  ───────▶ │  signedorders (API + UI + SSE)  :8000                                     │
+  browser  ───────▶ │  signedorders (HTTP API)  :8000                                            │
                     │        │                                                             │
-                    │        ├── signedorders worker  (agent loop → Serverless Inference)    │
+                    │        ├── signedorders worker (agent loop → Serverless Inference) (planned)│
                     │        ├── signedorders executor (signed orders only)                 │
                     │        ├── docker / msb sandboxes (one per task, destroyed after)      │
-                    │        └── SQLite (WAL) + journal.jsonl (hash-chained)                │
+                    │        └── journal.jsonl (hash-chained) + the Ed25519 key              │
                     └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -296,9 +309,15 @@ export VULTRINFERENCE_API_KEY=…        # read from /etc/signedorders/env, mode
 export SIGNEDORDERS_SIGNING_KEY_PATH=/etc/signedorders/signing.key
 
 signedorders init-key "$SIGNEDORDERS_SIGNING_KEY_PATH"   # once, on the VM, never committed
-signedorders serve                                        # API + UI on :8000
+signedorders serve --host 0.0.0.0 --port 8000             # the HTTP API on :8000
 signedorders verify /var/lib/signedorders/journal.jsonl   # offline verification, no secret
 ```
+
+The whole VM is built by one cloud-init file (`deploy/cloud-init.yml`): it installs the
+packages, clones the project, generates the signing key and the two bearer keys **on the
+VM**, installs the systemd unit and starts the service. The full procedure, with the
+commands, is in [`DEPLOIEMENT-VULTR.md`](submission/DEPLOIEMENT-VULTR.md) and in
+[`deploy/`](deploy/).
 
 The quotas are read from the environment too (`SIGNEDORDERS_QUOTA_ORDERS_PER_WINDOW=10`,
 `SIGNEDORDERS_QUOTA_WINDOW_SECONDS=60`, `SIGNEDORDERS_QUOTA_ORDERS_PER_TASK=40`,
@@ -320,10 +339,11 @@ pip install -e ".[dev]"
 ```
 
 ```bash
-pytest                                   # 216 tests
+pytest                                   # 218 tests
 python3 -m signedorders policy           # the rule table
 python3 -m signedorders verify journal.jsonl
 python3 -m signedorders preflight .      # the secret scanner
+bash scripts/demo-containment.sh         # the containment moment, end to end, in one command
 ```
 
 The core needs **no dependency**; `pytest` is only needed to run the tests, and
@@ -335,14 +355,14 @@ The core needs **no dependency**; `pytest` is only needed to run the tests, and
 
 ```
 signed-orders/
-├── DESIGN.md              the architecture: data flow, policy, signing, journal, UI
+├── DESIGN.md              the architecture: data flow, policy, signing, journal
 ├── README.md              this file
 ├── LICENSE                MIT
 ├── .env.example           variable names only, never a value
 ├── pyproject.toml         dependencies (none) and the console entry point
 ├── signedorders/
 │   ├── canonical.py       the exact bytes that are hashed and signed
-│   ├── cli.py             CLI: verify | replay | policy | init-key | sign | preflight
+│   ├── cli.py             CLI: verify | replay | policy | init-key | sign | preflight | serve
 │   ├── config.py          configuration read from the environment
 │   ├── control.py         the control plane: request → verdict → sign/queue → execute
 │   ├── ed25519.py         RFC 8032 in pure Python
@@ -353,20 +373,24 @@ signed-orders/
 │   ├── quotas.py          the sliding window and the per-task budgets
 │   ├── replay.py          re-derive the verdicts of a journal
 │   ├── sandbox.py         the manifest and the two isolation backends
-│   ├── server.py          the HTTP API and the web UI (the only public surface)
+│   ├── server.py          the HTTP API (the only public surface)
 │   ├── signer.py          Ed25519 signatures (private key stays on the host)
 │   └── vultr.py           the Vultr Serverless Inference client
 ├── scripts/
 │   ├── run-in-sandbox.sh  the script that runs inside the fresh sandbox
-│   └── sandbox-manifest.json  the manifest, published as data
+│   ├── sandbox-manifest.json  the manifest, published as data
+│   └── demo-containment.sh   the containment moment, reproducible in one command
+├── deploy/
+│   ├── cloud-init.yml     the installation of the Vultr VM, end to end
+│   └── verifier-deploiement.sh  the script that proves a deployment answers
 ├── slides/                the slide deck (PDF) required by the challenge
-└── tests/                 the specification of the invariants (216 tests)
+└── tests/                 the specification of the invariants (218 tests)
 ```
 
 ## Tests
 
 ```bash
-pytest        # 216 passed
+pytest        # 218 passed
 ```
 
 The suite is written as the specification of the invariants, and the hostile cases are the
@@ -382,7 +406,47 @@ point of it:
 | `test_sandbox.py` | the required flags are present, the dangerous ones are absent, no environment variable reaches the sandbox, the manifest file matches the code, the script never reaches the network |
 | `test_vultr.py` | the URL, the payload, the headers, the parsing — and that no key exists anywhere in the repository |
 | `test_replay.py` | the verdicts of a journal are re-derived, and a change of rules is reported |
-| `test_cli.py` | what a judge runs: `verify` returns 0 on an intact journal and 1 on a broken one |
+| `test_cli.py` | what a judge runs: `verify` returns 0 on an intact journal and 1 on a broken one, `serve` starts the HTTP door and the door really answers |
+
+## Hackathon submission
+
+**Vultr: Agent Rush Hackathon** (3–8 November 2026) — challenge **01 — Blast Radius Zero**.
+
+| What the jury asks for | Where it is | State |
+|---|---|---|
+| « GitHub repository with setup and documentation » | this repository — public, MIT, `pip install -e ".[dev]"`, `pytest`, and the launch command below | **done** |
+| « Vultr VM backend deployment » | [`DEPLOIEMENT-VULTR.md`](submission/DEPLOIEMENT-VULTR.md) + [`deploy/cloud-init.yml`](deploy/cloud-init.yml) + [`deploy/verifier-deploiement.sh`](deploy/verifier-deploiement.sh) | **ready to run** — the VM itself is created by the owner (account + payment are a human action) |
+| « Public demo URL » | `http://<VM-IP>:8000/health` (and `/policy`, `/orders`, `/journal/verify`) | **to be filled by the owner** after the VM is up |
+| « Recorded demo video » | the script of the shots is in [`DEMO-FILMEE.md`](submission/DEMO-FILMEE.md) | **to be recorded by the owner** |
+| « Clear architecture and use-case explanation » | [DESIGN.md](DESIGN.md) and the sections “The idea, in one paragraph” / “How it works” above | **done** |
+| « One containment moment shown in the video » | `bash scripts/demo-containment.sh` — the same story, reproducible in one command, no account and no key | **done and reproducible** |
+| « In your public GitHub README, explain the Vultr services and infrastructure used » | the section “How Vultr powers this” above | **done** |
+| « Submit on lablab.ai » (+ the Discord of the event) | the submission form of the event | **to be done by the owner** (account creation is a human action) |
+
+**The proof, in one command** — no account, no key, no cloud:
+
+```bash
+git clone https://github.com/tgg49099-dotcom/atlassian-apps.git
+cd atlassian-apps/agent-rush/signed-orders
+python3 -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"
+pytest                                    # 218 passed
+bash scripts/demo-containment.sh          # the containment moment, end to end
+```
+
+**The public links**
+
+| | |
+|---|---|
+| Repository (this project) | <https://github.com/tgg49099-dotcom/atlassian-apps/tree/main/agent-rush/signed-orders> |
+| Repository, project alone at the root of a branch | <https://github.com/tgg49099-dotcom/atlassian-apps/tree/signed-orders> |
+| Demo URL | _to be filled by the owner_ |
+| Demo video | _to be recorded by the owner_ |
+
+> The repository is a multi-project container: the project lives in the `agent-rush/signed-orders/`
+> directory, and the branch `signed-orders` shows the same project alone, at the root of the
+> repository, with its MIT `LICENSE`.
+
+---
 
 ## Security notes
 
@@ -394,8 +458,9 @@ point of it:
   fictional.
 - `preflight` runs before every commit and fails the build on a secret-looking pattern, a
   private key, or an internal address.
-- The demo video shows only the web UI: no SSH session, no IP address, no terminal on the
-  host.
+- The demo video shows the API and its decisions: no SSH session, no IP address, no
+  terminal on the host. The `scripts/demo-containment.sh` transcript is the same story,
+  reproducible on any machine.
 
 ## License
 
