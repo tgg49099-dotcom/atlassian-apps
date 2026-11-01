@@ -32,7 +32,7 @@ Radius Zero**.
 | `signedorders/vultr.py` | the **Vultr Serverless Inference** client — the only place a model is called |
 | `signedorders/replay.py` | re-derive the verdicts of a journal with the rules of today |
 | `signedorders/preflight.py` | the secret scanner that runs before every commit |
-| `tests/` | **218 tests**, including the hostile ones |
+| `tests/` | **218 tests** (217 run without the optional `cryptography` cross-check), including the hostile ones |
 | `slides/` | the slide deck (PDF) required by the challenge |
 
 **The core has no third-party dependency.** `python3 -m signedorders verify journal.jsonl`
@@ -339,7 +339,7 @@ pip install -e ".[dev]"
 ```
 
 ```bash
-pytest                                   # 218 tests
+pytest                                   # 217 passed, 1 skipped (218 with the reference extra)
 python3 -m signedorders policy           # the rule table
 python3 -m signedorders verify journal.jsonl
 python3 -m signedorders preflight .      # the secret scanner
@@ -390,7 +390,11 @@ signed-orders/
 ## Tests
 
 ```bash
-pytest        # 218 passed
+pytest        # 217 passed, 1 skipped
+
+# the 218th test cross-checks the pure-Python Ed25519 against the
+# `cryptography` library: it is skipped when that optional library is absent.
+#   pip install -e ".[reference]"   ->  218 passed
 ```
 
 The suite is written as the specification of the invariants, and the hostile cases are the
@@ -429,7 +433,7 @@ point of it:
 git clone https://github.com/tgg49099-dotcom/atlassian-apps.git
 cd atlassian-apps/agent-rush/signed-orders
 python3 -m venv .venv && . .venv/bin/activate && pip install -e ".[dev]"
-pytest                                    # 218 passed
+pytest                                    # 217 passed, 1 skipped (218 with the reference extra)
 bash scripts/demo-containment.sh          # the containment moment, end to end
 ```
 

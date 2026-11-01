@@ -51,7 +51,8 @@ isolation is published as data: the exact `docker run` line (`--network=none`, 2
 the manifest and the code in sync. The backend runs on a **Vultr Cloud Compute** VM
 (Ubuntu 24.04, one VM, one public URL); the only model calls go through **Vultr Serverless
 Inference**, whose key never leaves the control plane and never enters a sandbox. The
-repository ships with its own proof: **218 tests**, a cloud-init that builds the VM from
+repository ships with its own proof: **218 tests** (217 run without the optional
+`cryptography` cross-check), a cloud-init that builds the VM from
 scratch, a deployment verifier, and a single script — `bash scripts/demo-containment.sh` —
 that reproduces the containment moment end to end, with no account and no key.
 
@@ -99,7 +100,7 @@ available for this event.
 
 | # | Requirement (verbatim) | Proof / what is left | Who | Deadline |
 |---|---|---|---|---|
-| 1 | « GitHub repository with setup and documentation » | Public repository, MIT `LICENSE` at the root of the project, `pip install -e ".[dev]"`, `pytest` (218 passed), the launch command and the architecture in the README. Verified without any account: every file returns HTTP 200. | **done** | — |
+| 1 | « GitHub repository with setup and documentation » | Public repository, MIT `LICENSE` at the root of the project, `pip install -e ".[dev]"`, `pytest` (217 passed, 1 skipped), the launch command and the architecture in the README. Verified without any account: every file returns HTTP 200. | **done** | — |
 | 2 | « Vultr VM backend deployment » | `submission/DEPLOIEMENT-VULTR.md` + `deploy/cloud-init.yml` (installs everything, generates the keys **on the VM**, starts the systemd service) + `deploy/verifier-deploiement.sh` (checks the deployment answers). The commands are written and tested locally; **the VM itself is not created yet** — creating the Vultr account and paying is a human action. | **Tgg** creates the account and the VM | before 8/11 20:00 UTC |
 | 3 | « Public demo URL » | The control plane answers `/health`, `/policy`, `/orders`, `/journal/verify`. The URL is `http://<VM-IP>:8000/health`. **No URL yet**: it needs the VM of line 2. | **Tgg** | before 8/11 20:00 UTC |
 | 4 | « Recorded demo video » | The minute-by-minute script, the 5 captures and the English narration are in `submission/DEMO-FILMEE.md`. The containment moment is reproducible on any machine with `bash scripts/demo-containment.sh`. **Not recorded yet** — recording is a human action. | **Tgg** | before 8/11 20:00 UTC |

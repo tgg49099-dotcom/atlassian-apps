@@ -111,7 +111,7 @@ serveur ; puis le compteur de tests.
 
 ```bash
 python3 -m signedorders verify journal.jsonl     # → OK — the chain is intact (N entries checked)
-pytest                                            # → 218 passed
+pytest                                            # → 217 passed, 1 skipped
 ```
 
 > **Voix (EN) :** *"Everything we just showed is written down. The journal is a hash chain:
