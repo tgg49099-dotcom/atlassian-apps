@@ -1,0 +1,14 @@
+{
+  "balances": [
+    {
+      "currency_code": "USD",
+      "available_balance": "18240.55",
+      "pending_balance": "1240.00"
+    },
+    {
+      "currency_code": "EUR",
+      "available_balance": "2310.40",
+      "pending_balance": "0.00"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "transaction_resources": [
+    {
+      "transaction_info": {
+        "paypal_fee": "3.20",
+        "net_amount": "96.80",
+        "tax_amount": "0.00",
+        "shipping_amount": "0.00",
+        "total_amount": "100.00",
+        "transaction_id": "0VF52815937971249",
+        "transaction_event_code": "T0006",
+        "transaction_initiation_date": "2026-10-28T09:12:44Z",
+        "transaction_updated_date": "2026-10-28T09:13:01Z"
+      },
+      "payer_info": {
+        "payer_id": "PAYER123",
+        "payer_email": "buyer.one@example.com"
+      },
+      "receiver_info": {
+        "receiver_email": "merchant@example.com"
+      },
+      "other_info": {
+        "transaction_currency_code": "USD"
+      }
+    },
+    {
+      "transaction_info": {
+        "paypal_fee": "0.00",
+        "net_amount": "-45.50",
+        "total_amount": "-45.50",
+        "transaction_id": "5CV813409P9876543",
+        "transaction_event_code": "T0007",
+        "transaction_initiation_date": "2026-10-27T14:02:55Z"
+      },
+      "payer_info": {
+        "payer_email": "buyer.two@example.com"
+      },
+      "other_info": {
+        "transaction_currency_code": "EUR"
+      }
+    },
+    {
+      "transaction_info": {
+        "paypal_fee": "1.10",
+        "net_amount": "248.90",
+        "total_amount": "250.00",
+        "transaction_id": "1AB234567CD890123",
+        "transaction_event_code": "T0004",
+        "transaction_initiation_date": "2026-10-26T16:38:02Z"
+      },
+      "receiver_info": {
+        "receiver_email": "payout.destination@example.com"
+      },
+      "other_info": {
+        "transaction_currency_code": "USD"
+      }
+    }
+  ],
+  "account_summary": {
+    "start_date": "2026-09-28T00:00:00Z",
+    "end_date": "2026-10-28T23:59:59Z"
+  },
+  "pages": {
+    "total_items": 3,
+    "page_size": 100
+  }
+}

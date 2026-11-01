@@ -1,0 +1,224 @@
+# PayPal + AI — Transaction Insights (AG Grid)
+
+> **Where this project lives:** this repository (`tgg49099-dotcom/atlassian-apps`) hosts several
+> independent projects. **This one is the `paypal-ai-hackathon/` subfolder** — the root of this
+> subfolder is the root of the project (README, LICENSE, `package.json`, `src/`, `test/`).
+> Direct link: <https://github.com/tgg49099-dotcom/atlassian-apps/tree/main/paypal-ai-hackathon>
+
+A small, self-contained dashboard for the **"Build What's Next with PayPal and AI"** hackathon.
+
+It does two things:
+
+1. **Reads PayPal sandbox data** (OAuth2 client-credentials grant, then three read-only REST
+   endpoints) and shows the transactions in an **AG Grid** table.
+2. **Asks an AI model to explain the numbers**, and shows the insights in a panel above the grid.
+
+Both halves are pluggable and both degrade honestly: without credentials the app shows
+**clearly-labelled fake data**, and without an AI provider it shows a **deterministic local
+analysis**. It never presents made-up numbers as if they were real.
+
+---
+
+## Quick start (60 seconds, no account needed)
+
+```bash
+npm install
+npm test        # 33 tests, Node's built-in test runner, no test dependency
+npm run build   # type-check + production build into dist/
+npm start       # http://127.0.0.1:4173
+```
+
+Open <http://127.0.0.1:4173>. You should see an amber **“DEMO DATA — no PayPal credentials
+configured”** badge, twelve fake transactions in the grid, and a **“DEMO MODE”** AI panel.
+
+For development with hot reload:
+
+```bash
+npm run dev     # http://127.0.0.1:5173
+```
+
+The dev server mounts the same JSON API as the production server, so the app is fully functional
+in both modes.
+
+### Requirements
+
+- Node.js ≥ 20.19 (developed and tested on Node 22.23.3)
+- npm ≥ 10
+
+---
+
+## Connecting a real PayPal sandbox account (free)
+
+1. Create a **sandbox** app at <https://developer.paypal.com/dashboard/applications/sandbox>
+   (choose the *Sandbox* account type — no money involved).
+2. Copy `.env.example` to `.env` and fill it in:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   ```dotenv
+   PAYPAL_CLIENT_ID=your_sandbox_client_id
+   PAYPAL_SECRET=your_sandbox_secret
+   ```
+
+3. Restart the app (`npm start`). The badge switches to
+   **“LIVE — PayPal sandbox”** and the grid shows your sandbox transactions.
+
+### How the PayPal integration works
+
+| Step | Call |
+|---|---|
+| 1. authenticate | `POST https://api-m.sandbox.paypal.com/v1/oauth2/token` — `grant_type=client_credentials`, HTTP Basic auth |
+| 2. transactions | `GET /v1/reporting/transactions?start_date=…&end_date=…&page_size=100` |
+| 3. balances | `GET /v1/reporting/balances` |
+| 4. connectivity probe | `GET /v1/notifications/webhooks` |
+
+**Only read endpoints are used.** The app never creates, captures, refunds or moves money.
+
+**Secrets never reach the browser.** `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` are read by the Node
+server (`src/server.ts`) and by the Vite dev middleware; the browser only calls
+`GET /api/snapshot`. Vite exposes only `VITE_`-prefixed variables to the client, and no variable
+in this project uses that prefix.
+
+**If a call fails, the error is shown verbatim** and the grid stays empty. Fake rows are never
+substituted for a failed live call — the app would rather show nothing than show something fake
+under a “LIVE” label.
+
+---
+
+## The AI adapter
+
+`src/ai.ts` exposes one interface:
+
+```ts
+analyze(transactions: Transaction[]): Promise<Insight[]>
+```
+
+It picks a backend from the environment:
+
+| Environment | Backend |
+|---|---|
+| `OPENAI_BASE_URL` **and** `OPENAI_API_KEY` | any OpenAI-compatible `/chat/completions` endpoint (OpenAI, Groq, Together, Ollama…) |
+| `GEMINI_API_KEY` | Google Gemini `generateContent` |
+| neither | local deterministic rules (no network call) |
+
+The provider is asked for a strict JSON array of `{title, detail, severity, metric}`; the answer
+is normalised and rendered. If the provider call fails, the deterministic local analysis is shown
+instead **and the provider error is displayed** — a failed AI call is never disguised as a
+successful one. Every insight carries its `origin` (`ai` or `local`), which the UI displays.
+
+The deterministic fallback is not a placeholder: it computes total volume, the largest single
+transaction, the refund ratio, the currency mix and the counterparty concentration from the rows
+it is given. It is a real analysis, it is just not an LLM.
+
+To use a provider, add to `.env`:
+
+```dotenv
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4o-mini
+```
+
+---
+
+## Demo mode is unmistakable
+
+| Where | What you see |
+|---|---|
+| Data badge | `DEMO DATA — no PayPal credentials configured` (amber) |
+| AI badge | `DEMO MODE — no AI provider configured (local deterministic analysis)` (amber) |
+| Every grid row | an **Origin** column reading `DEMO (fake data)` |
+| Every local insight | a title starting with `DEMO —` |
+| Footer | “The rows above are fake data generated by the app.” |
+
+---
+
+## Project layout
+
+```
+paypal-ai-hackathon/
+├── LICENSE              MIT
+├── README.md            this file
+├── .env.example         variable names only, no values
+├── .gitignore           node_modules, dist, .env
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts       Vite config + the dev-mode JSON API middleware
+├── src/
+│   ├── ai.ts            the AI adapter (analyze) + the deterministic fallback
+│   ├── api.ts           the JSON API, as a pure function of (url, method, body)
+│   ├── App.tsx          the AG Grid UI
+│   ├── env.ts           environment access (Node / Vite / nowhere)
+│   ├── format.ts        grid-row formatting (pure)
+│   ├── paypal.ts        PayPal sandbox client + parsers + demo data
+│   ├── server.ts        zero-dependency Node server (static files + API)
+│   ├── styles.css
+│   ├── types.ts         shared types
+│   └── main.tsx
+└── test/
+    ├── api.test.ts
+    ├── ai.test.ts
+    ├── format.test.ts
+    ├── paypal.test.ts
+    └── fixtures/        local JSON fixtures (no network)
+```
+
+The test suite uses **Node's built-in test runner** (`node --test`) — no test framework is
+installed. Every PayPal response is parsed from a local fixture; **no test performs a network
+call**.
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on :5173, with the JSON API mounted |
+| `npm run build` | `tsc --noEmit` then `vite build` → `dist/` |
+| `npm start` | serves `dist/` + the JSON API on :4173 (`PORT` and `HOST` override the defaults) |
+| `npm test` | `node --test` |
+| `npm run preview` | Vite's own static preview |
+
+---
+
+## Licence and third-party code
+
+This project is **MIT** (see `LICENSE`).
+
+| Package | Version | Licence | Role |
+|---|---|---|---|
+| `ag-grid-community` | 36.2.0 | MIT | the grid |
+| `ag-grid-react` | 36.2.0 | MIT | the React wrapper |
+| `ag-stack` | 36.2.0 | MIT | transitive dependency of `ag-grid-community` |
+| `ag-charts-types` | 14.2.0 | MIT | transitive dependency of `ag-grid-community` |
+| `prop-types` | ^15.8.1 | MIT | transitive dependency of `ag-grid-react` |
+| `react`, `react-dom` | 19.3.1 | MIT | UI runtime |
+| `vite` | 7.3.7 | MIT | build tool (dev) |
+| `@vitejs/plugin-react` | 5.2.0 | MIT | React plugin for Vite (dev) |
+| `typescript` | 5.9.3 | Apache-2.0 | type checker (dev) |
+| `@types/node`, `@types/react`, `@types/react-dom` | 22.18.13 / 19.3.0 / 19.3.0 | MIT | type declarations (dev) |
+| `rollup` | 4.54.0 (pinned by `overrides`) | MIT | bundler used by Vite (dev) |
+
+**Why is `rollup` pinned?** Rollup ≥ 4.55 ships a prebuilt native binary that uses CPU
+instructions which are not available on every machine; on the container this was built in, the
+bundle step died with `Illegal instruction (core dumped)`. `overrides: { "rollup": "4.54.0" }`
+pins the last version that runs everywhere. It is a build-time dependency only and changes
+nothing in the produced application.
+
+**No commercial AG Grid package is used.** `ag-grid-enterprise`, `ag-charts-enterprise`,
+`ag-studio` and `ag-studio-react` are deliberately absent: they are commercial and require a
+licence key.
+
+---
+
+## Notes for reviewers
+
+- The app is **runnable end to end with no account at all** — that is the point of the demo mode.
+- The PayPal code path is real: point it at a sandbox app and it performs the OAuth2
+  client-credentials grant and three read calls. With wrong credentials it reports the exact
+  PayPal error instead of inventing data.
+- The AI adapter is provider-independent on purpose: the judges can plug in whichever model they
+  prefer, or none at all.
+- There is no `.env` in this repository and no credential of any kind in the source.

@@ -1,0 +1,9 @@
+{
+  "webhooks": [
+    {
+      "id": "0VF52815937971249",
+      "url": "https://example.invalid/paypal/webhook",
+      "event_types": ["PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.REFUNDED"]
+    }
+  ]
+}

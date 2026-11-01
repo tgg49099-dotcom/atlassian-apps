@@ -1,0 +1,32 @@
+{
+  "name": "paypal-ai-hackathon",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "PayPal + AI hackathon entry: an AG Grid transaction explorer with a pluggable, provider-independent AI insights adapter.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "start": "node --env-file-if-exists=.env src/server.ts",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "ag-grid-community": "36.2.0",
+    "ag-grid-react": "36.2.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.18.13",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
+  },
+  "overrides": {
+    "rollup": "4.54.0"
+  }
+}
