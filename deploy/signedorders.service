@@ -1,0 +1,43 @@
+# Signed Orders — systemd unit for the control plane
+# =============================================================================
+# This is the SAME unit as the one written by deploy/cloud-init.yml, extracted
+# into its own file so that the manual deployment (the "plan B" of
+# submission/DEPLOIEMENT-VULTR.md, section 3c) can install it with a single
+# `cp` instead of a copy-paste.
+#
+# On the Vultr VM:
+#   cp deploy/signedorders.service /etc/systemd/system/signedorders.service
+#   systemctl daemon-reload && systemctl enable --now signedorders.service
+#
+# The paths below assume the layout produced by the cloud-init AND by the plan B:
+#   /opt/signed-orders/repo        the project (branch `signed-orders`, root of the clone)
+#   /opt/signed-orders/.venv       the virtualenv
+#   /var/lib/signedorders          the journal (the only writable path)
+#   /etc/signedorders/env          the environment file, mode 0600, root:root
+# =============================================================================
+
+[Unit]
+Description=Signed Orders — containment-first control plane (HTTP API)
+Documentation=https://github.com/tgg49099-dotcom/atlassian-apps/tree/signed-orders
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=simple
+User=signedorders
+Group=signedorders
+WorkingDirectory=/opt/signed-orders/repo
+EnvironmentFile=/etc/signedorders/env
+ExecStart=/opt/signed-orders/.venv/bin/signedorders serve --host 0.0.0.0 --port 8000 --journal /var/lib/signedorders/journal.jsonl
+Restart=on-failure
+RestartSec=3
+# The service itself is hardened: it is not privileged, and it only
+# writes in the folder of the journal.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/signedorders
+
+[Install]
+WantedBy=multi-user.target

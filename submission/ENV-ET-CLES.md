@@ -46,16 +46,20 @@ hors ligne, sans aucun secret. Elle est affichée par `GET /health` et peut êtr
 
 ## 3. Les variables **sans secret** (noms et valeurs par défaut)
 
-Toutes sont dans `/etc/signedorders/env`. Elles sont **déjà écrites** par le cloud-init avec
-les valeurs par défaut du code ; il n'y a rien à faire sauf si l'on veut les changer.
+> **Précision importante (colonne « dans `/etc/signedorders/env` ? »).** Le code lit **27**
+> variables d'environnement. Le cloud-init en écrit **22** dans `/etc/signedorders/env`, avec
+> les valeurs par défaut. Les **5 restantes** ne sont **pas** écrites par le cloud-init : le code
+> lit directement son **défaut interne**, ce qui est le comportement voulu — il n'y a donc
+> **rien à ajouter** sur la VM. (Vérifié le 01/11/2026 :
+> `grep -rno 'SIGNEDORDERS_[A-Z_]*\|VULTRINFERENCE_[A-Z_]*' signedorders/*.py` → 27 noms.)
 
 ### 3.1 Inférence
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `VULTRINFERENCE_BASE_URL` | `https://api.vultrinference.com/v1` | la base de l'API (compatible OpenAI) |
-| `VULTRINFERENCE_MODEL` | `qwen3.8-flash-next` | le modèle **texte** de la boucle agent |
-| `VULTRINFERENCE_VISION_MODEL` | `qwen3.8-27b` | le modèle **vision** qui relit la capture d'écran du service réparé |
+| Variable | Défaut | Rôle | Écrite par le cloud-init ? |
+|---|---|---|---|
+| `VULTRINFERENCE_BASE_URL` | `https://api.vultrinference.com/v1` | la base de l'API (compatible OpenAI) | **non** — défaut du code |
+| `VULTRINFERENCE_MODEL` | `qwen3.8-flash-next` | le modèle **texte** de la boucle agent | oui |
+| `VULTRINFERENCE_VISION_MODEL` | `qwen3.8-27b` | le modèle **vision** qui relit la capture d'écran du service réparé | oui |
 
 > Les noms de modèles **changent** (la liste est publique et bouge) :
 > `curl -s https://api.vultrinference.com/v1/models` **sans clé** renvoie la liste à jour.
@@ -63,46 +67,46 @@ les valeurs par défaut du code ; il n'y a rien à faire sauf si l'on veut les c
 
 ### 3.2 La porte HTTP
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `SIGNEDORDERS_HOST` | `127.0.0.1` | l'interface d'écoute (`0.0.0.0` pour être public) |
-| `SIGNEDORDERS_PORT` | `8000` | le port |
-| `SIGNEDORDERS_JOURNAL_PATH` | `/var/lib/signedorders/journal.jsonl` | le fichier du journal chaîné |
+| Variable | Défaut | Rôle | Écrite par le cloud-init ? |
+|---|---|---|---|
+| `SIGNEDORDERS_HOST` | `127.0.0.1` | l'interface d'écoute (`0.0.0.0` pour être public) | **non** — défaut du code |
+| `SIGNEDORDERS_PORT` | `8000` | le port | **non** — défaut du code |
+| `SIGNEDORDERS_JOURNAL_PATH` | `/var/lib/signedorders/journal.jsonl` | le fichier du journal chaîné | **non** — défaut du code |
 
 > ⚠️ Sur la VM, l'unité systemd force déjà `--host 0.0.0.0 --port 8000 --journal
 > /var/lib/signedorders/journal.jsonl` : **la ligne de commande l'emporte** sur ces variables.
 
 ### 3.3 Sandbox (l'isolation où les ordres s'exécutent)
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `SIGNEDORDERS_SANDBOX_BACKEND` | `docker` | `docker` ou `msb` (Microsandbox, microVM) |
-| `SIGNEDORDERS_SANDBOX_IMAGE` | `debian:bookworm-slim` | l'image du bac |
-| `SIGNEDORDERS_SANDBOX_MEMORY` | `256m` | la limite mémoire (cgroup) |
-| `SIGNEDORDERS_SANDBOX_CPUS` | `1` | la limite CPU |
-| `SIGNEDORDERS_SANDBOX_PIDS_LIMIT` | `128` | le nombre maximal de processus |
-| `SIGNEDORDERS_SANDBOX_TIMEOUT_SECONDS` | `30` | le mur de l'horloge (`timeout --signal=KILL`) |
-| `SIGNEDORDERS_SANDBOX_EGRESS_ALLOWLIST` | *(vide)* | les hôtes que le bac a le droit de joindre |
+| Variable | Défaut | Rôle | Écrite par le cloud-init ? |
+|---|---|---|---|
+| `SIGNEDORDERS_SANDBOX_BACKEND` | `docker` | `docker` ou `msb` (Microsandbox, microVM) | oui |
+| `SIGNEDORDERS_SANDBOX_IMAGE` | `debian:bookworm-slim` | l'image du bac | oui |
+| `SIGNEDORDERS_SANDBOX_MEMORY` | `256m` | la limite mémoire (cgroup) | oui |
+| `SIGNEDORDERS_SANDBOX_CPUS` | `1` | la limite CPU | oui |
+| `SIGNEDORDERS_SANDBOX_PIDS_LIMIT` | `128` | le nombre maximal de processus | oui |
+| `SIGNEDORDERS_SANDBOX_TIMEOUT_SECONDS` | `30` | le mur de l'horloge (`timeout --signal=KILL`) | oui |
+| `SIGNEDORDERS_SANDBOX_EGRESS_ALLOWLIST` | *(vide)* | les hôtes que le bac a le droit de joindre | oui |
 
 ### 3.4 Quotas
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `SIGNEDORDERS_QUOTA_ORDERS_PER_WINDOW` | `10` | ordres par agent, fenêtre glissante de 60 s |
-| `SIGNEDORDERS_QUOTA_WINDOW_SECONDS` | `60` | la longueur de la fenêtre |
-| `SIGNEDORDERS_QUOTA_ORDERS_PER_TASK` | `40` | ordres par tâche |
-| `SIGNEDORDERS_QUOTA_CPU_SECONDS_PER_TASK` | `120` | secondes CPU par tâche |
-| `SIGNEDORDERS_QUOTA_BYTES_WRITTEN_PER_TASK` | `1048576` | octets écrits par tâche |
-| `SIGNEDORDERS_QUOTA_CONCURRENT_SANDBOXES` | `2` | bacs simultanés par tâche (limite de **sécurité**) |
-| `SIGNEDORDERS_QUOTA_TOKENS_PER_TASK` | `200000` | jetons de modèle par tâche (le coût LLM est plafonné) |
+| Variable | Défaut | Rôle | Écrite par le cloud-init ? |
+|---|---|---|---|
+| `SIGNEDORDERS_QUOTA_ORDERS_PER_WINDOW` | `10` | ordres par agent, fenêtre glissante de 60 s | oui |
+| `SIGNEDORDERS_QUOTA_WINDOW_SECONDS` | `60` | la longueur de la fenêtre | oui |
+| `SIGNEDORDERS_QUOTA_ORDERS_PER_TASK` | `40` | ordres par tâche | oui |
+| `SIGNEDORDERS_QUOTA_CPU_SECONDS_PER_TASK` | `120` | secondes CPU par tâche | oui |
+| `SIGNEDORDERS_QUOTA_BYTES_WRITTEN_PER_TASK` | `1048576` | octets écrits par tâche | oui |
+| `SIGNEDORDERS_QUOTA_CONCURRENT_SANDBOXES` | `2` | bacs simultanés par tâche (limite de **sécurité**) | oui |
+| `SIGNEDORDERS_QUOTA_TOKENS_PER_TASK` | `200000` | jetons de modèle par tâche (le coût LLM est plafonné) | oui |
 
 ### 3.5 Approbations
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `SIGNEDORDERS_APPROVAL_CHANNEL` | `web` | le canal d'approbation |
-| `SIGNEDORDERS_APPROVAL_TTL_SECONDS` | `900` | la durée de vie d'un ordre en attente (au-delà : **il expire**, le silence n'est pas une approbation) |
-| `SIGNEDORDERS_APPROVAL_KEY_PATH` | `/etc/signedorders/approval.key` | le chemin d'une éventuelle clé d'approbation séparée (non utilisée par le code actuel) |
+| Variable | Défaut | Rôle | Écrite par le cloud-init ? |
+|---|---|---|---|
+| `SIGNEDORDERS_APPROVAL_CHANNEL` | `web` | le canal d'approbation | oui |
+| `SIGNEDORDERS_APPROVAL_TTL_SECONDS` | `900` | la durée de vie d'un ordre en attente (au-delà : **il expire**, le silence n'est pas une approbation) | oui |
+| `SIGNEDORDERS_APPROVAL_KEY_PATH` | `/etc/signedorders/approval.key` | le chemin d'une éventuelle clé d'approbation séparée (non utilisée par le code actuel) | **non** — défaut du code |
 
 ## 4. Le fichier, en entier, **sans les valeurs**
 

@@ -25,7 +25,7 @@
 | **B** | La preuve en une commande | un terminal qui lance `bash scripts/demo-containment.sh` et affiche le verdict `refused` | le poste de Tgg (ou la VM) |
 | **C** | ⭐ **Le moment de confinement** | la sortie de la démonstration : `rm -rf /srv/data` → `queued_for_human` → **rejected**, et `host:///etc/app/secret` → **refused (403)** | idem, plein écran, sans défilement |
 | **D** | L'isolation, en vrai | la ligne `docker run` exécutée **sur la VM** (sans réseau, 256 Mo, 1 CPU, 128 PID, root en lecture seule), et un `curl` vers l'extérieur qui **échoue** | la VM Vultr, terminal SSH |
-| **E** | Le journal vérifié **hors ligne** | `python3 -m signedorders verify journal.jsonl` → `OK — the chain is intact (N entries checked)` | le poste de Tgg, sur le fichier de journal téléchargé |
+| **E** | Le journal vérifié **hors ligne** | `python3 -m signedorders verify <journal>.jsonl` → `OK — the chain is intact (5 entries checked)` | le poste de Tgg, sur le fichier de journal téléchargé |
 
 > Les captures **D** et **E** sont les deux preuves qui répondent « et alors ? ». **B et C**
 > portent le moment de confinement.
@@ -89,7 +89,7 @@ pendant la narration.
 |---|---|---|---|
 | **4a** | `rm -rf /srv/data` (destruction) | `risk.destructive` → **mis en attente d'un humain** | `verdict: queued_for_human` |
 | **4b** | le même ordre, **approuvé/refusé par un humain** | refus **signé**, écrit au journal | `verdict: rejected` — « the blast radius was one order that never ran » |
-| **4c** | `read host:///etc/app/secret` (évasion) | `forbidden.escape` → **refusé, aucun human ne peut le débloquer** | `HTTP 403` — `verdict: refused` |
+| **4c** | `read host:///etc/app/secret` (évasion) | `forbidden.escape` → **refusé, aucun humain ne peut le débloquer** | `HTTP 403` — `verdict: refused` |
 
 > **Voix (EN), sur 4c :** *"And even if a human had approved the deletion, the sandbox still
 > absorbs it: no network, 256 megabytes, one CPU, a read-only root filesystem, no capabilities,
@@ -110,8 +110,8 @@ exécutée sur la VM, et un `curl` vers l'extérieur qui **échoue** (because `-
 serveur ; puis le compteur de tests.
 
 ```bash
-python3 -m signedorders verify journal.jsonl     # → OK — the chain is intact (N entries checked)
-pytest                                            # → 217 passed, 1 skipped
+python3 -m signedorders verify /chemin/vers/le/journal.jsonl   # → OK — the chain is intact (N entries checked)
+python3 -m pytest                                                 # → 217 passed, 1 skipped
 ```
 
 > **Voix (EN) :** *"Everything we just showed is written down. The journal is a hash chain:
@@ -128,13 +128,18 @@ pytest                                            # → 217 passed, 1 skipped
 ## 3. Les commandes exactes à taper à l'écran
 
 ```bash
-# la démonstration du moment de confinement (B + C) — aucune clé, aucun compte
-cd atlassian-apps/agent-rush/signed-orders
+# la démonstration du moment de confinement (B + C) — aucune clé, aucun compte,
+# et même AUCUNE installation : le script n'a besoin que de python3
+git clone --branch signed-orders https://github.com/tgg49099-dotcom/atlassian-apps.git signed-orders
+cd signed-orders
 bash scripts/demo-containment.sh
 
-# la vérification hors ligne du journal (E)
-python3 -m signedorders verify journal.jsonl
-pytest
+# la vérification hors ligne du journal (E) — sur le fichier téléchargé
+python3 -m signedorders verify /chemin/vers/le/journal.jsonl
+
+# le compteur de tests (avec le virtualenv, si on a installé le projet)
+python3 -m pytest              # ou .venv/bin/pytest
+# → 217 passed, 1 skipped
 
 # l'isolation en direct (D), sur la VM
 docker run --rm --name=sb-demo --network=none --memory=256m --cpus=1 --pids-limit=128 \
@@ -142,6 +147,10 @@ docker run --rm --name=sb-demo --network=none --memory=256m --cpus=1 --pids-limi
   --tmpfs=/tmp:rw,noexec,nosuid,size=64m --volume /tmp/sb-demo:/work:rw --workdir=/work \
   debian:bookworm-slim /work/run-in-sandbox.sh sh -c 'echo inside; (curl -s https://example.com || echo "NO NETWORK")'
 ```
+
+> **À noter pour le jury** : `scripts/demo-containment.sh` est le **seul** element du projet qui
+> ne demande **ni compte, ni clé, ni installation** : il tourne avec un `python3` nu, directement
+> dans le clone. C'est le moyen le plus simple de montrer le moment de confinement à l'écran.
 
 ## 4. La liste de contrôle « scrub » (à cocher avant l'export)
 

@@ -1,372 +1,469 @@
 # SIGNED ORDERS — design
 
-> **Challenge 01 — “Blast Radius Zero”** — Vultr: Agent Rush Hackathon (3–8 November 2026).
-> Written on 31 October 2026, before the official build window. This document describes
-> **what is built, how, and why**.
-> Rules verified against the official pages (see `RULES.md` in the working notes) ·
-> demo and video plan: `DEMO.md`.
+> **Challenge 01 — "Blast Radius Zero"** — Vultr: Agent Rush Hackathon (3–8 November 2026).
+> This document describes **what is built, how it works, and what is honestly not built yet**.
+> The shot list and the narration are in [`submission/DEMO-FILMEE.md`](submission/DEMO-FILMEE.md);
+> the deployment procedure is in [`submission/DEPLOIEMENT-VULTR.md`](submission/DEPLOIEMENT-VULTR.md).
 >
-> **Status of this repository (31/10/2026, 16:40 UTC):** the *implementation* is published
-> here — `signedorders/` (control plane, policy, quotas, hash-chained journal, pure-Python
-> Ed25519, HTTP server, Vultr Serverless Inference client), `tests/` (**216 tests, all
-> green**), `scripts/` (the sandbox manifest and its runner) and `slides/` (the PDF deck
-> the challenge requires). The code runs: `pytest` is green, and
-> `python3 -m signedorders verify journal.jsonl` checks the hash chain offline, with no
-> secret and no dependency. What is **not** exercised yet is the *deployment*: running the
-> container sandbox and calling the inference endpoint need the owner's Vultr account and
-> key — see “What was and was not run here” in the `README.md`.
+> **Status of this repository (01/11/2026).** The implementation is published here: `signedorders/`
+> (control plane, policy, quotas, hash-chained journal, pure-Python Ed25519, HTTP door, the two
+> sandbox backends, the replay and the secret scanner), `tests/` (**217 passed, 1 skipped** on a
+> bare clone — 218 with the optional `cryptography` cross-check), `scripts/` (the sandbox manifest
+> and its runner, and the one-command containment demo), `deploy/` (the cloud-init that builds the
+> Vultr VM and the deployment verifier), `slides/` (the PDF deck) and `submission/` (the four
+> documents the jury reads).
+>
+> The core has **no dependency at all**: `python3 -m signedorders verify <journal>` checks the hash
+> chain offline, with no secret and no install. What is **not** exercised yet is the *deployment*:
+> running the Docker sandbox and calling the inference endpoint need the owner's Vultr account, key
+> and VM. The agent loop (the LLM worker that drives a mission) is **not in this repository yet** —
+> section 2 says exactly what is in and what is not, and nothing else is claimed.
 
 ---
 
-## 1. Le projet en une phrase
+## 1. The project in one sentence
 
-**Un plan de contrôle qui transforme toute action d'un agent autonome en un « ordre »
-écrit, signé et vérifiable — les ordres anodins passent seuls, les ordres dangereux
-attendent un humain — le tout dans un bac à sable Vultr, avec quotas, journal chaîné et
-rejeu.**
+**A control plane that turns every action of an autonomous agent into a written, signed,
+verifiable *order* — ordinary orders go through on their own, dangerous ones wait for a human,
+forbidden ones can never be approved at all — with quotas, a hash-chained journal and an
+offline replay, all of it executed in a throw-away sandbox.**
 
-> « An agent that only chats is a demo; an agent that executes safely is a product. »
-> — page de l'événement. C'est exactement ce que vend ce projet.
-
----
-
-## 2. Ce que fait l'agent (le travail RÉEL, pas décrit)
-
-L'agent reçoit une **mission en langage naturel** et doit **exécuter** quelque chose de
-vrai, dans un bac à sable, avec une preuve vérifiable.
-
-**Le geste central du projet : l'agent lit une documentation et un dépôt, puis exécute une
-tâche vérifiable.** Il commence par lire la documentation du service cible (son `README`, son
-`docs/`, son fichier de configuration) et le code du dépôt, en déduit la cause, puis agit —
-chaque lecture, chaque écriture, chaque commande passant par un **ordre signé**. Il ne
-termine pas sur une phrase : il termine sur des **artefacts** (diff, sortie de test, code de
-sortie, `HTTP 200` du health-check, empreinte du journal) que n'importe qui peut revérifier.
-
-**La mission de démonstration retenue (Pattern A + un morceau de Pattern B) :**
-
-> « Le service `checkout-api` de notre plateforme de démo ne répond plus. Trouve la cause,
-> corrige-la, et prouve que le service est revenu. Tu n'as pas le droit de toucher aux
-> données clients. »
-
-L'agent, en boucle, fait :
-
-1. **Lit** les journaux du service et son code (ordres `read` : *low risk*, exécutés seuls) ;
-2. **Écrit** un correctif dans le bac à sable (ordre `write` : *low risk* dans un fichier de
-   code du bac à sable) ;
-3. **Teste** : relance le service de test, récupère la sortie réelle (stdout/stderr, code de
-   sortie) — les **erreurs sont renvoyées au modèle** pour un nouvel essai (retry loop
-   visible, comme l'exige l'exemple « Self-Healing Runner ») ;
-4. **Applique** le correctif au service cible via un ordre `apply` mutant (*medium risk* :
-   snapshot automatique avant, rollback automatique en cas d'échec) ;
-5. **Vérifie** : `GET /health` du service → **HTTP 200 + corps attendu**, et une capture
-   d'écran de l'UI servie par le service (contrôle **vision** par un modèle multimodal).
-
-**Sortie = des artefacts vérifiables**, pas une phrase : le diff du correctif, la sortie des
-tests, le code de sortie, le résultat du health-check, la capture d'écran, l'empreinte du
-journal.
-
-**Ce n'est pas « l'agent dit qu'il a réparé » : la démo montre le service qui était mort
-redevenir vivant à l'écran.**
+> "An agent that only chats is a demo; an agent that executes safely is a product."
+> — the event page. That is exactly what this project is.
 
 ---
 
-## 3. Pourquoi son action est sandboxée — le cœur du projet
+## 2. What the agent does — and what is in this repository **today**
 
-C'est le critère « Blast Radius Zero » : *« Process isolation: execution never touches the
-host or app runtime. Secret hygiene: no API keys or credentials inside the sandbox.
-Resource limits: apply time and memory caps to every run. Lifecycle discipline: reset or
-destroy the environment after each task. »*
+### 2.1 The mission (the scenario the demo will tell)
 
-**Notre réponse à ces 4 points, et le cœur du système :**
+An agent receives a mission in natural language and has to **execute** something real, in a
+sandbox, with a verifiable receipt:
 
-| Exigence Vultr | Notre réponse | Où c'est prouvé à l'écran |
+> "The `checkout-api` service of our demo platform does not answer any more. Find the cause, fix
+> it, and prove the service is alive again. You are not allowed to touch customer data."
+
+The agent would read the service logs and its code, deduce the cause, act, and end on
+**artefacts** — a diff, a test output, an exit code, an `HTTP 200` from the health check, the
+fingerprint of the journal — that anybody can re-check. Every read, write and command would go
+through a signed order.
+
+### 2.2 What is **already built and tested** in this repository
+
+| Component | File | What it guarantees |
 |---|---|---|
-| Isolation du processus | L'agent **n'a pas de shell**. Il ne peut qu'**émettre des demandes d'ordres** à l'API du plan de contrôle. L'exécuteur est un processus séparé, dans un conteneur séparé. | Journal : chaque action de l'agent est une *demande*, jamais une exécution. |
-| Hygiène des secrets | Le bac à sable est lancé **sans aucune variable d'environnement de l'agent** ; les clés (inférence Vultr, API Vultr) n'existent que dans le processus du plan de contrôle, jamais dans le bac. | `docker inspect` à l'écran : la liste d'env du conteneur ne contient aucune clé. |
-| Limites de ressources | `--memory=256m --cpus=1 --pids-limit=128`, réseau coupé, système de fichiers en lecture seule, **timeout mural** ; plus des **quotas** par agent (nombre d'ordres, secondes d'exécution, octets écrits, tokens LLM, concurrence). | Compteurs de quota en direct dans l'UI ; chronomètre qui tue un éboulement. |
-| Discipline du cycle de vie | Un bac **neuf** par tâche, **détruit** à la fin (`--rm`, `destroy` pour le backend microVM). Rien ne survit d'une tâche à l'autre. | « sandbox sb-42 destroyed » dans le journal. |
+| The policy | `signedorders/policy.py` | 14 named, ordered rules classify every order; no model and no network in the decision loop; the same order always gets the same verdict |
+| The quotas | `signedorders/quotas.py` | sliding window per agent, budgets per task (orders, CPU seconds, bytes written, tokens, concurrent sandboxes), with an injectable clock |
+| The signature | `signedorders/ed25519.py`, `signer.py` | RFC 8032 Ed25519 in pure Python; the private key stays on the host, the public key is published |
+| The journal | `signedorders/journal.py` | append-only JSONL, hash-chained, verifiable offline with the standard library only |
+| The control plane | `signedorders/control.py` | order → verdict → sign / queue for a human → execute; a signed human approval; expiry; refusal that no human can unlock |
+| The HTTP door | `signedorders/server.py` | the only public surface: 5 read routes and 2 write routes, bearer keys compared in constant time |
+| The executor | `signedorders/sandbox.py` | one manifest, published as data, and two real isolation backends (Docker containers and `msb` microVMs), plus a recording test double |
+| The replay | `signedorders/replay.py` | re-derives the verdict of every recorded decision with the policy of today and reports any mismatch |
+| The secret scanner | `signedorders/preflight.py` | fails the build on a secret-looking pattern, a complete private-key block or an internal address |
+| The inference client | `signedorders/vultr.py` | the Vultr Serverless Inference client (OpenAI-compatible), used by the agent loop |
+| The CLI | `signedorders/cli.py` | `verify`, `replay`, `policy`, `init-key`, `sign`, `preflight`, `serve` |
 
-**Et le point qui fait la différence — la séparation des rôles :**
+### 2.3 What is **not** in this repository yet — stated plainly
+
+| Missing | Why it is missing | What replaces it in the demo that exists today |
+|---|---|---|
+| The agent loop (the LLM worker that turns a mission into orders) | it is written during the build window (3–8 November) | the demo script submits the orders a hostile instruction would produce, by hand |
+| The demo target service `checkout-api` (deliberately broken) | same | the demo does not need a broken service to show containment |
+| The web UI (orders, verdicts, quota counters, live journal) | same | the same information is served by the read routes of the HTTP door |
+| The sandbox replay (re-running recorded orders in a fresh sandbox) | same | the *decision* replay already works and is tested |
+| The `msb` microVM backend **at runtime** | the container has no KVM and no `msb`; its command line is built and tested, the backend is not run here | the Docker backend is the daily driver, the microVM backend is the second layer |
+
+Everything above is a **plan**, and the repository never pretends otherwise: the demo script and
+the video plan say explicitly that the agent scene is conditional and must be cut if it is not
+ready on the day.
+
+---
+
+## 3. Why its action is sandboxed — the core of the project
+
+This is the "Blast Radius Zero" criterion: *"Process isolation: execution never touches the host
+or app runtime. Secret hygiene: no API keys or credentials inside the sandbox. Resource limits:
+apply time and memory caps to every run. Lifecycle discipline: reset or destroy the environment
+after each task."*
+
+**Our answer to those four points — and the heart of the system:**
+
+| Vultr requirement | Our answer | Where it is proved |
+|---|---|---|
+| Process isolation | The agent **has no shell**. It can only **request** an order at the control plane's API. The executor is a separate process and the order runs in a separate container. | The journal: every agent action is a *request*, never an execution; `tests/test_control.py` |
+| Secret hygiene | The sandbox is launched with **no environment variable at all** (no `--env`, no `--env-file`); the keys (inference, agent, operator) exist only in the control-plane process, never in the sandbox | `tests/test_sandbox.py` asserts the absence of every `--env`; the manifest is public data |
+| Resource limits | `--memory=256m --cpus=1 --pids-limit=128`, network cut (`--network=none`), read-only root filesystem, **wall-clock timeout** (`timeout --signal=KILL`), plus per-agent and per-task quotas | `signedorders/sandbox.py` builds the line; `tests/test_sandbox.py` asserts the flags; `signedorders/quotas.py` |
+| Lifecycle discipline | One **fresh** sandbox per order, destroyed when it exits (`--rm`; `destroy` for the microVM backend). Nothing survives from one task to the next | `signedorders/sandbox.py`; the manifest is published as `scripts/sandbox-manifest.json` and a test asserts it matches the code |
+
+**And the point that makes the difference — the separation of roles:**
 
 ```
-   AGENT (dans le bac)          PLAN DE CONTRÔLE (sur la VM)        EXÉCUTEUR (séparé)
-   ───────────────────          ────────────────────────────        ──────────────────
-   peut : POST /orders     ──▶  1. vérifie l'identité de l'agent
-   ne peut PAS :                2. classifie le risque (règles)
-   • exécuter du shell          3. contrôle les quotas
-   • lire un secret             4. signe (Ed25519) ou met EN ATTENTE
-   • écrire hors du bac   ──▶  5. exécute dans un bac neuf ──────▶  6. journalise
-                                    (jamais de shell pour l'agent)     7. détruit le bac
+   AGENT (no shell, no secret)      CONTROL PLANE (on the Vultr VM)        EXECUTOR
+   ───────────────────────────      ──────────────────────────────        ──────────
+   may: POST /orders ──────────▶    1. identify the agent
+   may NOT:                         2. classify the risk (named rules)
+    • run a shell                   3. enforce the quotas (sliding window)
+    • read a secret                 4. sign (Ed25519) — or queue for a human
+    • write outside the sandbox     5. run in a fresh sandbox ────────▶   6. append to the
+                                        (the agent never gets a shell)        journal
+                                                                              7. destroy the
+                                                                                 sandbox
 ```
 
-**La clé privée de signature ne sort jamais de la VM et n'est jamais dans le dépôt.**
-La clé **publique** (de vérification) est dans le dépôt : n'importe qui peut, depuis un
-clone frais et **sans aucun secret**, vérifier hors ligne chaque ligne du journal :
+**The private signing key never leaves the VM and is never in the repository.** The **public**
+key is: from a fresh clone, with no secret at all, anybody can check the journal offline:
 
 ```bash
-python3 -m signedorders verify journal.jsonl   # RC 0 = chaîne intacte
+python3 -m signedorders verify journal.jsonl   # RC 0 = the chain is intact
 ```
 
-**C'est le cœur de l'argument « Blast Radius Zero » :** l'agent compromis (par une
-injection de prompt, un bug, ou un modèle hallucinant) peut **demander** n'importe quoi,
-mais il ne peut **exécuter** que ce qui est **signé**, et il ne peut obtenir une signature
-que si la politique le classe *low risk*. Tout le reste **attend un humain**.
+**This is the heart of the "Blast Radius Zero" argument:** a compromised agent (by a prompt
+injection, a bug, or a hallucinating model) can *ask* for anything; it can only *run* what has
+been **signed**, and it can only obtain a signature if the policy classified the order as low
+risk. Everything else waits for a human — and the forbidden ones wait for nobody, because no
+human approval can unlock them.
 
-**Le passage par le garde-fou humain est court et lisible :** un ordre à risque élevé apparaît
-dans l'UI (et, en option, sur Telegram) avec **l'action exacte, la cible, la justification
-et l'impact** → `APPROUVER` / `REFUSER`. En cas de non-réponse, l'ordre **expire** (pas
-d'approbation implicite).
+**The human gate is short and readable:** a high-risk order appears with the exact action, the
+target, the justification and the impact → `APPROVE` / `REFUSE`. If nobody answers, the order
+**expires** (silence is not an approval). The approval itself is **signed** with the operator's
+key: "a human said yes" is an artefact that can be verified, not a boolean that anybody can flip.
 
 ---
 
-## 4. Architecture
+## 4. Architecture (what is really deployed)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│  VM VULTR (Ubuntu 24.04)  — « le plan de contrôle »  1 VM, 2 vCPU / 4 Go      │
+│  VULTR CLOUD COMPUTE — Ubuntu 24.04 — one VM, the control plane               │
 │                                                                              │
 │  ┌────────────────────────────────────────────────────────────────────────┐  │
-│  │  signedorders/  (FastAPI + SQLite WAL + Ed25519)                      │  │
-│  │   • API /orders   (créer, lister, approuver, refuser)                  │  │
-│  │   • politique.py  (classification du risque — règles AUDITABLES)       │  │
-│  │   • quotas.py     (par agent / par tâche / par heure)                  │  │
-│  │   • journal.py    (JSONL append-only, chaîne de hachage)               │  │
-│  │   • signataire    (Ed25519 — clé privée JAMAIS dans le dépôt)          │  │
-│  │   • rejeu.py      (rejoue le journal dans un bac neuf, compare)        │  │
-│  │   • ui/           (web + SSE : ordres, verdicts, quotas, journal)     │  │
+│  │  signedorders/  — Python 3.10+, standard library only                  │  │
+│  │   server.py     HTTP door (:8000) — the only public surface            │  │
+│  │   control.py    order → verdict → sign / queue → execute                │  │
+│  │   policy.py     14 named rules (risk classification — auditable)        │  │
+│  │   quotas.py     sliding window per agent + budgets per task             │  │
+│  │   journal.py    JSONL append-only, hash-chained, verifiable offline    │  │
+│  │   ed25519.py    RFC 8032, pure Python (signing / verification)          │  │
+│  │   replay.py     re-derives the verdicts of a journal                     │  │
+│  │   preflight.py  the secret scanner                                     │  │
+│  │   vultr.py      the Vultr Serverless Inference client                  │  │
 │  └────────────────────────────────────────────────────────────────────────┘  │
-│         ▲  POST /orders (clé d'agent, portée = « demander » seulement)      │
-│         │                                                                  │
+│         ▲  POST /orders  (bearer key of the agent = "ask", nothing else)    │
+│         │  POST /orders/<id>/approve|reject  (bearer key of the operator)   │
 │  ┌──────┴───────────┐      ┌────────────────────┐      ┌──────────────────┐  │
-│  │ agent (worker)   │      │ exécuteur          │      │ bac à sable      │  │
-│  │ boucle LLM       │      │ (processus dédié)  │      │ (NOUVEAU par      │  │
-│  │ → Vultr Serverless│      │ vérifie la sig.    │      │  tâche, détruit  │  │
-│  │   Inference      │      │ + re-contrôle la   │      │  à la fin)        │  │
-│  │ (OpenAI-compatible)│    │  politique         │      │ --network=none    │  │
-│  └──────────────────┘      │ applique quotas    │      │ --memory=256m     │  │
-│                            │ snapshot/rollback  │      │ --cpus=1          │  │
-│                            └────────────────────┘      │ --read-only       │  │
-│                                                       │ --cap-drop=ALL    │  │
-│  ┌──────────────────┐      ┌────────────────────┐      │ --pids-limit=128 │  │
-│  │ service cible    │      │ « checkout-api »   │      │ timeout mural    │  │
-│  │ (notre démo)     │      │ CASSÉ au départ    │      └──────────────────┘  │
-│  └──────────────────┘      └────────────────────┘                            │
+│  │ agent (planned)  │      │ executor           │      │ sandbox          │  │
+│  │ LLM loop →       │      │ checks the         │      │ NEW per order,   │  │
+│  │ Vultr Serverless │      │ signature + the    │      │ destroyed after  │  │
+│  │ Inference        │      │ policy again,      │      │ --network=none   │  │
+│  │ (OpenAI-compat.) │      │ applies the quotas │      │ --memory=256m    │  │
+│  └──────────────────┘      └────────────────────┘      │ --cpus=1         │  │
+│                            journal.jsonl + the key      │ --read-only      │  │
+│                            (mode 0600, on the VM)       │ --cap-drop=ALL   │  │
+│                                                       │ --pids-limit=128 │  │
+│                                                       │ wall-clock timeout│ │
+│                                                       └──────────────────┘  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Deux backends de bac à sable derrière une seule interface** (`SandboxBackend`) :
+**Two real sandbox backends behind one interface** (`SandboxBackend`):
 
-| Backend | Isolation | Rôle |
+| Backend | Isolation | Role |
 |---|---|---|
-| `docker` | conteneur, namespace + cgroups | le quotidien (Docker est « strongly recommended » par Vultr) |
-| `microsandbox` (`msb`) | **microVM** (libkrun/KVM, noyau séparé de l'hôte) | la démonstration forte : *« the same hostile order, blocked by two different isolation layers »* |
+| `docker` | container (namespaces + cgroups) | the daily driver (Docker is "strongly recommended" by Vultr) |
+| `microsandbox` (`msb`) | **microVM** (libkrun/KVM, its own kernel) | the strong demonstration: *the same hostile order, blocked by two different isolation layers* |
 
-> Le guide Vultr « Agent Sandboxing » décrit exactement `msb` : microVM, `--cpus`/`--memory`
-> explicites, isolation entre bacs frères par défaut, SDK Python, serveur MCP. C'est un
-> excellent second backend — et il prouve la maîtrise de la pile.
+A third backend, `recording`, is a **test double**: it records the calls instead of running
+them, so the whole control plane (signature, approval, quota, journal) can be exercised —
+and a demo run on a laptop with no isolation at all. It writes `backend: "recording"` in the
+journal, so nobody can mistake it for a real run.
+
+> Vultr's "Agent Sandboxing" guide describes exactly `msb`: microVM, explicit `--cpus`/`--memory`,
+> isolation between sibling sandboxes by default, Python SDK, MCP server. The command line is
+> built and tested here; the backend cannot run in this container (no KVM, no `msb`).
+
+**The API surface — five read routes, two write routes:**
+
+| Route | Method | What it answers |
+|---|---|---|
+| `/health` | GET | status, **public** key, key id, counters (never a private key, never a secret) |
+| `/policy` | GET | the 14 rules, with their id, risk and explanation |
+| `/quotas` | GET | the quota counters of an agent and of a task |
+| `/orders` | GET | the pending orders and the decisions taken |
+| `/journal/verify` | GET | the hash chain, verified **live** |
+| `/orders` | POST | submit an order (bearer key of the agent) |
+| `/orders/<id>/approve` · `/reject` | POST | a **signed** human decision (bearer key of the operator) |
 
 ---
 
-## 5. La pile technique
+## 5. The stack (what is really used)
 
-| Couche | Choix | Pourquoi |
+| Layer | Choice | Why |
 |---|---|---|
-| **Hébergement** | **Vultr Cloud Compute**, 1 VM Ubuntu 24.04 | « Both challenges require a Vultr VM backend » ; le plan de contrôle EST le backend |
-| **Inférence (obligatoire)** | **Vultr Serverless Inference**, `https://api.vultrinference.com/v1` (compatible OpenAI) | « Challenge 1 **must** use Vultr Serverless Inference for agent LLM calls » |
-| **Modèle — agent** | `qwen3.8-flash-next` (texte+image+fichier+vidéo → texte), ou `minimax-m3.1-flash` | rapides, abordables, disponibles dans la liste publique du 31/10 |
-| **Modèle — vérificateur** | `qwen3.8-27b` ou `nemotron-3-nano-omni-30b-a3b-reasoning` | **vision** : contrôle la capture d'écran du service réparé |
-| **Modèle — garde-fou** | `nemotron-3.5-content-safety` | défense en profondeur : filtre l'ordre **avant** la politique |
-| **Exécution** | Docker sur la VM + **Microsandbox** (`msb`) en second backend | « Sandbox boundary: containers or throwaway instances on Vultr, never inside the app process » |
-| **API / UI** | FastAPI + uvicorn, Jinja2 + JS vanilla, SSE pour le direct | une seule dépendance de façade, pas de framework front lourd à déployer |
-| **Stockage** | SQLite (WAL) | pas de base gérée à payer ; le journal est un fichier |
-| **Signature** | Ed25519 (`cryptography`) | petite, rapide, vérifiable en 20 lignes ; clé publique dans le dépôt, clé privée sur la VM |
-| **App cible de la démo** | un petit service `checkout-api` (uvicorn) **écrit par nous**, volontairement cassé | « on a target that belongs to us » : aucune cible tierce |
-| **Tooling** | `pytest`, `ruff`, `uv` ou `pip`+venv, `terraform`/`cloud-init` pour la VM | reproductible, installable en une commande |
-| **Vulnérabilité testée** | `git` + `gh` (dépôt public), un **faux** secret `DEMO_ONLY_NOT_A_REAL_KEY` planté dans le service | l'injection de prompt cherche à exfiltrer un secret **fictif** |
+| **Hosting** | **Vultr Cloud Compute**, one Ubuntu 24.04 VM | "Both challenges require a Vultr VM backend"; the control plane *is* the backend |
+| **Inference (mandatory)** | **Vultr Serverless Inference**, `https://api.vultrinference.com/v1` (OpenAI-compatible) | "Challenge 1 **must** use Vultr Serverless Inference for agent LLM calls" |
+| **Language** | Python 3.10+, **standard library only** | the core has **no dependency**: a judge clones and runs it with nothing to install |
+| **HTTP door** | `http.server` (`ThreadingHTTPServer`) | no framework to deploy, no version to keep in sync; the door is 400 lines and is tested |
+| **Signature** | Ed25519 (RFC 8032) in pure Python, `cryptography` as an **optional** cross-check | verifiable in 20 lines, public key in the repository, private key on the VM |
+| **Storage** | a JSONL file for the journal, nothing else | no managed database to pay for; the journal *is* the artefact |
+| **Execution** | Docker on the VM, plus **Microsandbox** (`msb`) as the second backend | "Sandbox boundary: containers or throwaway instances on Vultr, never inside the app process" |
+| **Tests** | `pytest` (the only development dependency) | the suite is the specification of the invariants |
+| **Deployment** | `cloud-init` + a systemd unit + a verification script | the VM is built from zero by one paste; the verifier proves it answers |
+| **Tooling** | `pip` + venv | one command, reproducible |
 
-**Sur les GPU** : « Vultr GPUs are not available for this event » → **aucun GPU dans l'architecture.**
+**On GPUs:** "Vultr GPUs are not available for this event" → **no GPU anywhere in the architecture.**
 
-**Sur le coût** : les 200 $ de crédits couvrent largement une VM 2 vCPU / 4 Go sur 6 jours
-+ quelques appels d'inférence. **Aucun euro de notre part** (le compte Vultr sera créé par
-Tgg, le code promo est distribué au kick-off).
+**On cost:** the 200 $ of credits cover a small VM for the length of the event; the project
+itself costs **0 $** — MIT, self-hosted, no service to subscribe to.
 
 ---
 
-## 6. Les 5 étapes de la démo (résumé — le détail est dans `DEMO.md`)
+## 6. The containment moment, step by step (what the video shows)
 
-| # | Étape | Ce que le spectateur voit | La preuve |
+This is the challenge's explicit requirement — *"One containment moment shown in the video"* —
+and the strongest thing in the project. It is **not a promise**: it is one command.
+
+```bash
+bash scripts/demo-containment.sh     # no account, no key, no network, nothing installed
+```
+
+| Step | What the agent asks for | What the control plane answers | On the screen |
 |---|---|---|---|
-| 1 | **La mission** | L'agent reçoit « le service est cassé, répare-le » | La console de l'agent |
-| 2 | **Les ordres** | Chaque action de l'agent apparaît comme un **ordre signé** : signature, risque, verdict | Journal en direct + signature Ed25519 vérifiable |
-| 3 | **Le travail réel** | Le correctif est écrit et testé **dans le bac**, le service **redevient vivant** (200) | Diff + sortie de tests + capture d'écran + health-check |
-| 4 | **LE MOMENT DE CONFINEMENT** | Une **injection de prompt** pousse l'agent à `rm -rf` et à exfiltrer → l'ordre est classé **HAUT RISQUE** → **refusé**, les données sont **intactes** ; puis, même **après approbation**, le bac **absorbe** `rm -rf /` et l'éboulement est tué par le timeout | Empreinte des données identique avant/après + ligne `DENIED` au journal + overlay du conteneur intact + chronomètre |
-| 5 | **Le rejeu** | Le journal est rejoué dans un bac **neuf** → **même résultat** ; l'UI affiche ordres/refus/coût/durée | Bouton « Rejouer » + RC 0 de la vérification hors ligne |
+| 1 | a legitimate order (`exec` inside the sandbox) | `allow.sandbox_exec` → `auto_execute` | `verdict : auto_execute` |
+| 2 | `rm -rf /srv/data` (destruction) | `risk.destructive` → **waits for a human** | `verdict : queued_for_human` |
+| 3 | the same order, **refused by the operator** | a **signed refusal**, written to the journal | `verdict : rejected` |
+| 4 | `read host:///etc/app/secret` (escape) | `forbidden.escape` → **refused, and no human can unlock it** | `HTTP 403` — `verdict : refused` |
+| 5 | the journal | verified live, then verified **offline** with no secret | `OK — the chain is intact (N entries checked)` |
 
-L'étape 4 est **obligatoire** (Vultr : « one containment moment shown in the video ») et c'est
-**le point le plus fort du projet** : on ne montre pas seulement que le bac à sable bloque,
-on montre que **le plan de contrôle bloque l'agent *avant* que le bac à sable ait à le faire**.
+> The point that the video must make, in one sentence: **the blast radius was one order that
+> never ran.** The control plane blocked it *before* the sandbox had to.
 
 ---
 
-## 7. Le plan de la vidéo (résumé — le détail est dans `DEMO.md`)
+## 7. The video plan (the detail is in `submission/DEMO-FILMEE.md`)
 
-Atelier Windows : **captures d'écran + voix de synthèse** (comme demandé par la mère),
-montage sans musique, sous-titres integrés, **4 min 30** (barème : « less than 5 min »),
-fichier **MP4 < 300 Mo**.
+Recordings of the screen + a neutral voice, no music, embedded subtitles, **4 min 30** (the
+rules ask for "less than 5 min"), **MP4 under 300 MB**.
 
-| Temps | Contenu |
+| Time | Content |
 |---|---|
-| 0:00–0:25 | **Le problème** : un agent qui fait du vrai travail peut tout casser ; « blast radius ». |
-| 0:25–0:50 | **La réponse en 25 s** : plan de contrôle sur VM Vultr, ordres signés, bac à sable, quotas, journal rejouable. Schéma animé à l'écran. |
-| 0:50–1:40 | **La démo, partie 1** : mission → ordres → correctif → service réparé (HTTP 200 + capture). |
-| 1:40–3:00 | **LE MOMENT DE CONFINEMENT** : l'injection, l'ordre à haut risque, le refus, la preuve ; puis le `rm -rf` absorbé et l'éboulement tué. |
-| 3:00–3:50 | **Rejeu + vérifiabilité** : rejeu du journal, vérification hors ligne, deux backends d'isolation. |
-| 3:50–4:30 | **Valeur business + originalité + dépôt + URL de démo.** |
+| 0:00–0:25 | the problem: an agent that does real work can break real things — the "blast radius" |
+| 0:25–0:50 | the architecture in 25 s: control plane on a Vultr VM, signed orders, quotas, sandbox, replayable journal |
+| 0:50–1:40 | *(conditional)* the real work: the agent reads, writes, tests, fixes — each step a signed order |
+| 1:40–3:20 | ⭐ **THE CONTAINMENT MOMENT**: the injection, the destructive order, the human refusal, the forbidden order, the isolation running |
+| 3:20–4:30 | the replay, the offline verification, the test counter, the closing sentence |
+
+> If time is short, the conditional scene is cut — **never** the containment moment.
 
 ---
 
-## 8. 🔒 Ligne rouge : ce qui ne sera PAS dans le dépôt public
+## 8. 🔒 The red line: what is **not** in the public repository
 
-| Interdit | Règle appliquée |
+| Forbidden | The rule that is applied |
 |---|---|
-| **Aucune clé, aucun secret** | Les clés sont lues dans l'**environnement** de la VM (`/etc/signedorders/env`, mode 0600, hors du dépôt). Le dépôt ne contient que des **noms** de variables. |
-| **Aucune donnée privée** | La cible de la démo est **notre** service `checkout-api`, écrit pour l'occasion. Le « secret » que l'injection tente d'exfiltrer est un **faux** (`DEMO_ONLY_NOT_A_REAL_KEY`). Aucune donnée réelle, aucun log client, aucun nom de personne. |
-| **Aucune adresse de nos serveurs** | Aucune IP, aucun domaine interne, aucun identifiant de compte dans le dépôt ni dans la vidéo (le plan de démo prévoit un « scrub » des captures). |
-| **Clé privée de signature** | Générée **sur la VM** au premier démarrage (`signedorders init-key`), jamais pushée. Seule la clé **publique** est versionnée. |
-| **Code préexistant** | Le projet est **écrit de zéro pendant la fenêtre** (3–8 novembre). Aucune ligne du système interne n'est reprise : c'est la condition du « original » du règlement. |
+| **No key, no secret** | the keys are read from the **environment** of the VM (`/etc/signedorders/env`, mode 0600, outside the repository). The repository contains only variable **names**. |
+| **No private data** | the demo target is **our own** service; the "secret" the injection tries to exfiltrate is a **fake** (`DEMO_ONLY_NOT_A_REAL_KEY`). No real data, no customer log, no personal name. |
+| **No address of our servers** | no IP, no internal domain, no account identifier in the repository nor in the video (the shot list includes a "scrub" checklist). |
+| **The private signing key** | generated **on the VM** at first start (`signedorders init-key`), never pushed. Only the **public** key is versioned. |
+| **Third-party code** | the project is written from scratch for this challenge; no line of any internal system is reused — that is the condition of the "original" requirement. |
 
-Un contrôle automatisé (`preflight`) vérifiera avant chaque commit : absence de motif de
-secret, absence de **bloc** de clé privée complet (`BEGIN … PRIVATE KEY` … `END … PRIVATE KEY`),
-absence de motifs `sk-`, `vultr_`, `ghp_`, `AKIA…`, absence d'IP publique de nos serveurs.
-Contrôle écrit et exécuté le 31/10/2026 : `python3 -m signedorders.preflight .` → **OK**,
-et le même contrôle **refuse** un vrai bloc de clé (contre-épreuve).
+An automated control (`python3 -m signedorders preflight .`) runs before every commit and fails
+on: a secret-shaped pattern, a **complete** private-key block (`BEGIN … PRIVATE KEY` … `END …`),
+and internal addresses. It was run on 31/10/2026 and on every commit since: **OK**, and the same
+control **refuses** a real key block (counter-proof).
+
+> **On the "written during the window" question.** No published rule of the challenge requires the
+> code to be written between 3 and 8 November: the rule book asks for *original* and *MIT-compliant*
+> submissions. The project was written from scratch for this challenge and is published under MIT;
+> the build window is used to **run** it on the Vultr VM, to record the video and to submit — not to
+> write it. Nothing in this repository comes from anywhere else.
 
 ---
 
-## 9. Le format de l'ordre signé (le contrat central)
+## 9. The signed order — the central contract
+
+An **order** is what the agent asks for; it is immutable and the control plane never mutates it:
 
 ```jsonc
+// the order, as the agent sends it (POST /orders)
 {
-  "order_id": "so_7f3a…",              // uuid
-  "issued_at": "2026-11-05T14:03:11Z",
-  "issuer": "agent/checkout-fixer",     // identité de l'agent
-  "task_id": "task_91b2…",             // la mission
-  "action": "exec",                    // read | write | apply | exec | net
+  "task_id": "task_91b2…",              // the mission
+  "agent_id": "agent/checkout-fixer",   // who asks
+  "action": "exec",                     // read | write | test | exec | apply | restart | delete | network | escalate
   "target": "sandbox://sb-42:/app/main.py",
-  "payload": { "argv": ["pytest", "-q"] },
-  "risk": "low",                       // low | medium | high  (décidé par la politique)
-  "rule_id": "allow.test.exec",        // la règle qui a décidé — traçable
-  "policy_hash": "sha256:…",           // empreinte de la version de la politique utilisée
-  "quota_snapshot": { "orders": 7, "cpu_seconds": 12, "tokens": 1830 },
-  "compensates": null,                 // action de rollback (obligatoire si l'ordre mute)
-  "nonce": "…",
-  "signature": "ed25519:…"            // signature de l'ordre, sur les octets canoniques
+  "args": { "command": "pytest -q" },
+  "justification": "the test suite of the sandbox failed twice"
 }
 ```
 
-**Propriétés garanties par la conception :**
+The **decision** is what the control plane answers, and it is what gets signed and journalled:
 
-1. **Vérifiable hors ligne** — la clé publique est dans le dépôt ; `verify` recalcule la
-   signature et la chaîne de hachage du journal → **RC 0** si rien n'a été modifié.
-2. **Non-rejouable par l'exécuteur** — l'exécuteur refuse un `nonce` déjà vu ou une
-   `policy_hash` qui ne correspond pas à la politique en vigueur.
-3. **Auditable** — la règle qui a classé l'ordre est dans l'ordre lui-même.
-4. **Rejouable** — `signedorders replay` rejoue les ordres en lecture seule dans un bac
-   neuf et compare les sorties : la traçabilité devient une **preuve**, pas une promesse.
+```jsonc
+// the decision, as the API returns it
+{
+  "order": { "id": "so_7f3a…", "created_at": "2026-11-05T14:03:11Z", "…": "the order, canonicalised" },
+  "risk": "low",                        // low | medium | high | forbidden — only the policy sets it
+  "verdict": "auto_execute",            // the 8 possible verdicts
+  "rule_id": "allow.sandbox_exec",      // the rule that decided — traceable
+  "reason": "the command runs inside the sandbox",
+  "trace": {                            // why that rule won, without a debugger
+    "rule_id": "allow.sandbox_exec",
+    "explanation": "…",
+    "inputs":  { "action": "exec", "target": "sandbox://sb-42:/app/main.py" },
+    "outputs": { "risk": "low" },
+    "evaluated":  ["forbidden.escape", "forbidden.privilege_escalation", "…"],  // the rules consulted, in order
+    "consulted":  ["action", "target"]                                            // the fields actually read
+  },
+  "quota_snapshot": { "orders": 7, "cpu_seconds": 12, "tokens": 1830 },
+  "signature": "ed25519:…",             // over the canonical bytes of the decision
+  "public_key": "…",                    // the public key, so the check is possible offline
+  "decided_at": "2026-11-05T14:03:12Z"
+}
+```
+
+**The canonical form is boring on purpose** — that is what makes it reproducible: keys sorted,
+no insignificant whitespace, UTF-8 without escaping, `NaN`/`Infinity` rejected. Two runs, two
+machines, two Python versions produce the same bytes.
+
+**Guaranteed by the design:**
+
+1. **Verifiable offline** — the public key is in the repository; `signedorders verify` recomputes
+   the chain, and `signedorders replay` re-derives the verdict of every recorded decision.
+2. **Traceable** — the rule that classified the order, the fields it read and the rules that were
+   consulted before it are all in the record.
+3. **One hash chain for everything** — `h_n = sha256( h_{n-1} || sha256(canonical_json(record_n)) )`.
+   An edited, removed, inserted or reordered record is detected, and the report says which one.
+4. **A human approval is an artefact too** — it is signed with the operator's key, and a forged
+   approval is refused (the tests cover it).
 
 ---
 
-## 10. La politique de risque (règles auditables, en données)
+## 10. The risk policy — 14 named rules, in data
 
-| Catégorie | Exemples | Décision |
+`python3 -m signedorders policy` prints them; the order of the table **is** the order of
+evaluation, and the forbidden rules come first.
+
+| # | Rule id | Risk | It fires when |
+|---|---|---|---|
+| 1 | `forbidden.escape` | forbidden | the order tries to reach the host or to walk out of the sandbox root |
+| 2 | `forbidden.privilege_escalation` | forbidden | the order asks for a privileged capability (`--privileged`, `sudo`, `chroot`, namespace sharing) |
+| 3 | `forbidden.secret_read` | forbidden | the order tries to read a credential (private key, environment file, process environment) |
+| 4 | `forbidden.cloud_metadata` | forbidden | the order targets the cloud metadata service |
+| 5 | `risk.destructive` | high | the order destroys something (`delete`, `rm`, `truncate`, `DROP`) |
+| 6 | `risk.network` | high | the order goes out to the network and the host is not on the allow-list |
+| 7 | `risk.mutating_target` | medium | the order mutates the target (apply, restart) → executed, with the quota snapshot |
+| 8 | `allow.sandbox_read` | low | a read inside the sandbox |
+| 9 | `allow.sandbox_write` | low | a write inside the sandbox |
+| 10 | `allow.sandbox_test` | low | running the test suite of the sandbox |
+| 11 | `allow.sandbox_exec` | low | running a command inside the sandbox |
+| 12 | `allow.escalate` | — | the agent asks a human a free-text question |
+| 13 | `allow.network_egress` | low | an egress to a host that **is** on the allow-list |
+| 14 | `default.unknown` | high | anything the table does not describe → **high risk, waits for a human** |
+
+**Two kinds of refusal, and the difference matters:**
+
+- **Refusal by policy** — the order is *dangerous by nature* (`forbidden.*`): **no human
+  approval can ever unlock it**. The system refuses by construction. This is what makes the
+  blast radius zero rather than "small".
+- **Refusal by quota** — the order is refused, the journal says so, and when a safety budget
+  (CPU seconds, bytes written) is crossed the automatic rollback triggers.
+
+> The unknown is always **high risk**, never low: a rule that nobody wrote must not become a
+> rule that nobody checks.
+
+---
+
+## 11. The day-by-day plan (3 → 8 November), with the real status
+
+| Day | Objective | End criterion | Status today (01/11) |
+|---|---|---|---|
+| **3 nov. (Mon)** | Vultr account + the promo code at the kick-off · create the VM · paste the cloud-init · verify the deployment | the API answers on the public URL | the cloud-init and the verifier are written and tested locally; **the account and the VM are a human action** |
+| **4 nov. (Tue)** | the core: policy, quotas, Ed25519, the hash-chained journal, the control plane, the HTTP door | the tests are green; a signed order runs, a forged one is refused | **done and published** — 217 tests |
+| **5 nov. (Wed)** | the agent loop (LLM + retry on failure) on Vultr Serverless Inference | one mission passes end to end on a fresh sandbox | the inference client exists (`vultr.py`); the loop is the next piece |
+| **6 nov. (Thu)** | the demo target service `checkout-api`, deliberately broken · the web UI | the mission runs and the service comes back alive | planned; the demo does not need it to show containment |
+| **7 nov. (Fri)** | clean deployment on Vultr · **public demo URL** · 3 demo takes · the video | the video is ≤ 4 min 30, the PDF deck is ready, the URL is stable | the shot list and the narration are written (`DEMO-FILMEE.md`) |
+| **8 nov. (Sun)** | **submission before 20:00 UTC** (2 h of margin) · final re-read of the README · scrub the captures · final commit and push | the form is submitted, the public repository is visible, the video is online | the four documents to paste are written (`submission/SOUMISSION-EN.md`) |
+
+**The submission on 8 November is done by hand by the owner on their lablab.ai account**: the
+rules require a registered team, and automating that submission would be unauthorized automation
+under the terms of the event.
+
+---
+
+## 12. Business value (scoring criterion 2)
+
+**The problem, as a market:** companies deploy agents that do real work (code, browser, data).
+They then discover they are missing three things: a **blast radius** limit, an **audit trail**
+(who decided what, and why), and a **human gate** without which the agent cannot be deployed in
+production.
+
+**What exists today does not do this work:** *tracing* observes the agent after the fact;
+*evals* test it outside production; *guardrails* filter the input. **None of them makes the
+*authorisation* a signed, offline-verifiable, replayable operation.** That combination is what
+we claim — and it is the technical core of this repository, not a roadmap item.
+
+**Commercial model (hypothesis, *not* implemented in this repository — the challenge entry is
+the free, MIT-licensed self-hosted product):**
+
+| Offer | Price | Content |
 |---|---|---|
-| `read` — lecture de fichier, `tail` de journal, `GET /health` | journaliser, inspecter | **low** → exécution seule |
-| `test` — lancer la suite de tests du bac | `pytest -q` | **low** → exécution seule |
-| `write` — écrire un fichier **du bac** | patch du code du bac | **low** → exécution seule (le bac est jetable) |
-| `apply` — muter la **cible** | redémarrer le service cible | **medium** → exécution seule **avec snapshot + rollback automatique** |
-| `restart` — redémarrer un service | systemctl restart | **medium** → exécution seule + snapshot |
-| `delete` | `rm`, `rm -rf`, `truncate`, `DROP` | **high** → **approbation humaine obligatoire** |
-| `network` — sortir vers l'extérieur | `curl`, `wget`, métadonnées cloud `169.254.169.254` | **high** si la cible n'est pas sur la liste blanche → **approbation** |
-| `escape` — tenter de toucher l'hôte | `../..`, `/proc`, `chroot`, montage, `--privileged` | **high** + **refus technique** (la politique refuse l'ordre, pas d'approbation possible) |
-| `secret` — lire une variable d'environnement | `env`, `printenv`, `/proc/self/environ` | **high** + refus technique |
+| **Signed Orders OSS** | 0 $ | self-hosted: control plane, executor, journal, replay |
+| **Signed Orders Cloud** | 29 $/month/agent · 199 $/month/team | hosting of the signing key, approvals, SIEM, journal retention, managed quotas |
+| **Signed Orders Enterprise** | on quote | HSM/KMS, eIDAS-conformant signing, multi-tenant audit |
 
-**Deux niveaux de refus, à distinguer clairement (c'est un point de conception fort) :**
+**Why the jury should believe it (three arguments):**
 
-- **Refus par politique** (l'ordre est *dangereux par nature* : il est marqué `escape` ou
-  `secret`) → **aucune approbation humaine ne peut le déverrouiller**. Le système refuse
-  par construction.
-- **Refus par quota** → l'ordre est refusé, le journal le dit, et si le quota de sécurité
-  (temps d'exécution, octets écrits) est franchi, le **rollback automatique** se déclenche.
+1. **Avoided cost** — an agent incident costs far more than a monthly subscription; the control
+   plane is insurance, not a luxury.
+2. **Audit evidence** — the signed journal is a compliance artefact (who, what, when, with which
+   signature) — an argument that speaks to security and compliance teams.
+3. **Originality** — signing the *authorisation* instead of tracing the *activity* is a simple,
+   striking inversion.
 
 ---
 
-## 11. Le plan jour par jour (3 → 8 novembre)
+## 13. Risks and plan B
 
-| Jour | Objectif | Critère de fin |
-|---|---|---|
-| **3 nov. (mardi)** | Compte Vultr + code promo (au kick-off) · création de la VM · squelette du dépôt (README, licence, CI) · choix du modèle validé par un appel réel | 1 appel à Serverless Inference renvoie une réponse ; la VM répond en SSH |
-| **4 nov. (mercredi)** | Noyau : signature Ed25519, format d'ordre, politique, quotas, journal chaîné, **exécuteur** + backend Docker | Les tests unitaires du noyau passent ; un ordre signé s'exécute, un ordre falsifié est refusé |
-| **5 nov. (jeudi)** | Agent (boucle LLM + reprise sur erreur) + service cible `checkout-api` cassé + UI web (SSE) + porte d'approbation | La mission de bout en bout passe sur un bac neuf ; l'UI affiche le flux |
-| **6 nov. (vendredi)** | Backend Microsandbox (`msb`) · rollback automatique · rejeu du journal · durcissement (egress, quotas stricts) | La même attaque est bloquée par les **deux** backends ; le rejeu donne le même résultat |
-| **7 nov. (samedi)** | Déploiement propre sur Vultr · **URL de démo publique** · 3 passes de démo filmées · diaporama · montage vidéo | Vidéo ≤ 4 min 30 Exportée, diaporama PDF prêt, URL de démo stable |
-| **8 nov. (dimanche)** | **Soumission avant 20:00 UTC** (2 h de marge) · relecture du README · scrub des captures · commit final · push du dépôt public | Formulaire soumis, dépôt public visible, vidéo en ligne |
-
-**Le 8 novembre, la soumission se fait à la main par Tgg sur son compte lablab.ai**
-(la consigne de la mère est explicite, et l'automatisation de la soumission serait
-« unauthorized automation » au sens du règlement).
-
----
-
-## 12. Valeur business (critère n° 2 du barème)
-
-**Le problème, formulé comme un marché :** les entreprises déploient des agents qui
-exécutent du vrai travail (code, navigateur, données). Elles découvrent ensuite qu'il leur
-manque trois choses : **une limite d'explosion** (« blast radius »), **une preuve
-d'audit** (qui a décidé quoi, et pourquoi), et **un garde-fou humain** sans lequel l'agent
-n'est pas déployable en production.
-
-**Ce qui existe déjà ne fait pas ce travail :** les outils de *tracing* observent l'agent
-après coup ; les *evals* le testent hors production ; les *guardrails* filtrent l'entrée.
-**Aucun ne fait de l'**autorisation** une opération **signée, hors ligne vérifiable et
-rejouable**. C'est la combinaison distinctive que nous revendiquons (à ré-vérifier dans le
-pitch : « distinct », pas « unprecedented »).
-
-**Modèle économique** (cœur MIT, service payant) :
-
-| Offre | Prix | Contenu |
-|---|---|---|
-| **Signed Orders OSS** | 0 $ | Auto-hébergé : plan de contrôle, exécuteur, journal, rejeu |
-| **Signed Orders Cloud** | 29 $/mois/agent · 199 $/mois/équipe | hébergement de la clé de signature, approbations Telegram/Slack, SIEM, rétention du journal, quotas gérés |
-| **Signed Orders Enterprise** | sur devis | HSM/KMS, signature conforme (eIDAS), audit multi-tenant |
-
-**Pourquoi les jugeurs doivent y croire (3 arguments) :**
-1. **Coût évité** : un incident d'agent coûte (en moyenne) bien plus qu'un abonnement
-   mensuel ; le plan de contrôle est une assurance, pas un luxe.
-2. **Preuve d'audit** : le journal signé est un artefact de conformité (qui, quoi, quand,
-   avec quelle signature) — un argument qui parle aux équipes sécurité et conformité.
-3. **Originalité** : signer l'*autorisation* plutôt que tracer l'*activité* est une
-   inversion simple et frappante.
-
----
-
-## 13. Risques et plans B (à traiter au jour le jour, pas la veille)
-
-| Risque | Plan B |
+| Risk | Plan B |
 |---|---|
-| Le compte Vultr / le code promo ne sont pas activés le 3 nov. | Construire et tester **en local** dans le conteneur (Docker disponible ? sinon sous-rootless podman) ; le backend Docker ne change pas. |
-| `msb` (Microsandbox) ne fonctionne pas sur l'Ubuntu de la VM | Le backend Docker **reste** la référence (Vultr le recommande) ; `msb` devient un bonus, pas un bloquant. |
-| Le modèle multimodal est lent ou indisponible | Vérification **déterministe** (code de sortie + statut HTTP + empreinte du corps) en repli — c'est même **plus** fort comme preuve ; le contrôle vision devient un bonus. |
-| La démo plante pendant le direct | **Plan de secours filmé** : la vidéo est enregistrée à l'avance (atelier Windows), donc pas de direct ; l'URL de démo reste la preuve vivante. |
-| Le dépôt public est jugé « trop petit » | Le barème valorise la qualité, pas le volume : 4-5 « Github code is available & well thought off ». On montre le **rejeu** et les tests. |
-| Le formulaire de soumission demande un compte lié à une équipe | Créer/joindre l'équipe **avant** le 3 nov. (à faire par Tgg : compte lablab.ai + Discord + équipe). |
+| The Vultr account or the promo code are not ready on 3 nov. | build and test **locally** first — the whole core runs with the standard library, and the containment demo needs neither Docker nor a key |
+| `msb` (Microsandbox) does not work on the VM's Ubuntu | the Docker backend **stays** the reference (Vultr recommends it); `msb` becomes a bonus, not a blocker |
+| The model is slow or unavailable | deterministic verification (exit code, HTTP status, body fingerprint) as a fallback — which is even **stronger** as a proof; the vision check becomes a bonus |
+| The demo breaks during the take | the demo is **recorded in advance**, and the containment script runs identically on a laptop with no account and no key |
+| The public repository is judged "too small" | the rules reward quality, not volume; the proof is the replay, the tests and the one-command demo |
 
 ---
 
-## 14. Ce que je n'ai PAS fait (et pourquoi)
+## 14. What has **not** been done (and why)
 
-- **Aucun code du projet** : la consigne interdit d'écrire du code de concours avant le
-  3 novembre (« un projet construit pendant la fenêtre officielle »). Ce cycle = conception.
-- **Aucun compte, aucune clé, aucune dépense** : `0 $`. Le compte Vultr, le compte lablab.ai
-  et le code promo sont du ressort de Tgg (et de la mère).
-- **Aucune modification du produit JetBrains** : la consigne du 31/10 arrête ce slot.
-- **Aucune soumission** : elle se fera le 8 novembre, à la main, par Tgg.
+- **No account, no key, no spending: 0 $.** The Vultr account, the lablab.ai account, the
+  Discord registration and the promo code are human actions, by the owner.
+- **No deployment yet.** The cloud-init and the verifier are written and tested locally; the VM
+  does not exist, so the *deployment* is the one thing this repository cannot prove by itself.
+- **No video.** The shot list, the narration and the "scrub" checklist are written; recording is
+  a human action.
+- **No submission.** It will be done by hand on 8 November, before 20:00 UTC.
+- **The agent loop, the demo target service and the web UI are not in this repository** — see
+  section 2.3. Nothing here pretends otherwise.
+- **No modification of the JetBrains plugin** of this slot: it is frozen and archived.
+
+---
+
+## 15. The official requirements, and where each one is proved
+
+| Requirement (verbatim from the event pages) | Where it is proved in this repository |
+|---|---|
+| « GitHub repository with setup and documentation » | this repository: MIT `LICENSE` at the root, `pip install -e ".[dev]"`, `pytest`, the launch command in the README |
+| « Vultr VM backend deployment » | `deploy/cloud-init.yml` (builds the VM from zero), `deploy/verifier-deploiement.sh` (proves it answers), `submission/DEPLOIEMENT-VULTR.md` (the exact commands) |
+| « Public demo URL » | the four read routes of the HTTP door; the URL is `http://<VM-IP>:8000/health` once the VM exists |
+| « Recorded demo video » | `submission/DEMO-FILMEE.md`: the 5 captures, the minute-by-minute plan, the English narration |
+| « Clear architecture and use-case explanation » | this document, and the README sections "The idea, in one paragraph", "How it works", "How Vultr powers this" |
+| « One containment moment shown in the video » (challenge 01) | section 6 above, and `scripts/demo-containment.sh` — reproducible in one command, with no account and no key |
+| « In your public GitHub README, explain the Vultr services and infrastructure used » | the README section "How Vultr powers this" (Cloud Compute, Serverless Inference, the two sandbox backends, the API, the credits) |
+| « Submissions must be original and MIT-compliant » | the project is original, written from scratch for this challenge, and MIT-licensed |
+| « Teams consist of 1–6 people » | solo submission |
+
+---
+
+*Written for the Vultr: Agent Rush Hackathon (3–8 November 2026). Infrastructure and inference
+provided by [Vultr](https://www.vultr.com/); the event is run by [lablab.ai](https://lablab.ai/).*
