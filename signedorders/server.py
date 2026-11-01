@@ -324,6 +324,7 @@ def serve(
     signing_key_path: str | Path | None = None,
     agent_key: str | None = None,
     operator_key: str | None = None,
+    quota_limits: "QuotaLimits | None" = None,
 ) -> None:
     """Run the server until it is interrupted."""
     server = build_server(
@@ -333,6 +334,7 @@ def serve(
         signing_key_path=signing_key_path,
         agent_key=agent_key,
         operator_key=operator_key,
+        quota_limits=quota_limits,
     )
     print(f"signedorders is listening on http://{host}:{server.server_port}")
     print(f"  public key: {server.control_plane.signer.public_key_b64}")

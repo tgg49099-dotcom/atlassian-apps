@@ -75,3 +75,58 @@ def test_sign_prints_an_envelope(tmp_path, capsys):
 def test_preflight_finds_nothing_in_the_project():
     root = Path(__file__).resolve().parent.parent
     assert main(["preflight", str(root)]) == 0
+
+
+def test_serve_hands_the_arguments_to_the_http_door(tmp_path, monkeypatch):
+    """The command line must reach the server unchanged — the README documents it."""
+    captured: dict[str, object] = {}
+
+    def fake_serve(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("signedorders.server.serve", fake_serve)
+    journal_path = tmp_path / "nested" / "journal.jsonl"
+    assert main(
+        [
+            "serve",
+            "--host",
+            "0.0.0.0",
+            "--port",
+            "8080",
+            "--journal",
+            str(journal_path),
+        ]
+    ) == 0
+    assert captured["host"] == "0.0.0.0"
+    assert captured["port"] == 8080
+    assert captured["journal_path"] == journal_path
+    assert journal_path.parent.is_dir(), "the folder of the journal must be created"
+
+
+def test_the_http_door_answers_on_health(tmp_path):
+    """The public surface of the control plane must really answer."""
+    import threading
+    import urllib.request
+
+    from signedorders.server import build_server
+
+    server = build_server(
+        host="127.0.0.1",
+        port=0,
+        journal_path=tmp_path / "journal.jsonl",
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/health"
+        with urllib.request.urlopen(url, timeout=5) as response:
+            assert response.status == 200
+            payload = json.loads(response.read())
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    assert payload["status"] == "ok"
+    assert payload["public_key"], "the public key must be served, the private one never"
+    assert "private" not in json.dumps(payload).lower()

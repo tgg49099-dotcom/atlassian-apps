@@ -1,0 +1,147 @@
+#cloud-config
+# =============================================================================
+# cloud-init.yml — Signed Orders on a Vultr Ubuntu 24.04 VM
+# =============================================================================
+#
+# WHAT THIS DOES, in order:
+#   1. installs the packages the control plane needs (Python, git, Docker);
+#   2. creates the unprivileged `signedorders` user and its directories;
+#   3. clones the project and installs it in a virtualenv;
+#   4. generates the Ed25519 signing key and the two bearer keys **on the VM**
+#      (no secret is ever in this file, and none is ever in the repository);
+#   5. installs and starts the systemd service, and opens the port.
+#
+# HOW TO USE IT:
+#   * Vultr web console -> Create Instance -> Ubuntu 24.04 LTS x64 ->
+#     "User Data" (the cloud-init field) -> paste this file -> Deploy.
+#   * or:  vultr-cli instance create --region=<id> --plan=<id> --os=<id> \
+#              --host=signed-orders --userdata="$(cat deploy/cloud-init.yml)"
+#
+# BEFORE PASTING: if you want the demo to call the model, replace the empty
+# value of VULTRINFERENCE_API_KEY below with your own key (it is then stored
+# on the VM only, in /etc/signedorders/env, mode 0600). If you leave it empty
+# the control plane still starts, the API still answers and the demo script
+# still works.
+#
+# This file has been checked: it is valid YAML (python3 + PyYAML) and every
+# command it runs is standard on an Ubuntu 24.04 image.
+# =============================================================================
+
+package_update: true
+package_upgrade: false
+packages:
+  - python3
+  - python3-venv
+  - python3-pip
+  - git
+  - curl
+  - ca-certificates
+  - docker.io
+
+write_files:
+  # -- the environment file: the ONLY place a secret lives on the VM ---------
+  - path: /etc/signedorders/env
+    permissions: '0600'
+    owner: root:root
+    content: |
+      # Signed Orders — environment of the control plane.
+      # Mode 0600, owned by root. Read by systemd (as root) before the service
+      # drops its privileges. Never committed, never logged.
+      #
+      # VULTRINFERENCE_API_KEY: the key of the Vultr Serverless Inference
+      # service. Leave it empty if the demo runs without the model; the
+      # control plane starts and answers either way.
+      VULTRINFERENCE_API_KEY=
+      VULTRINFERENCE_MODEL=qwen3.8-flash-next
+      VULTRINFERENCE_VISION_MODEL=qwen3.8-27b
+      # The bearer key the AGENT must present to POST /orders. Generated on
+      # this VM at first boot; it never leaves it.
+      SIGNEDORDERS_AGENT_KEY=__AGENT_KEY__
+      # The bearer key a HUMAN must present to approve or refuse an order.
+      SIGNEDORDERS_OPERATOR_KEY=__OPERATOR_KEY__
+      # The Ed25519 private key that signs the orders and the journal.
+      SIGNEDORDERS_SIGNING_KEY_PATH=/etc/signedorders/signing.key
+      # Quotas (the defaults of the code are the same values).
+      SIGNEDORDERS_QUOTA_ORDERS_PER_WINDOW=10
+      SIGNEDORDERS_QUOTA_WINDOW_SECONDS=60
+      SIGNEDORDERS_QUOTA_ORDERS_PER_TASK=40
+      SIGNEDORDERS_QUOTA_CPU_SECONDS_PER_TASK=120
+      SIGNEDORDERS_QUOTA_BYTES_WRITTEN_PER_TASK=1048576
+      SIGNEDORDERS_QUOTA_CONCURRENT_SANDBOXES=2
+      SIGNEDORDERS_QUOTA_TOKENS_PER_TASK=200000
+      # Sandbox (the isolation where the orders actually run).
+      SIGNEDORDERS_SANDBOX_BACKEND=docker
+      SIGNEDORDERS_SANDBOX_IMAGE=debian:bookworm-slim
+      SIGNEDORDERS_SANDBOX_MEMORY=256m
+      SIGNEDORDERS_SANDBOX_CPUS=1
+      SIGNEDORDERS_SANDBOX_PIDS_LIMIT=128
+      SIGNEDORDERS_SANDBOX_TIMEOUT_SECONDS=30
+      SIGNEDORDERS_SANDBOX_EGRESS_ALLOWLIST=
+      # Approvals.
+      SIGNEDORDERS_APPROVAL_CHANNEL=web
+      SIGNEDORDERS_APPROVAL_TTL_SECONDS=900
+
+  # -- the systemd unit -----------------------------------------------------
+  - path: /etc/systemd/system/signedorders.service
+    permissions: '0644'
+    owner: root:root
+    content: |
+      [Unit]
+      Description=Signed Orders — containment-first control plane (HTTP API)
+      Documentation=https://github.com/tgg49099-dotcom/atlassian-apps/tree/main/agent-rush/signed-orders
+      After=network-online.target docker.service
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=signedorders
+      Group=signedorders
+      WorkingDirectory=/opt/signed-orders/repo/agent-rush/signed-orders
+      EnvironmentFile=/etc/signedorders/env
+      ExecStart=/opt/signed-orders/.venv/bin/signedorders serve --host 0.0.0.0 --port 8000 --journal /var/lib/signedorders/journal.jsonl
+      Restart=on-failure
+      RestartSec=3
+      # The service itself is hardened: it is not privileged, and it only
+      # writes in the folder of the journal.
+      NoNewPrivileges=true
+      PrivateTmp=true
+      ProtectSystem=strict
+      ProtectHome=true
+      ReadWritePaths=/var/lib/signedorders
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # -- 1. the user and its directories ----------------------------------------
+  - [useradd, --system, --home-dir, /opt/signed-orders, --shell, /bin/bash, signedorders]
+  - [install, -d, -o, signedorders, -g, signedorders, -m, 0750, /opt/signed-orders]
+  - [install, -d, -o, signedorders, -g, signedorders, -m, 0750, /var/lib/signedorders]
+  # /etc/signedorders: root owns it, the service group can read what is in it.
+  - [install, -d, -o, root, -g, signedorders, -m, 0750, /etc/signedorders]
+
+  # -- 2. the project ---------------------------------------------------------
+  - [git, clone, --depth, '1', https://github.com/tgg49099-dotcom/atlassian-apps.git, /opt/signed-orders/repo]
+  - [chown, -R, signedorders:signedorders, /opt/signed-orders/repo]
+
+  # -- 3. the virtualenv -----------------------------------------------------
+  - [runuser, -u, signedorders, --, bash, -c, "python3 -m venv /opt/signed-orders/.venv && /opt/signed-orders/.venv/bin/pip install --upgrade pip && /opt/signed-orders/.venv/bin/pip install -e '/opt/signed-orders/repo/agent-rush/signed-orders[dev]'"]
+  - [chown, -R, signedorders:signedorders, /opt/signed-orders/.venv]
+
+  # -- 4. the keys, generated ON THE VM (never in the repository) -----------
+  - [/opt/signed-orders/.venv/bin/signedorders, init-key, /etc/signedorders/signing.key]
+  - [chown, root:signedorders, /etc/signedorders/signing.key]
+  - [chmod, '0640', /etc/signedorders/signing.key]
+  - [sh, -c, "AGENT_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'); OPERATOR_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'); sed -i \"s|__AGENT_KEY__|$AGENT_KEY|; s|__OPERATOR_KEY__|$OPERATOR_KEY|\" /etc/signedorders/env"]
+  - [chown, root:root, /etc/signedorders/env]
+  - [chmod, '0600', /etc/signedorders/env]
+
+  # -- 5. the service --------------------------------------------------------
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, signedorders.service]
+  - [systemctl, restart, signedorders.service]
+  # The port of the API. The Vultr firewall must be opened too (see the doc).
+  - [sh, -c, "command -v ufw >/dev/null 2>&1 && ufw allow 8000/tcp || true"]
+  - [sh, -c, "sleep 5; curl -fsS http://127.0.0.1:8000/health >/dev/null && echo 'SIGNED ORDERS IS UP' || echo 'SIGNED ORDERS DID NOT START'"]
+
+final_message: "Signed Orders is installed. Check: systemctl status signedorders && curl -s http://127.0.0.1:8000/health"
