@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.21] — 2026-11-03
+
+New description, easier to find. **No functional change.**
+
+### Changed
+- **The Marketplace description has been rewritten.** It now names the four tabs
+  (Experiments, Optuna, Models, Sweeps) and the servers they read, so the
+  plugin shows up in the searches users actually type.
+- The plugin version is bumped to `0.0.21` (patch). The plugin code is
+  unchanged: this build and the published 0.0.20 share the same bytecode
+  (84/84 `.class` files byte-for-byte equal, checked on 2026-11-03 against the
+  ZIP served by the Marketplace itself).
+
 ## [0.0.20] — 2026-10-30
 
 Four defects measured by the code review of 2026-10-30 on the **published 0.0.19**

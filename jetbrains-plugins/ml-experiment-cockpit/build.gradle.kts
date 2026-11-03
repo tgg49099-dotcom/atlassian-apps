@@ -98,45 +98,43 @@ intellijPlatform {
             untilBuild = (project.findProperty("pluginUntilBuild") as String?) ?: "263.*"
         }
         description = """
-            <p>ML Experiment Cockpit — browse your MLflow experiments, runs, metrics and Model Registry models directly inside the JetBrains IDE.</p>
-            <p>Connects to a running MLflow Tracking Server, an Optuna
-            Dashboard and the W&amp;B GraphQL API, and surfaces experiment /
-            run / study / trial / sweep / model-registry metadata directly
-            inside the IDE. Built for ML engineers who already use MLflow,
-            Optuna or W&amp;B and want the IDE to see their experiments and
-            registered models instead of switching to a browser tab.</p>
-            <ul>
-                <li><b>MLflow</b>: browse experiments and runs, params, metrics and metric charts.</li>
-                <li><b>MLflow Model Registry</b>: list registered models and their versions.</li>
-                <li><b>Optuna</b>: browse studies and trials from an Optuna Dashboard.</li>
-                <li><b>W&amp;B Sweeps</b>: list sweeps by state with their run count (read-only, W&amp;B API key).</li>
-            </ul>
-            <p>Open it from the <em>ML Experiment Cockpit</em> tool window; configure servers in
-            <em>Settings | Tools | ML Experiment Cockpit</em>.</p>
-        """.trimIndent()
+<p>MLflow experiment tracking, Weights & Biases (wandb) sweeps, Optuna studies, the Model Registry — runs and metrics in PyCharm, IntelliJ, WebStorm, GoLand or CLion.</p>
+<ul>
+<li><b>Experiments</b> — your MLflow experiments and runs in a tree, with parameters, metric values and the full history of any metric as a curve.</li>
+<li><b>Optuna</b> — studies and trials from your Optuna Dashboard: summary, the five best trials and the most-chosen hyperparameter.</li>
+<li><b>Models</b> — the MLflow Model Registry: registered models, their versions, stage, status and run id.</li>
+<li><b>Sweeps</b> — W&B hyperparameter sweeps grouped by state, with the best run and its top summary metrics.</li>
+</ul>
+<p>All four tabs live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
+<p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
+<p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
         changeNotes = """
-            <h3>0.0.20 — Four display and read defects fixed.</h3>
-            <ul>
-                <li>Optuna and Models trees now show the readable label of each row (study name, model name, version) instead of the raw Kotlin dump (<code>StudyNode(summary=…)</code>).</li>
-                <li>The Optuna bar chart now picks the hyperparameter that takes the most distinct values, as documented; the numeric tie-breaker is only used when two parameters have the same number of values.</li>
-                <li>A mistyped Optuna URI (for example <code>localhost:8080</code> without <code>http://</code>) is now reported as <code>Failed to load studies</code> instead of <code>Unexpected error</code>.</li>
-                <li>Optuna trials whose value is <code>inf</code> or <code>-inf</code> (sent as a string by the dashboard) are now read as <code>Infinity</code> and <code>-Infinity</code>; they used to show as “—” and to be left out of the ranking.</li>
-            </ul>
-            <h3>0.0.19 — Malformed numbers are reported as invalid JSON.</h3>
-            <ul>
-                <li>Numbers are now read with the exact JSON grammar (RFC 8259). A response holding a malformed number (for example <code>1.</code>, <code>1e</code> or <code>01</code>) is rejected as invalid JSON: the plugin now says that the server did not answer JSON, instead of failing with an opaque conversion error such as <code>For input string: "1."</code>.</li>
-            </ul>
-            <h3>0.0.18 — Run tooltips now show.</h3>
-            <ul>
-                <li>The tooltip of a run in the Experiments tree is now displayed when you hover it: Swing only shows a renderer's tooltip for a component registered with the ToolTipManager, so the run details were silently never shown. This fix was not part of the 0.0.17 build.</li>
-            </ul>
-            <h3>0.0.17 — Compatible with the 2026.3 IDE release, and clearer W&amp;B errors.</h3>
-            <ul>
-                <li>The plugin now declares compatibility up to IDE build 263.*, so it keeps installing on PyCharm 2026.3 instead of becoming obsolete when that release becomes stable.</li>
-                <li>W&amp;B tab: a GraphQL error now shows the server's own message (e.g. "Cannot query field …") instead of a bare "GraphQL error", and an unknown project is reported as "project not found" instead of an empty list.</li>
-                <li>The MLflow and Optuna tabs are unchanged.</li>
-            </ul>
-        """.trimIndent()
+<h3>0.0.21 — New description, easier to find.</h3>
+<ul>
+    <li>The plugin description on the Marketplace has been rewritten: it now names the four tabs (Experiments, Optuna, Models, Sweeps) and the servers they read, so the plugin shows up in searches that use the words buyers actually type.</li>
+    <li>No functional change: the plugin reads the same servers and shows the same data as in 0.0.20.</li>
+</ul>
+<h3>0.0.20 — Four display and read defects fixed.</h3>
+<ul>
+    <li>Optuna and Models trees now show the readable label of each row (study name, model name, version) instead of the raw Kotlin dump (<code>StudyNode(summary=…)</code>).</li>
+    <li>The Optuna bar chart now picks the hyperparameter that takes the most distinct values, as documented; the numeric tie-breaker is only used when two parameters have the same number of values.</li>
+    <li>A mistyped Optuna URI (for example <code>localhost:8080</code> without <code>http://</code>) is now reported as <code>Failed to load studies</code> instead of <code>Unexpected error</code>.</li>
+    <li>Optuna trials whose value is <code>inf</code> or <code>-inf</code> (sent as a string by the dashboard) are now read as <code>Infinity</code> and <code>-Infinity</code>; they used to show as “—” and to be left out of the ranking.</li>
+</ul>
+<h3>0.0.19 — Malformed numbers are reported as invalid JSON.</h3>
+<ul>
+    <li>Numbers are now read with the exact JSON grammar (RFC 8259). A response holding a malformed number (for example <code>1.</code>, <code>1e</code> or <code>01</code>) is rejected as invalid JSON: the plugin now says that the server did not answer JSON, instead of failing with an opaque conversion error such as <code>For input string: "1."</code>.</li>
+</ul>
+<h3>0.0.18 — Run tooltips now show.</h3>
+<ul>
+    <li>The tooltip of a run in the Experiments tree is now displayed when you hover it: Swing only shows a renderer's tooltip for a component registered with the ToolTipManager, so the run details were silently never shown. This fix was not part of the 0.0.17 build.</li>
+</ul>
+<h3>0.0.17 — Compatible with the 2026.3 IDE release, and clearer W&amp;B errors.</h3>
+<ul>
+    <li>The plugin now declares compatibility up to IDE build 263.*, so it keeps installing on PyCharm 2026.3 instead of becoming obsolete when that release becomes stable.</li>
+    <li>W&amp;B tab: a GraphQL error now shows the server's own message (e.g. "Cannot query field …") instead of a bare "GraphQL error", and an unknown project is reported as "project not found" instead of an empty list.</li>
+    <li>The MLflow and Optuna tabs are unchanged.</li>
+</ul>""".trimIndent()
         vendor {
             name = "Tgg Labs"
             email = "tgg.apps.support@gmail.com"
