@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.22] — 2026-11-07
+
+**Pro tier n°1 — “Compare 2 runs”.** One paid feature, sold by JetBrains as a
+subscription under the product code `PPCOCKPITPRO`. **Not published**: this
+version is a local build only.
+
+### Added
+- **New “Compare” tab (5th tab of the tool window).** Right-click a run in the
+  Experiments tree → **« Compare with… »**: the two runs are shown side by
+  side — name, `run_id`, status, start time, duration — with the
+  **parameters** in one table and the **metrics** in another (last value of
+  each side, absolute gap, relative gap).
+- **Superposed curves.** Pick a metric and the two runs’ histories are drawn
+  **on the same axes** (A in blue, B in orange). The Pro history goes up to
+  100 000 points per metric; beyond that the interface says the series is
+  truncated instead of silently showing an incomplete curve.
+- **Markdown export.** « Copy (Markdown) » puts both comparison tables in the
+  clipboard.
+- **Native JetBrains licence gate.** The only file that touches
+  `com.intellij.ui.LicensingFacade` is `pro/LicenceNatif.kt`; the gate itself
+  (`pro/ProGate.kt`) is pure Kotlin and therefore testable without an IDE.
+  Without a licence the tab stays **visible but locked**, with a
+  **« Get Pro »** button that opens JetBrains’ own purchase dialog (no key of
+  ours, no server of ours, no price in the code).
+- `<product-descriptor code="PPCOCKPITPRO" .../>` in `plugin.xml`.
+
+### Unchanged (and proved)
+- **The four free tabs are strictly identical**: Experiments, Optuna, Models,
+  Sweeps — same limits (500 experiments, 100 runs per experiment, 500
+  registered models, 500 model versions, 5 000 metric points per run), no
+  feature lost. `GratuitInchangeTest` proves it on three levels: the tabs and
+  the announced limits are still there, **no free-path file ever consults the
+  Pro gate**, and the free client still sends exactly the same request limits
+  (measured against a fake HTTP server).
+
 ## [0.0.21] — 2026-11-03
 
 New description, easier to find. **No functional change.**

@@ -115,6 +115,12 @@ class MlflowClient(private val baseUri: String) {
      *
      * MLflow endpoint: `GET /api/2.0/mlflow/metrics/get-history?run_id=...&metric_key=...&max_results=...`
      * Each point is a [MetricPoint] (step, value, timestamp).
+     *
+     * ⚠ v0.0.22 — **ce chemin est celui du gratuit** : il est plafonné à
+     * 5 000 points et il reste **inchangé**. Le palier Pro n°1 utilise
+     * [getMetricHistoryAll], qui pagine (voir plus bas). Ne rien changer ici :
+     * le test `GratuitInchangeTest` vérifie que la requête envoyée porte
+     * toujours `max_results=5000`.
      */
     fun getMetricHistory(runId: String, metricKey: String, maxResults: Int = 5000): List<MetricPoint> {
         val query = "run_id=" + enc(runId) +
@@ -126,6 +132,121 @@ class MlflowClient(private val baseUri: String) {
             MetricPoint(step = m.lng("step"), value = value, timestampMs = m.lng("timestamp"))
         }
     }
+
+    /**
+     * Une page d'historique de métrique + le jeton de la page suivante.
+     *
+     * `metrics/get-history` accepte `page_token` et renvoie `next_page_token`
+     * (comportement mesuré sur le code source de MLflow, pas deviné).
+     */
+    data class PageMetrics(
+        val points: List<MetricPoint>,
+        val nextPageToken: String?,
+        /** vrai quand le plafond de points a été atteint alors qu'il restait des pages. */
+        val tronque: Boolean
+    )
+
+    /**
+     * Une page d'historique, avec son jeton de continuation.
+     *
+     * @param pageToken le jeton reçu de la page précédente ; `null` pour la
+     *        première page.
+     */
+    fun getMetricHistoryPage(
+        runId: String,
+        metricKey: String,
+        maxResults: Int,
+        pageToken: String? = null
+    ): PageMetrics {
+        val query = StringBuilder("run_id=").append(enc(runId))
+                .append("&metric_key=").append(enc(metricKey))
+                .append("&max_results=").append(maxResults)
+        if (!pageToken.isNullOrEmpty()) query.append("&page_token=").append(enc(pageToken))
+        val body = get("/api/2.0/mlflow/metrics/get-history?$query")
+        val json = parse(body)
+        val points = json.arr("metrics").mapNotNull { m ->
+            val value = m.num("value")?.asDouble ?: return@mapNotNull null
+            MetricPoint(step = m.lng("step"), value = value, timestampMs = m.lng("timestamp"))
+        }
+        val next = json.str("next_page_token").ifEmpty { null }
+        return PageMetrics(points = points, nextPageToken = next, tronque = false)
+    }
+
+    /**
+     * Tout l'historique d'une métrique, **page par page** — c'est ce que le
+     * palier Pro n°1 utilise pour lever le plafond de 5 000 points du
+     * gratuit.
+     *
+     * @param maxTotal plafond de points (100 000 pour le palier n°1).
+     * @return les points (triés par pas) et un indicateur [PageMetrics.tronque]
+     *         vrai quand le plafond a été atteint alors qu'il restait des pages
+     *         — l'interface affiche alors « série tronquée » au lieu de
+     *         laisser croire que la courbe est complète.
+     */
+    fun getMetricHistoryAll(runId: String, metricKey: String, maxTotal: Int): PageMetrics {
+        val parPage = if (maxTotal < TAILLE_PAGE) maxTotal else TAILLE_PAGE
+        val tous = ArrayList<MetricPoint>()
+        var token: String? = null
+        var tronque = false
+        var pages = 0
+        while (pages < MAX_PAGES) {
+            val page = getMetricHistoryPage(runId, metricKey, parPage, token)
+            tous.addAll(page.points)
+            pages++
+            val suivant = page.nextPageToken
+            if (suivant.isNullOrEmpty()) break
+            if (tous.size >= maxTotal) {
+                tronque = true
+                break
+            }
+            token = suivant
+        }
+        if (pages >= MAX_PAGES) tronque = true
+        val tri = tous.sortedBy { it.step }
+        return PageMetrics(points = tri.take(maxTotal), nextPageToken = null, tronque = tronque)
+    }
+
+    /**
+     * Le détail complet d'un run en **un seul** appel `runs/get` : paramètres,
+     * dernières valeurs des métriques, statut et heures de début/fin.
+     *
+     * Utilisé par la comparaison Pro n°1 (qui a besoin des 6 champs), il ne
+     * touche pas au chemin gratuit : c'est une méthode **nouvelle**.
+     */
+    fun getRunDetails(runId: String): RunDetails {
+        val run = runObjet(runId)
+        val info = run.obj("info")
+        val data = run.obj("data")
+
+        val params = LinkedHashMap<String, String>()
+        for (p in data.arr("params")) {
+            val key = p.str("key")
+            if (key.isNotEmpty()) params[key] = p.str("value")
+        }
+
+        val metriques = LinkedHashMap<String, Double>()
+        for (m in data.arr("metrics")) {
+            val key = m.str("key")
+            if (key.isEmpty()) continue
+            metriques[key] = m.num("value")?.asDouble ?: when (m.str("value")) {
+                "NaN" -> Double.NaN
+                "Infinity" -> Double.POSITIVE_INFINITY
+                "-Infinity" -> Double.NEGATIVE_INFINITY
+                else -> continue
+            }
+        }
+
+        val id = info.str("run_id").ifEmpty { info.str("run_uuid") }.ifEmpty { runId }
+        return RunDetails(
+            id = id,
+            statut = info.str("status"),
+            startTimeMs = info.lng("start_time"),
+            endTimeMs = info.lng("end_time"),
+            params = params,
+            metriques = metriques
+        )
+    }
+
 
     /**
      * Hit `<base>/api/2.0/mlflow/registered-models/search` and return the
@@ -185,8 +306,17 @@ class MlflowClient(private val baseUri: String) {
      * [getRunMetrics] and [getRunParams].
      */
     private fun runGet(runId: String): Json {
+        return runObjet(runId).obj("data")
+    }
+
+    /**
+     * `runs/get` as a GET, the whole `run` block (`info` + `data`).
+     * v0.0.22 — utilisé par [getRunDetails] (palier Pro n°1). Le chemin
+     * gratuit [runGet] n'a pas changé.
+     */
+    private fun runObjet(runId: String): Json {
         val body = get("/api/2.0/mlflow/runs/get?run_id=" + enc(runId))
-        return parse(body).obj("run").obj("data")
+        return parse(body).obj("run")
     }
 
     /**
@@ -305,6 +435,24 @@ class MlflowClient(private val baseUri: String) {
             )
         }
     }
+
+    companion object {
+        /**
+         * Taille d'une page d'historique demandée au serveur (palier Pro n°1).
+         * MLflow n'impose pas de plafond serveur sur `max_results` pour
+         * `metrics/get-history` (seul `max_results <= 0` est refusé) : 10 000
+         * est un bon compromis (peu d'allers-retours, mémoire maîtrisée).
+         */
+        const val TAILLE_PAGE = 10000
+
+        /**
+         * Garde-fou : nombre maximal de pages parcourues par
+         * [getMetricHistoryAll]. Au-delà, la série est déclarée tronquée
+         * plutôt que de boucler indéfiniment sur un serveur qui renvoie
+         * toujours le même jeton.
+         */
+        const val MAX_PAGES = 100
+    }
 }
 
 /** Plain data carriers — no plugin deps, no IntelliJ types. */
@@ -361,6 +509,22 @@ data class ModelVersion(
 
 /** A single time-series point in a metric's history. */
 data class MetricPoint(val step: Long, val value: Double, val timestampMs: Long)
+
+/**
+ * Le détail complet d'un run, lu en un seul appel `runs/get`.
+ *
+ * v0.0.22 — ajouté pour le palier Pro n°1 (comparaison de 2 runs), qui a
+ * besoin des paramètres, des dernières valeurs des métriques **et** des
+ * heures de début/fin (pour la durée) sans multiplier les requêtes.
+ */
+data class RunDetails(
+    val id: String,
+    val statut: String,
+    val startTimeMs: Long,
+    val endTimeMs: Long,
+    val params: Map<String, String>,
+    val metriques: Map<String, Double>
+)
 
 /** Thrown by [MlflowClient] on any non-success outcome. */
 class MlflowException(

@@ -8,14 +8,20 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.Tree
+import com.slot5.mlexp.pro.ComparaisonHub
+import com.slot5.mlexp.pro.DemandeComparaison
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.FlowLayout
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import javax.swing.JButton
+import javax.swing.JMenuItem
 import javax.swing.JPanel
+import javax.swing.JPopupMenu
 import javax.swing.JSplitPane
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
@@ -43,7 +49,14 @@ import javax.swing.tree.DefaultTreeModel
  */
 class MlflowToolWindowPanel(
     private val project: Project,
-    private val toolWindow: ToolWindow
+    private val toolWindow: ToolWindow,
+    /**
+     * v0.0.22 — relais vers l'onglet **Compare** (palier Pro n°1). Ce panneau
+     * (gratuit) ne connaît **rien** de la porte Pro : il demande seulement
+     * « compare ce run avec un autre ». C'est l'onglet Compare qui décide
+     * si la comparaison est ouverte ou verrouillée.
+     */
+    private val comparaisonHub: ComparaisonHub? = null
 ) {
 
     /** The Swing component the IntelliJ Platform hosts. */
@@ -109,6 +122,55 @@ class MlflowToolWindowPanel(
 
         refreshButton.addActionListener { refresh() }
         tree.addTreeSelectionListener { onTreeSelection() }
+        installerMenuContextuel()
+    }
+
+    /**
+     * v0.0.22 — menu contextuel du arbre : clic droit sur un run →
+     * « Compare with… » (point d'entrée du palier Pro n°1, plan § 2.1
+     * point 2). Le run visé devient **A** ; **B** se choisit dans l'onglet
+     * Compare, parmi les runs de la même expérience.
+     *
+     * Le gratuit n'est pas modifié : l'arbre se comporte exactement comme
+     * avant, on lui **ajoute** une entrée de menu.
+     */
+    private fun installerMenuContextuel() {
+        val popup = JPopupMenu()
+        tree.componentPopupMenu = popup
+        tree.addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) = montrerPopup(e, popup)
+            override fun mouseReleased(e: MouseEvent) = montrerPopup(e, popup)
+        })
+    }
+
+    private fun montrerPopup(e: MouseEvent, popup: JPopupMenu) {
+        if (!e.isPopupTrigger) return
+        val path = tree.getPathForLocation(e.x, e.y)
+        if (path != null) tree.selectionPath = path
+        val node = tree.lastSelectedPathComponent as? DefaultMutableTreeNode
+        val runNode = node?.userObject as? RunNode
+        popup.removeAll()
+        if (runNode != null) {
+            val expNode = (path?.parentPath?.lastPathComponent as? DefaultMutableTreeNode)
+                ?.userObject as? ExperimentNode
+            val item = JMenuItem("Compare with…")
+            item.addActionListener {
+                val hub = comparaisonHub
+                if (hub == null) {
+                    showStatus("La comparaison n'est pas disponible dans cette version.", true)
+                    return@addActionListener
+                }
+                hub.demander(
+                    DemandeComparaison(
+                        experimentId = expNode?.id ?: "",
+                        experimentNom = expNode?.name ?: "",
+                        runA = runNode.run
+                    )
+                )
+            }
+            popup.add(item)
+        }
+        popup.show(tree, e.x, e.y)
     }
 
     /**

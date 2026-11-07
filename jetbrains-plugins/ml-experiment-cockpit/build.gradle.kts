@@ -92,11 +92,29 @@ intellijPlatform {
     pluginConfiguration {
         id = "com.tgglabs.mlexp"
         name = "ML Experiment Cockpit"
-        version = project.version.toString()
+        // 07/11/2026 (cycle 150) — version AFFICHEE / VENDUE.
+        // MESURE : cette ligne (`pluginConfiguration.version`) est ce qui
+        // decide de la balise <version> du plugin.xml FINAL (le patcher de la
+        // plateforme ecrase la balise <version> des sources). Elle vaut donc
+        // `pluginMarketplaceVersion` (2026.1.0) et NON plus `project.version`
+        // (0.0.22) : la regle officielle impose que les 2 premiers chiffres du
+        // `release-version` ("20261") correspondent a ceux du `version`.
+        // `project.version` reste 0.0.22 : c'est lui qui nomme le ZIP et le JAR
+        // livres (ml-experiment-cockpit-0.0.22.zip / .jar) — inchanges.
+        version = (project.findProperty("pluginMarketplaceVersion") as String?) ?: project.version.toString()
         ideaVersion {
             sinceBuild = (project.findProperty("pluginSinceBuild") as String?) ?: "243"
             untilBuild = (project.findProperty("pluginUntilBuild") as String?) ?: "263.*"
         }
+        // 07/11/2026 (cycle 152) — ATTENTION : ce bloc est la SOURCE REELLE
+        // de la description et des notes de version livrees. Le patcher du
+        // plugin IntelliJ Platform 2.x (patchPluginXml) ECRASE la balise
+        // <description> et <change-notes> du plugin.xml SOURCE par celles
+        // d'ici : editer le plugin.xml source seul ne change RIEN dans le ZIP
+        // livre (MESURE cycle 152 : le ZIP construit gardait l'ancienne
+        // phrase trompeuse alors que le plugin.xml source etait corrige).
+        // Les deux fichiers (plugin.xml source ET ce bloc) doivent donc
+        // porter EXACTEMENT le meme texte.
         description = """
 <p>MLflow experiment tracking, Weights & Biases (wandb) sweeps, Optuna studies, the Model Registry — runs and metrics in PyCharm, IntelliJ, WebStorm, GoLand or CLion.</p>
 <ul>
@@ -107,8 +125,22 @@ intellijPlatform {
 </ul>
 <p>All four tabs live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
+<table>
+<tr><th>Function</th><th>Free</th><th>Pro (29 $/an, 14-day trial)</th></tr>
+<tr><td>Experiments, Optuna, Models, Sweeps tabs</td><td>yes</td><td>yes</td></tr>
+<tr><td>Compare 2 runs: parameters, metrics with gaps, both curves on one axis, Markdown export</td><td>tab visible, locked</td><td>yes</td></tr>
+<tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>
+</table>
+<p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
         changeNotes = """
+<h3>0.0.22 — Pro tier n°1: Compare 2 runs.</h3>
+<ul>
+    <li>A fifth tab, <b>Compare</b>: right-click a run in the Experiments tree and choose « Compare with… ». The two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis.</li>
+    <li>The whole comparison can be copied as <b>Markdown</b> (both tables) with one click.</li>
+    <li>Pro only: in the Compare view, a run's metric history goes up to 100 000 points per metric (the free chart stays at 5 000 points per metric; the interface then says the series is truncated).</li>
+    <li>Without a ML Experiment Cockpit Pro licence, the Compare tab stays visible but locked, with a « Get Pro » button that opens the JetBrains purchase dialog. The four free tabs — Experiments, Optuna, Models, Sweeps — are unchanged, with the same limits as before (500 experiments, 100 runs per experiment, 500 registered models, 500 model versions, 5 000 metric points per run).</li>
+</ul>
 <h3>0.0.21 — New description, easier to find.</h3>
 <ul>
     <li>The plugin description on the Marketplace has been rewritten: it now names the four tabs (Experiments, Optuna, Models, Sweeps) and the servers they read, so the plugin shows up in searches that use the words buyers actually type.</li>
@@ -207,6 +239,42 @@ intellijPlatform {
 tasks.withType<JavaCompile>().configureEach {
     sourceCompatibility = "17"
     targetCompatibility = "17"
+}
+
+// 07/11/2026 (cycle 149) — palier Pro n°1.
+//
+// Le plugin porte maintenant un `<product-descriptor code="PPCOCKPITPRO" .../>`
+// (licence native JetBrains) : l'IDE le considère donc comme un plugin
+// **payant**. La tâche `buildSearchableOptions` lance l'IDE en headless pour
+// indexer les options de réglages — pour un plugin payant, l'IDE ouvre une
+// boite de dialogue d'achat et la tâche ne peut pas aboutir.
+//
+// Message exact de la plateforme (07/11/2026, Gradle 8.10.2 + IntelliJ
+// Platform Gradle Plugin 2.7.2, PyCharm 2024.3) :
+//   "Due to IDE limitations, it is impossible to run the IDE in headless mode
+//    to collect searchable options for a paid plugin.
+//    As paid plugins require providing a valid license and presenting a UI
+//    dialog, it is impossible to handle such a case, and the task will fail.
+//    Please consider disabling the task."
+//
+// La doc officielle dit donc explicitement de désactiver la tâche :
+//   https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html#intellijPlatform-buildSearchableOptions
+// C'est ce qu'on fait ici. Les « searchable options » ne servent qu'à la
+// recherche dans les réglages de l'IDE : le plugin n'a aucun réglage
+// indexable (son panneau de réglages est vide côté index), donc la perte est
+// nulle.
+tasks.buildSearchableOptions {
+    enabled = false
+}
+
+// La tache `jarSearchableOptions` emballe la sortie de la precedente dans un
+// JAR `*-searchableOptions.jar` distribue avec le plugin. La source etant
+// desactivee, ce JAR est vide : on le desactive aussi (le plugin n'a aucun
+// reglage indexable), ce qui rend aussi le ZIP reproductible d'un build a
+// l'autre (le cache Gradle peut sinon resservir unancien JAR de 750 octets
+// a la place du JAR vide de 261 octets).
+tasks.jarSearchableOptions {
+    enabled = false
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {

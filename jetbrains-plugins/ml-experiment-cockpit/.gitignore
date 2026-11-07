@@ -1,13 +1,34 @@
-# Build / Gradle
-build/
-dist/
+# Gradle
 .gradle/
-out/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# IDE
+# IntelliJ IDEA
 .idea/
 *.iml
+*.iws
+*.ipr
+out/
 
-# Python caches (helper scripts)
-__pycache__/
-*.bak-*
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Logs
+*.log
+logs/
+
+# Misc
+*.swp
+*.bak
+*~
