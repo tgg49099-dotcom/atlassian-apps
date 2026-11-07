@@ -351,3 +351,87 @@ correcte ; le motif a été corrigé et la passe rejouée → verdict 0.)*
   correspond à aucun fichier existant. Ici, le md5 du build C est écrit en **préfixe de
   12 caractères** (`24238178593c`) ; le md5 du **ZIP livré** reste en clair (c'est le seul
   ZIP citable) dans `SHA256-ET-FICHIERS.txt`.
+
+
+---
+
+## 9. Cycle 152 (consigne mère 07/11/2026 15:42) — description exacte, code public = code livré
+
+### 9.1 Les 2 phrases corrigées (aucun changement de comportement)
+
+| | Avant (trompeur) | Après (exact) |
+|---|---|---|
+| **Ligne du tableau** de la description | `<tr><td>Metric history per run</td><td>5 000 points</td><td>100 000 points</td></tr>` | `<tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>` |
+| **Note de version** 0.0.22 | `Pro only: the metric history of a run goes past the free limit of 5 000 points, up to 100 000 points per metric (the interface then says the series is truncated).` | `Pro only: in the Compare view, a run's metric history goes up to 100 000 points per metric (the free chart stays at 5 000 points per metric; the interface then says the series is truncated).` |
+
+**Pourquoi** : les 100 000 points n'existent que dans la **vue Compare**
+(`src/main/kotlin/com/slot5/mlexp/pro/PanneauComparaison.kt:513`,
+`PLAFOND_POINTS_PRO = 100000`) ; le graphique gratuit reste à **5 000 points par
+métrique et par run**, **même pour un acheteur Pro**
+(`src/main/kotlin/com/slot5/mlexp/MetricsChartPanel.kt:127` →
+`client.getMetricHistory(runId, metric)`, défaut `maxResults = 5000` dans
+`MlflowClient.kt:125`). L'ancienne formulation laissait croire que le graphique
+gratuit passait à 100 000 points : **promesse trompeuse**, corrigée.
+
+### 9.2 ⚠ MESURE : la description LIVRÉE ne vient pas du `plugin.xml` source
+
+Même mécanisme que `<version>` (§ 0) : le patcher de la plateforme
+(`patchPluginXml`, IntelliJ Platform Gradle Plugin 2.7.2) **écrase** les balises
+`<description>` et `<change-notes>` du `plugin.xml` source par celles du bloc
+**`pluginConfiguration { description = … ; changeNotes = … }`** de
+`build.gradle.kts`.
+
+**Preuve mesurée** : le premier build du cycle 152 (le `plugin.xml` source était
+déjà corrigé) a produit un ZIP **qui portait encore l'ancienne phrase trompeuse** —
+le patcher l'avait réécrite depuis `build.gradle.kts`. La correction a donc été
+appliquée **dans les deux endroits**, au mot près, et le contrôle automatique
+vérifie désormais la phrase **dans le JAR livré** (pas dans les sources).
+
+### 9.3 Le rebuild (tests + 2 builds + hash de contenu)
+
+* **44 tests, 44 verts** (`preuves-palier1/41-tests-cycle152.log`, RC 0) ;
+* **build C** puis **build D**, séquentiels, RC 0
+  (`42a-build-C-cycle152.log`, `42b-build-D-cycle152.log`) ;
+* **hash de contenu IDENTIQUE** sur les 2 builds et le ZIP livré :
+  `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a`
+  (`43-hash-contenu-cycle152.txt`) ;
+* **ZIP livré** : md5 `f674d894d3592ba8c994785a39250383`, **1 875 413 octets**,
+  sha256 (octets) `f53f0c480fc09b11b9427d68794564fb063d7d9976b541f75166406319978a31` ;
+  JAR interne `ml-experiment-cockpit-2026.1.0.jar` : 282 328 o, md5
+  `44521356ce9c99d1b2b08e0e6e1cdabf` ;
+* contrôle du `plugin.xml` **dans le JAR livré**
+  (`44-controle-pluginxml-cycle152.txt`) : `<version>2026.1.0</version>` ✔,
+  `release-version="20261"` ✔, `code="PPCOCKPITPRO"` ✔, `<product-descriptor>` ✔,
+  **les 2 phrases corrigées présentes** ✔, **l'ancienne phrase absente** ✔.
+
+### 9.4 Le push : le code public est exactement le code livré
+
+Dépôt : `tgg49099-dotcom/atlassian-apps`, sous-dossier
+`jetbrains-plugins/ml-experiment-cockpit/` — **rien d'autre du dépôt n'a été touché**.
+
+* commit `b27c83ac529c9ebc4ae80a65a1d73281ae324578` — **21 fichiers**
+  (13 modifiés, 8 ajoutés, 0 supprimé) : le paquet `pro/` (6 fichiers), ses tests
+  (3 fichiers), le script de contre-épreuve, les sources modifiées, le `plugin.xml`,
+  le `build.gradle.kts`, `gradle.properties`, `README`, `CHANGELOG` ;
+* commit `22a2e59b04eca1e3ed56f42cc1c0ac8e0cc37730` — **1 fichier** : la `LICENSE`,
+  qui était redevenue un simple avis de licence ; c'est désormais le **texte intégral
+  de l'Apache 2.0** (11 339 o) avec `Copyright 2026 Tgg Labs` ;
+* **un dernier commit de synchronisation** porte ce document lui-même (il a été
+  complété après les deux précédents) : son hash est dans
+  `/work/preuves/cycle152/push-public.log` ;
+* **preuve** (`/work/preuves/cycle152/push-public.log`) : nouveau clone du dépôt
+  public, **46 fichiers comparés en sha256 → 0 DIFFÉRENCE** ; `SECURITY.md`,
+  `SUPPORT.md`, `PRIVACY.md`, `NOTICE` et `media/` **conservés** ; `plugin.xml`
+  public avec `<version>2026.1.0</version>` ✔ et `PPCOCKPITPRO` ✔ ; **aucun**
+  `build/`, `.gradle/`, ZIP ou JAR dans le commit ; jeton lu dans l'environnement,
+  **jamais** dans `.git/config`, **jamais** dans un log ou un rapport.
+
+### 9.5 La livraison
+
+* `dossier-cockpit-pro.zip` : le **ZIP livré** (non re-zippé) + `MISE-VENTE-PRO-TGG.md`
+  (**version Pro seule**) + la capture disponible. Le guide mélangeant les deux
+  chemins est conservé **hors ZIP** sous `MISE-VENTE-PRO-TGG-MIXTE-2-PLUGINS.md`.
+* Le guide Pro seul ne parle que de la fiche **35416** (page du plugin → « Upload
+  plugin » → onglet « Sales Info » → « Add to Marketplace » → `PPCOCKPITPRO` →
+  Personal 29 $/an → essai **14 jours**) et porte le **texte exact** de la
+  description et des notes de version, extrait du `plugin.xml` **du JAR livré**.
