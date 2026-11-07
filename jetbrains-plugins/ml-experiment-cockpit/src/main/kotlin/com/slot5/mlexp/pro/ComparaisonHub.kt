@@ -3,10 +3,10 @@ package com.slot5.mlexp.pro
 import com.slot5.mlexp.Run
 
 /**
- * Demande de comparaison, émise par l'onglet Experiments.
+ * A comparison request, issued by the Experiments tab.
  *
- * v0.0.22. Clic droit sur un run → « Compare with… » : le run visé devient
- * **A**, et **B** se choisit dans la liste des runs de la même expérience.
+ * v0.0.22. Right-click on a run -> "Compare with...": the targeted run becomes
+ * **A**, and **B** is picked in the list of runs of the same experiment.
  */
 data class DemandeComparaison(
     val experimentId: String,
@@ -15,15 +15,14 @@ data class DemandeComparaison(
 )
 
 /**
- * Le canal entre l'onglet **Experiments** (gratuit) et l'onglet **Compare**
- * (palier Pro n°1).
+ * The channel between the **Experiments** tab (free) and the **Compare** tab
+ * (Pro tier 1).
  *
- * Les deux panneaux vivent dans le même tool window mais n'ont aucune
- * référence l'un vers l'autre : ce petit relais évite que l'onglet gratuit
- * connaisse le panneau Pro (et inversement). Sans lui, il faudrait que le
- * panneau Experiments connaisse l'onglet Compare — c'est-à-dire que le
- * chemin gratuit dépende du code payant, ce que le test
- * `GratuitInchangeTest` interdit.
+ * The two panels live in the same tool window but hold no reference to each
+ * other: this small relay keeps the free tab free of any knowledge of the Pro
+ * panel (and the other way round). Without it, the Experiments panel would
+ * have to know about the Compare tab - in other words, the free path would
+ * depend on the paid code, which the `GratuitInchangeTest` forbids.
  */
 class ComparaisonHub {
 
@@ -33,20 +32,20 @@ class ComparaisonHub {
     @Volatile
     private var selecteur: (() -> Unit)? = null
 
-    /** Le panneau Compare s'inscrit ici au démarrage. */
+    /** The Compare panel registers itself here at startup. */
     fun ecouter(a: (DemandeComparaison) -> Unit) {
         auditeur = a
     }
 
     /**
-     * La factory s'inscrit ici pour **afficher** l'onglet Compare quand
-     * l'utilisateur demande une comparaison depuis l'onglet Experiments.
+     * The factory registers itself here to **show** the Compare tab when the
+     * user asks for a comparison from the Experiments tab.
      */
     fun selectionner(s: () -> Unit) {
         selecteur = s
     }
 
-    /** L'onglet Experiments demande une comparaison. */
+    /** The Experiments tab asks for a comparison. */
     fun demander(d: DemandeComparaison) {
         selecteur?.invoke()
         auditeur?.invoke(d)

@@ -73,7 +73,24 @@ fi
 UNTIL_RE="$(printf '%s' "$UNTIL_BUILD" | sed 's/[.[\*^$]/\\&/g')"
 
 ZIP="build/distributions/ml-experiment-cockpit-${VERSION}.zip"
-INNER_JAR_ENTRY="ml-experiment-cockpit/lib/ml-experiment-cockpit-${VERSION}.jar"
+# 07/11/2026 (cycle 153) — le nom du JAR INTERNE du ZIP suit la version AFFICHEE
+# (`pluginConfiguration.version` = `pluginMarketplaceVersion` = 2026.1.0 depuis le
+# cycle 150), PAS `pluginVersion` (0.0.22, qui ne nomme que le ZIP).
+# MESURE (cycle 153) : `unzip -Z1 build/distributions/ml-experiment-cockpit-0.0.22.zip`
+#   ml-experiment-cockpit/lib/ml-experiment-cockpit-2026.1.0.jar
+# L'ancien controle attendait `...-0.0.22.jar` -> "expected exactly 1 entry ...,
+# found 0" et `prevol.sh` sortait en ECHEC (RC 2) alors que le ZIP etait conforme.
+# La version attendue est donc lue dans gradle.properties, la MEME source que le
+# build (`pluginConfiguration.version`), avec repli sur `pluginVersion`.
+MARKETPLACE_VERSION="$(grep -oP '^pluginMarketplaceVersion\s*=\s*\K\S+' gradle.properties 2>/dev/null || true)"
+INNER_JAR_VERSION="${MARKETPLACE_VERSION:-$VERSION}"
+INNER_JAR_ENTRY="ml-experiment-cockpit/lib/ml-experiment-cockpit-${INNER_JAR_VERSION}.jar"
+# La version AFFICHEE (balise <version> du plugin.xml livre) est
+# `pluginMarketplaceVersion` (2026.1.0 depuis le cycle 150, arbitre par la
+# mere), PAS `pluginVersion` (0.0.22, qui ne nomme que le ZIP). Les controles
+# de la section 3 (version, notes de version) portent donc sur la version
+# AFFICHEE, lue dans la meme source que le build.
+DISPLAY_VERSION="${MARKETPLACE_VERSION:-$VERSION}"
 
 head_ "1. Built artefacts present"
 if [ -f "$ZIP" ]; then
@@ -157,9 +174,9 @@ head_ "3. Built plugin.xml identity"
 grep -q "<id>${EXPECTED_ID}</id>" <<< "$BUILT_XML" \
   && ok "id = $EXPECTED_ID" \
   || bad "id is not $EXPECTED_ID"
-grep -q "<version>${VERSION}</version>" <<< "$BUILT_XML" \
-  && ok "version = $VERSION" \
-  || bad "version is not $VERSION"
+grep -q "<version>${DISPLAY_VERSION}</version>" <<< "$BUILT_XML" \
+  && ok "version = $DISPLAY_VERSION (version affichee, pluginMarketplaceVersion)" \
+  || bad "version is not $DISPLAY_VERSION (version affichee)"
 # Gradle rewrites <vendor> with the email/url attributes, so match the text node
 # only: the real tag looks like <vendor email="…" url="…">Tgg Labs</vendor>.
 grep -qE ">[[:space:]]*${EXPECTED_VENDOR}[[:space:]]*</vendor>" <<< "$BUILT_XML" \
@@ -179,16 +196,34 @@ grep -qE "until-build=\"${UNTIL_RE}\"" <<< "$BUILT_XML" \
 #   - whose text starts with the version that actually ships,
 #   - and which lists at least one <li> (an empty block tells the user nothing).
 # The title is therefore free-form; the coupling to $VERSION is not.
+#
+# 07/11/2026 (cycle 153): la regle « exactement 1 <h3> » est PERIMEE. Le
+# plugin 35416 est deja PUBLIE (7 versions en ligne) : les notes de version de
+# la 2026.1.0 listent le palier Pro PUIS l'historique des versions publiees
+# (0.0.21 … 0.0.17) — c'est l'usage normal d'un plugin deja en ligne, et les
+# supprimer viderait la page « What's new » de son historique.
+# NOUVELLE REGLE (meme invariant, formule tolérante) :
+#   - le PREMIER <h3> est celui de la version qui ships (2026.1.0) ;
+#   - il porte au moins un <li> (un bloc vide ne dit rien a l'utilisateur) ;
+#   - les <h3> suivants (historique) sont des titres de version bien formes.
+# MESURE : le JAR livre contient 6 <h3> (2026.1.0, 0.0.21, 0.0.20, 0.0.19,
+# 0.0.18, 0.0.17) et 15 <li>.
 CN_ENTRIES="$(grep -coE "<h3>[^<]*</h3>" <<< "$BUILT_XML" || true)"
 CN_TITLE="$(grep -oE "<h3>[^<]*</h3>" <<< "$BUILT_XML" | head -1 || true)"
 CN_BODY="$(sed -n 's/.*<change-notes>.*//p' <<< "$BUILT_XML" || true)"
 CN_LI="$(grep -coE "<li>[^<]" <<< "$BUILT_XML" || true)"
-if [ "$CN_ENTRIES" = "1" ] \
-   && grep -qE "^<h3>${VERSION} — .+</h3>$" <<< "$CN_TITLE" \
-   && [ "$CN_LI" -ge 1 ]; then
-  ok "change-notes: single entry '${CN_TITLE}' with $CN_LI bullet(s)"
+CN_HISTOIRE_MAL_FORME=0
+while read -r H; do
+  [ -z "$H" ] && continue
+  grep -qE "^<h3>[0-9]+\.[0-9]+(\.[0-9]+)? — .+</h3>$" <<< "$H" || CN_HISTOIRE_MAL_FORME=$((CN_HISTOIRE_MAL_FORME + 1))
+done <<< "$(grep -oE "<h3>[^<]*</h3>" <<< "$BUILT_XML" || true)"
+if [ "$CN_ENTRIES" -ge 1 ] \
+   && grep -qE "^<h3>${DISPLAY_VERSION} — .+</h3>$" <<< "$CN_TITLE" \
+   && [ "$CN_LI" -ge 1 ] \
+   && [ "$CN_HISTOIRE_MAL_FORME" = "0" ]; then
+  ok "change-notes: 1re entry '${CN_TITLE}' + $((CN_ENTRIES - 1)) entry(s) d'historique, $CN_LI bullet(s)"
 else
-  bad "change-notes must hold exactly 1 <h3> titled '${VERSION} — <texte>' with at least one <li> (found $CN_ENTRIES <h3>, $CN_LI <li>)"
+  bad "change-notes must start with a <h3> titled '${DISPLAY_VERSION} — <texte>' with at least one <li>, all titles well formed (found $CN_ENTRIES <h3>, $CN_LI <li>, $CN_HISTOIRE_MAL_FORME malformed title(s))"
 fi
 grep -q "0\.0\.11" <<< "$BUILT_XML" \
   && bad "built plugin.xml still mentions 0.0.11, which was never published" \
@@ -282,8 +317,21 @@ head_ "5. Code surface (regression guards from cycles 15-18)"
 # une ajoutee ailleurs) : le controle "classes obligatoires" ci-dessous a donc
 # ete ajoute. Une classe qui disparait par megarde fait toujours echouer le
 # pre-vol.
+#
+# 83 -> 119 au cycle 153 : le palier Pro n°1 (cycle 149) ajoute EXACTEMENT 35
+# classes, et n'en supprime AUCUNE. Mesure par diff des listes d'entrees des
+# JAR (0.0.21 livre : 84 classes ; cycle 153 : 119) :
+#   + 29 classes dans le paquet `pro/` (ComparaisonRuns, PanneauComparaison,
+#     ProGate, LicenceNatif, CourbeDiff, ComparaisonHub + leurs classes
+#     internes) ;
+#   + 6 classes ailleurs : `RunDetails`, `MlflowClient$Companion`,
+#     `MlflowClient$PageMetrics`, `MlflowClient$getMetricHistoryAll$...`,
+#     `MlflowToolWindowFactory$createToolWindowContent$1`,
+#     `MlflowToolWindowPanel$installerMenuContextuel$1`.
+# Le controle reste DUR (compte exact) : une classe qui disparait ou apparait
+# fait echouer le pre-vol.
 CLASSES="$(grep -c '\.class$' <<< "$JAR_ENTRIES" || true)"
-[ "$CLASSES" = "83" ] && ok "83 .class files in the JAR" || bad "expected 83 .class files, found $CLASSES"
+[ "$CLASSES" = "119" ] && ok "119 .class files in the JAR" || bad "expected 119 .class files, found $CLASSES"
 
 MANDATORY_CLASSES="com/slot5/mlexp/Json.class
 com/slot5/mlexp/JsonParser.class
@@ -306,7 +354,14 @@ com/slot5/mlexp/OptunaToolWindowPanel.class
 com/slot5/mlexp/SweepToolWindowPanel.class
 com/slot5/mlexp/ModelRegistryToolWindowPanel.class
 com/slot5/mlexp/MetricsChartPanel.class
-com/slot5/mlexp/MlflowSettingsImpl.class"
+com/slot5/mlexp/MlflowSettingsImpl.class
+com/slot5/mlexp/RunDetails.class
+com/slot5/mlexp/pro/ComparaisonRuns.class
+com/slot5/mlexp/pro/PanneauComparaison.class
+com/slot5/mlexp/pro/ProGate.class
+com/slot5/mlexp/pro/LicenceNatif.class
+com/slot5/mlexp/pro/CourbeDiff.class
+com/slot5/mlexp/pro/ComparaisonHub.class"
 MISSING=0
 while read -r C; do
   [ -z "$C" ] && continue
@@ -315,7 +370,7 @@ while read -r C; do
     MISSING=$((MISSING + 1))
   fi
 done <<< "$MANDATORY_CLASSES"
-[ "$MISSING" = "0" ] && ok "all 22 mandatory classes present in the JAR"
+[ "$MISSING" = "0" ] && ok "all 29 mandatory classes present in the JAR (22 du gratuit + 7 du palier Pro)"
 if grep -iE 'Deploy|Replicate' <<< "$JAR_ENTRIES" >/dev/null; then
   bad "withdrawn Deploy/Replicate classes are back in the JAR"
   grep -iE 'Deploy|Replicate' <<< "$JAR_ENTRIES" | sed 's/^/        /'

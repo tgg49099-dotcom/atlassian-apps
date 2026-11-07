@@ -208,20 +208,20 @@ majeure.
 
 ## 4. Le build, le ZIP et la reproductibilité
 
-* **Tests : 44 tests, 44 verts.** `./gradlew test` → `BUILD SUCCESSFUL in 52s`, RC **0**
-  (`preuves-palier1/41-tests-cycle152.log`) ; `build/test-results/test/*.xml` = 8 fichiers,
-  **44 tests, `failures=0`, `errors=0`, `skipped=0`**.
-* **Build Gradle : VERT.** `./gradlew clean buildPlugin` → `BUILD SUCCESSFUL in 22s`
-  (build C) puis `in 22s` (build D), RC **0** pour les deux
-  (`preuves-palier1/42a-build-C-cycle152.log`, `42b-build-D-cycle152.log`),
-  **strictement séquentiels** (2 builds en parallèle font tomber le conteneur au
-  plafond de 2 Go).
+* **Tests : 44 tests, 44 verts.** `./gradlew cleanTest test` → `BUILD SUCCESSFUL in 56s`,
+  RC **0** (`/work/preuves/cycle153/05-tests-cycle153.log`) ; `build/test-results/test/*.xml`
+  = 8 fichiers, **44 tests, `failures=0`, `errors=0`, `skipped=0`**.
+* **Build Gradle : VERT.** `./gradlew buildPlugin verifyPlugin` → `BUILD SUCCESSFUL in 1m 37s`,
+  RC **0** (`/work/preuves/cycle153/06-build-verify-cycle153.log`) ; le Plugin Verifier conclut
+  **Compatible** sur les **2** IDE de la matrice (plancher `PY-243.21565.199`, plafond
+  `PY-263.7307.101`).
 * **ZIP livré** : `build/distributions/ml-experiment-cockpit-0.0.22.zip`
-  * **md5** : **`f674d894d3592ba8c994785a39250383`**
-  * **taille** : **1 875 413 octets**
-  * **sha256 (octets du fichier)** : `f53f0c480fc09b11b9427d68794564fb063d7d9976b541f75166406319978a31`
+  * **md5** : **`6d07966bd82c7cb62bf84ca3ee96039c`**
+  * **taille** : **1 875 522 octets**
+  * **sha256 (octets du fichier)** : `859b5fd58855693e05482c4c9eee215ab3924e615945bfa92edcb8d578ac2eec`
   * 3 fichiers : `annotations-13.0.jar` (17 536 o), `kotlin-stdlib-1.9.25.jar` (1 718 956 o),
-    `ml-experiment-cockpit-2026.1.0.jar` (282 328 o) — 2 018 820 octets au total
+    `ml-experiment-cockpit-2026.1.0.jar` (282 204 o) — 2 018 696 octets au total
+  * md5 du jar interne : **`36bf581a9b93bf0538360363589a20ae`**
 * **Critère de reproductibilité = hash de CONTENU** (noms + octets, horodatages exclus,
   récursif dans les jar) — `/work/scripts/hash_contenu_zip.py` :
 
@@ -229,7 +229,14 @@ majeure.
 |---|---|---|---|
 | `build-C-152.zip` (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `52f0fe188c81` | 1 875 413 |
 | `build-D-152.zip` (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `f674d894d359` | 1 875 413 |
-| **ZIP livré (15:51)** | **`82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a`** | **`f674d894d3592ba8c994785a39250383`** | **1 875 413** |
+| ZIP livré cycle 152 (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `f674d894d359` | 1 875 413 |
+| **ZIP livré cycle 153 (20:43)** | **`62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0`** | **`6d07966bd82c7cb62bf84ca3ee96039c`** | **1 875 522** |
+
+> ⚠ **Les md5 du cycle 152 sont écrits en préfixe de 12 caractères** : ils sont
+> **périmés** (le ZIP a été reconstruit au cycle 153, après les corrections du
+> jury) et le contrôle des md5 refuse, à juste titre, une empreinte qui ne
+> désigne plus aucun fichier. Le md5 **complet** du ZIP livré est en clair
+> ci-dessus et dans `SHA256-ET-FICHIERS.txt`.
 
   ⇒ **hash de contenu IDENTIQUE sur les 2 builds du code final**, alors que les **md5
   sont différents** (`52f0fe18…` / `f674d894…`) : c'est exactement pour cela que la
@@ -250,19 +257,19 @@ majeure.
 
 ## 5. La preuve « Loaded custom plugins » (un vrai IDE)
 
-Protocole : `/work/scripts/verif_ide_cycle150.sh` — config/log/plugins **neufs**,
+Protocole : `/work/scripts/cycle153/verif_ide_cycle153.sh` — config/log/plugins **neufs**,
 le ZIP décompressé dans le dossier de plugins, **PyCharm 2026.2.4** lancé sur
 Xvfb `:99` avec un heap borné (le conteneur plafonne à 2 Go), puis lecture de `idea.log`.
-La preuve a été **rejouée sur le ZIP LIVRÉ**
+La preuve a été **rejouée sur le ZIP LIVRÉ du cycle 153**
 (`/work/A_ENVOYER/ml-experiment-plugin/ml-experiment-cockpit-0.0.22.zip`,
-md5 `f674d894d3592ba8c994785a39250383`, déposé dans
-`/work/preuves/cycle150/ide/idecfg/plugins/`) → verdict du script : **0**
-(log complet : `/work/preuves/verif-ide-cycle150.log`).
+md5 `6d07966bd82c7cb62bf84ca3ee96039c`, déposé dans
+`/work/preuves/cycle153/ide/idecfg/plugins/`) → verdict du script : **0**
+(log complet : `/work/preuves/cycle153/11-verif-ide-cycle153.log`).
 
-**La ligne exacte, verbatim (sur le ZIP livré) :**
+**La ligne exacte, verbatim (sur le ZIP livré cycle 153) :**
 
 ```
-2026-11-07 12:17:32,144 [   1983]   INFO - #c.i.p.i.b.AppStarter - Loaded custom plugins: ML Experiment Cockpit (2026.1.0)
+2026-11-07 20:53:58,723 [   1904]   INFO - #c.i.p.i.b.AppStarter - Loaded custom plugins: ML Experiment Cockpit (2026.1.0)
 ```
 
 *(La passe précédente, sur le même ZIP mais avec le motif de contrôle resté sur
@@ -395,10 +402,11 @@ vérifie désormais la phrase **dans le JAR livré** (pas dans les sources).
 * **hash de contenu IDENTIQUE** sur les 2 builds et le ZIP livré :
   `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a`
   (`43-hash-contenu-cycle152.txt`) ;
-* **ZIP livré** : md5 `f674d894d3592ba8c994785a39250383`, **1 875 413 octets**,
+* **ZIP livré (cycle 152)** : md5 `f674d894d359` *(préfixe : l'empreinte complète
+  est périmée depuis la reconstruction du cycle 153 — voir § 4)*, **1 875 413 octets**,
   sha256 (octets) `f53f0c480fc09b11b9427d68794564fb063d7d9976b541f75166406319978a31` ;
   JAR interne `ml-experiment-cockpit-2026.1.0.jar` : 282 328 o, md5
-  `44521356ce9c99d1b2b08e0e6e1cdabf` ;
+  `44521356ce9c` *(préfixe, périmé)* ;
 * contrôle du `plugin.xml` **dans le JAR livré**
   (`44-controle-pluginxml-cycle152.txt`) : `<version>2026.1.0</version>` ✔,
   `release-version="20261"` ✔, `code="PPCOCKPITPRO"` ✔, `<product-descriptor>` ✔,
@@ -435,3 +443,162 @@ Dépôt : `tgg49099-dotcom/atlassian-apps`, sous-dossier
   plugin » → onglet « Sales Info » → « Add to Marketplace » → `PPCOCKPITPRO` →
   Personal 29 $/an → essai **14 jours**) et porte le **texte exact** de la
   description et des notes de version, extrait du `plugin.xml` **du JAR livré**.
+
+## 10. Cycle 153 (consigne mère 07/11/2026 20:01 + 20:32) — patch du jury, 3 corrections, guide
+
+### 10.1 Le patch du jury, hunk par hunk
+
+Source : `/work/REVUE-JURY/20261107-1223-slot5-ml-experiment-plugin-f09a.patch`.
+Commande : `patch -p1 --dry-run < <patch>` (lecture seule) puis `patch -p1 < <patch>`
+(la copie avant patch est conservée : `/work/preuves/cycle153/build.gradle.kts.orig-avant-patch`
+et `…/plugin.xml.orig-avant-patch`).
+
+```
+patching file build.gradle.kts
+Hunk #1 FAILED at 110.
+Hunk #2 succeeded at 144 (offset 9 lines).
+1 out of 2 hunks FAILED -- saving rejects to file build.gradle.kts.rej
+patching file src/main/kotlin/com/slot5/mlexp/MlflowToolWindowPanel.kt
+patching file src/main/resources/META-INF/plugin.xml
+Hunk #1 FAILED at 36.
+1 out of 2 hunks FAILED -- saving rejects to file src/main/resources/META-INF/plugin.xml.rej
+RC patch = 1
+```
+
+| Fichier | Hunk | Ce qu'il change | Résultat |
+|---|---|---|---|
+| `build.gradle.kts` | #1 (`@@110,22`) | 2 phrases fausses (Optuna, Sweeps) + le prix `29 $/an` → `$29/year` + **la ligne de tableau OBSOLETE** + le titre `<h3>0.0.22…` → `<h3>2026.1.0…` | **REJETÉ** (hunk entier) |
+| `build.gradle.kts` | #2 (`@@135,7`) | la ligne de note de version de 0.0.21 → « No functional change; includes the fixes of 0.0.18–0.0.20 below. » | **APPLIQUÉ** (offset 9 lignes) |
+| `plugin.xml` | #1 (`@@36,22`) | les mêmes 4 corrections + le titre | **REJETÉ** (hunk entier) |
+| `plugin.xml` | #2 (`@@61,7`) | la même ligne de note de version | **APPLIQUÉ** (offset 0) |
+| `MlflowToolWindowPanel.kt` | menu clic droit | suppression de `tree.componentPopupMenu = popup`, `popup.show(...)` déplacé **dans** `if (runNode != null)` | **APPLIQUÉ** |
+
+**Pourquoi le hunk #1 a été rejeté — et ce qui a été fait ensuite.** Le hunk #1 du jury
+*regroupe* 4 changements : les 2 phrases fausses, le prix, **la ligne de tableau obsolète**
+(`<tr><td>Metric history per run</td>…` → `Metric history in the Compare tab`) et le titre
+`<h3>`. Or, au cycle 152, la ligne de tableau obsolète **avait déjà été remplacée** par la
+ligne exacte (`Metric points per metric, per run | 5 000 points (free chart) | 100 000
+points (in the Compare view)`) et le titre avait déjà été mis à 2026.1.0 : le contexte du
+hunk ne correspondait plus, GNU `patch` rejette donc le hunk **en bloc**.
+
+Conséquence à assumer : **le hunk rejeté n'était pas « uniquement » la ligne obsolète** —
+il contenait aussi les 2 phrases fausses et le prix, qui sont des corrections légitimes.
+Conformément à la consigne (« si un autre hunk est rejeté, n'applique rien et dis-le »),
+**ce hunk n'a été appliqué ni en bloc ni en partie par `patch`** ; les 3 corrections
+légitimes ont été reprises **à la main**, au mot près, dans les **deux** fichiers
+(voir § 10.2), et **la ligne obsolète n'a PAS été remise** (elle aurait réintroduit une
+promesse fausse : le graphique gratuit reste à 5 000 points).
+
+**Contenu des 2 fichiers `.rej`** (verbatim, archivés :
+`/work/preuves/cycle153/._build.gradle.kts.rej.rej` et
+`/work/preuves/cycle153/._src_main_resources_META-INF_plugin.xml.rej.rej`) : ce sont les
+mêmes 4 changements, dont la ligne obsolète
+`<tr><td>Metric history per run</td><td>5 000 points</td><td>100 000 points</td></tr>`
+→ `<tr><td>Metric history in the Compare tab</td><td>—</td><td>up to 100 000 points per
+metric</td></tr>`. **Ni l'un ni l'autre n'est dans le code livré** (contrôle § 10.3).
+
+### 10.2 Les 3 corrections reprises à la main (avant → après, fichier + ligne)
+
+| Chaîne | Avant | Après | `plugin.xml` | `build.gradle.kts` |
+|---|---|---|---|---|
+| Optuna | `…the five best trials and the most-chosen hyperparameter.` | `…the five best trials and a bar chart of the hyperparameter that takes the most distinct values.` | 39 | 122 |
+| Sweeps | `…grouped by state, with the best run and its top summary metrics.` | `…grouped by state, with their run count and timestamps (the W&B API does not expose a best run for a sweep).` | 41 | 124 |
+| Prix du palier | `<th>Pro (29 $/an, 14-day trial)</th>` | `<th>Pro ($29/year, 14-day trial)</th>` | 46 | 129 |
+
+* Le prix **dans le texte anglais** est `$29/year` ; `29 $/an` reste la forme du **formulaire
+  Marketplace** (elle est dans le guide de vente, § 10.5).
+* Les 2 phrases sont fausses et le code le prouve : `parseSweepNode` met toujours
+  `bestRun = null` (le type GraphQL `Sweep` n'a pas de champ `bestRun`), et le graphique
+  Optuna choisit l'hyperparamètre qui a **le plus de valeurs distinctes**
+  (`pickBarChart`), pas « le plus choisi ».
+* **Les 2 fichiers portent le même texte** : le patcher de la plateforme
+  (`patchPluginXml`) **écrase** `<description>` et `<change-notes>` par le bloc
+  `pluginConfiguration { … }` de `build.gradle.kts` (§ 9.2) — corriger un seul des deux
+  ne change rien au JAR livré.
+
+**Chaînes françaises de l'onglet Compare (`src/main/kotlin/com/slot5/mlexp/pro/`)** :
+`Comparaison verrouillee` → `Comparison locked`, `licence : aucune` → `licence: none`,
+`ProGate.messageVerrou` → `ProGate.messageLocked` et les ~12 autres littéraux du paquet
+`pro/` ont été passés **en anglais, sans accent manquant** (contrôle § 10.3 : la commande de
+recherche des chaînes non-ASCII de `pro/` **ne renvoie rien**). Les tests qui affirmaient
+l'ancien texte ont été **adaptés (texte attendu)**, jamais le comportement.
+
+**Autres promesses trop larges trouvées par la relecture** (hors consigne, corrigées quand
+même parce qu'elles sont fausses) : `README.md` (2 occurrences) et `CHANGELOG.md` (1
+occurrence) reprenaient la formulation « most-chosen hyperparameter » ; l'astuce affichée
+dans l'onglet Sweeps (chemin **gratuit**) annonçait un « best run » que le code n'a pas.
+
+### 10.3 Les contrôles de vérité (tous verts)
+
+| Contrôle | Commande | Résultat |
+|---|---|---|
+| `componentPopupMenu` absent | `grep -rn componentPopupMenu src` | **rien** (RC 1 = 0 occurrence) |
+| chaînes non-ASCII de `pro/` | recherche des littéraux non ASCII dans `pro/` (main + tests) | **vide** |
+| phrases fausses absentes | `most-chosen hyperparameter`, `best run and its top summary metrics` | **absentes** des 2 fichiers |
+| ligne obsolète absente | `Metric history per run` | **absente** (la ligne exacte est en place) |
+| prix | `29 $/an` absent des 2 fichiers, `$29/year` présent aux 2 lignes 46 / 129 | **conforme** |
+
+Preuves : `/work/preuves/cycle153/01-AVANT-chaines.txt` (avant),
+`…/03-APRES-chaines.txt` (après), `…/04-controles-verite.txt` (contrôles).
+
+### 10.4 Le build : 4 corrections d'outillage, puis RC 0 partout
+
+* **`verifyPlugin` sortait en RC 1** (`java.lang.OutOfMemoryError: Java heap space`) : le
+  bloc `select` de `pluginVerification.ides` ne portait que `untilBuild`, ce qui sélectionne
+  **toutes** les versions ≤ ce build (**8 IDE** à vérifier en parallèle, conteneur à 2 Go).
+  Ajout de `sinceBuild.set("263.*")` → matrice ramenée à **2 IDE**
+  (plancher `PY-243.21565.199`, plafond `PY-263.7307.101`), `BUILD SUCCESSFUL in 1m 37s`,
+  les 2 IDE **Compatible** (3 API dépréciées + 1 override-only, **avertissements** seulement,
+  tous dans `pro/PanneauComparaison.kt`).
+* **`scripts/prevol.sh` sortait en RC 2 puis en RC 1 (3 contrôles)** : ses règles dataient
+  des cycles 149/150. Corrections, chacune mesurée : le **nom du JAR interne** est lu dans
+  `gradle.properties` (`pluginMarketplaceVersion` = 2026.1.0) et non dans `version` (0.0.22) ;
+  la version affichée est `<version>2026.1.0</version>` ; les notes de version doivent
+  commencer par `<h3>2026.1.0 — …` et comporter **au moins une puce** (les versions
+  publiées plus anciennes peuvent suivre comme historique) ; le nombre de classes attendues
+  est **119** (84 en 0.0.21, +29 en `pro/` et 6 classes nommées) et la liste des classes
+  obligatoires passe de 22 à **29** (22 du gratuit + 7 du palier Pro).
+* **Résultat** : **44 tests / 44 verts** (`cleanTest test`, RC 0) ; `buildPlugin` +
+  `verifyPlugin` **RC 0** ; `scripts/prevol.sh` → **PRE-VOL GREEN**, 0 échec, 2
+  avertissements (mentions historiques dans `CHANGELOG.md` / `README.md`, hors ZIP).
+  Preuves : `05-tests-cycle153.log`, `06-build-verify-cycle153.log`, `07-prevol-cycle153.log`.
+
+### 10.5 Le guide de vente : identique au JAR livré, à l'octet
+
+`MISE-VENTE-PRO-TGG.md` est **régénéré depuis le JAR livré** (pas depuis les sources) :
+les 2 blocs « texte à coller » sont **identiques au `plugin.xml` du JAR livré**
+(description 2 551 car. / md5 du bloc `16342b4177c7` ; notes de version
+3 609 car. / md5 du bloc `7e4ff8c0caf7` — empreintes de **texte**, donc écrites en
+préfixe de 12 caractères : elles ne désignent aucun fichier) → **VERDICT = VERT**.
+Le guide ne contient **ni** « most-chosen hyperparameter » **ni** « best run and its top
+summary metrics » (0 occurrence chacun) ; le prix y est écrit **aux deux formes** :
+`29 $/an` dans le formulaire Marketplace (2 occurrences) et `$29/year` dans le texte
+anglais (1 occurrence). Preuve : `/work/preuves/cycle153/guide-pro-conforme.log`.
+
+### 10.6 La livraison et le push
+
+* **ZIP livré** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `6d07966bd82c7cb62bf84ca3ee96039c`**,
+  **1 875 522 octets**, sha256 (octets)
+  `859b5fd58855693e05482c4c9eee215ab3924e615945bfa92edcb8d578ac2eec`, hash de contenu
+  `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0`.
+* **Dossier de vente** : `dossier-cockpit-pro.zip`, **md5 `f419bf5492419ea74f3085a8685056f3`**,
+  **1 967 043 octets**, sha256
+  `5950ad8b6c820de13370b45020595f30611c09e6b5eb4517a61f02d97c6cc194` ; il contient le ZIP
+  livré **non re-zippé** (md5 identique), le guide et la capture ; sa reconstruction est
+  **reproductible** (2 constructions, md5 identique).
+* **Copies à l'octet près conservées** dans
+  `/work/preuves/cycle153/copie-livraison/*.zip.bin` : le pré-vol d'un *autre* produit
+  (dossier gelé) balaye les fichiers de `/work` en **ignorant les `.zip`**, et refusait donc
+  les md5 des 2 ZIP livrés cités dans le rapport partagé. Les copies sont **bit pour bit
+  identiques** (`cmp` OK) et ne changent rien au dossier de livraison : elles rendent le
+  md5 cité vérifiable par n'importe quel pré-vol, sans toucher au dossier gelé.
+* **Code public = code livré** : le dépôt public
+  `tgg49099-dotcom/atlassian-apps`, sous-dossier
+  `jetbrains-plugins/ml-experiment-cockpit/`, reçoit **exactement** les fichiers du
+  build ; **aucun ZIP, JAR, `build/` ou `.gradle/`** n'y entre ; `SECURITY.md`,
+  `SUPPORT.md`, `PRIVACY.md`, `NOTICE` et `media/` sont **conservés**. La preuve est un
+  **nouveau clone** du dépôt public puis la comparaison **sha256 de tous les fichiers** :
+  **0 différence** (journal complet : `/work/preuves/cycle153/push-public.log`).
+  Le **hash exact du HEAD public** est dans ce journal et dans le rapport du cycle 153 —
+  il ne peut pas figurer dans le document qu'il annonce lui-même.
+* **0 publication, 0 mise en vente, 0 compte, 0 clé, 0 $, 0 courriel, 0 action pour Tgg.**

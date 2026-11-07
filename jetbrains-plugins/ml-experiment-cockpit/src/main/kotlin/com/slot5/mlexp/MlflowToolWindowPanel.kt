@@ -126,17 +126,18 @@ class MlflowToolWindowPanel(
     }
 
     /**
-     * v0.0.22 — menu contextuel du arbre : clic droit sur un run →
-     * « Compare with… » (point d'entrée du palier Pro n°1, plan § 2.1
-     * point 2). Le run visé devient **A** ; **B** se choisit dans l'onglet
-     * Compare, parmi les runs de la même expérience.
+     * v0.0.22 — context menu of the tree: right-click on a run ->
+     * "Compare with..." (entry point of Pro tier 1, plan section 2.1
+     * point 2). The targeted run becomes **A**; **B** is picked in the
+     * Compare tab, among the runs of the same experiment.
      *
-     * Le gratuit n'est pas modifié : l'arbre se comporte exactement comme
-     * avant, on lui **ajoute** une entrée de menu.
+     * The free tier is not modified: the tree behaves exactly as before, a
+     * menu entry is simply **added** to it.
      */
     private fun installerMenuContextuel() {
         val popup = JPopupMenu()
-        tree.componentPopupMenu = popup
+        // No popup-menu property is set on the tree: Swing would then show the
+        // menu a second time (an empty one).
         tree.addMouseListener(object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) = montrerPopup(e, popup)
             override fun mouseReleased(e: MouseEvent) = montrerPopup(e, popup)
@@ -157,7 +158,7 @@ class MlflowToolWindowPanel(
             item.addActionListener {
                 val hub = comparaisonHub
                 if (hub == null) {
-                    showStatus("La comparaison n'est pas disponible dans cette version.", true)
+                    showStatus("The comparison is not available in this version.", true)
                     return@addActionListener
                 }
                 hub.demander(
@@ -169,8 +170,8 @@ class MlflowToolWindowPanel(
                 )
             }
             popup.add(item)
+            popup.show(tree, e.x, e.y)
         }
-        popup.show(tree, e.x, e.y)
     }
 
     /**

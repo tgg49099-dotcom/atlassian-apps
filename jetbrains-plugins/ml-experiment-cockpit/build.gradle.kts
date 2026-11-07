@@ -99,8 +99,12 @@ intellijPlatform {
         // `pluginMarketplaceVersion` (2026.1.0) et NON plus `project.version`
         // (0.0.22) : la regle officielle impose que les 2 premiers chiffres du
         // `release-version` ("20261") correspondent a ceux du `version`.
-        // `project.version` reste 0.0.22 : c'est lui qui nomme le ZIP et le JAR
-        // livres (ml-experiment-cockpit-0.0.22.zip / .jar) — inchanges.
+        // `project.version` reste 0.0.22 : c'est lui qui nomme le ZIP livre
+        // (ml-experiment-cockpit-0.0.22.zip) — inchange. Le nom du JAR INTERNE
+        // du ZIP, lui, suit `pluginConfiguration.version` :
+        // ml-experiment-cockpit-2026.1.0.jar (MESURE cycle 150, voir
+        // gradle.properties) — pas 0.0.22. C'est ce que lit aussi
+        // scripts/prevol.sh (depuis le cycle 153).
         version = (project.findProperty("pluginMarketplaceVersion") as String?) ?: project.version.toString()
         ideaVersion {
             sinceBuild = (project.findProperty("pluginSinceBuild") as String?) ?: "243"
@@ -119,14 +123,14 @@ intellijPlatform {
 <p>MLflow experiment tracking, Weights & Biases (wandb) sweeps, Optuna studies, the Model Registry — runs and metrics in PyCharm, IntelliJ, WebStorm, GoLand or CLion.</p>
 <ul>
 <li><b>Experiments</b> — your MLflow experiments and runs in a tree, with parameters, metric values and the full history of any metric as a curve.</li>
-<li><b>Optuna</b> — studies and trials from your Optuna Dashboard: summary, the five best trials and the most-chosen hyperparameter.</li>
+<li><b>Optuna</b> — studies and trials from your Optuna Dashboard: summary, the five best trials and a bar chart of the hyperparameter that takes the most distinct values.</li>
 <li><b>Models</b> — the MLflow Model Registry: registered models, their versions, stage, status and run id.</li>
-<li><b>Sweeps</b> — W&B hyperparameter sweeps grouped by state, with the best run and its top summary metrics.</li>
+<li><b>Sweeps</b> — W&B hyperparameter sweeps grouped by state, with their run count and timestamps (the W&B API does not expose a best run for a sweep).</li>
 </ul>
 <p>All four tabs live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
 <table>
-<tr><th>Function</th><th>Free</th><th>Pro (29 $/an, 14-day trial)</th></tr>
+<tr><th>Function</th><th>Free</th><th>Pro ($29/year, 14-day trial)</th></tr>
 <tr><td>Experiments, Optuna, Models, Sweeps tabs</td><td>yes</td><td>yes</td></tr>
 <tr><td>Compare 2 runs: parameters, metrics with gaps, both curves on one axis, Markdown export</td><td>tab visible, locked</td><td>yes</td></tr>
 <tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>
@@ -134,7 +138,7 @@ intellijPlatform {
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
         changeNotes = """
-<h3>0.0.22 — Pro tier n°1: Compare 2 runs.</h3>
+<h3>2026.1.0 — Pro tier: Compare 2 runs.</h3>
 <ul>
     <li>A fifth tab, <b>Compare</b>: right-click a run in the Experiments tree and choose « Compare with… ». The two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis.</li>
     <li>The whole comparison can be copied as <b>Markdown</b> (both tables) with one click.</li>
@@ -144,7 +148,7 @@ intellijPlatform {
 <h3>0.0.21 — New description, easier to find.</h3>
 <ul>
     <li>The plugin description on the Marketplace has been rewritten: it now names the four tabs (Experiments, Optuna, Models, Sweeps) and the servers they read, so the plugin shows up in searches that use the words buyers actually type.</li>
-    <li>No functional change: the plugin reads the same servers and shows the same data as in 0.0.20.</li>
+    <li>No functional change; includes the fixes of 0.0.18–0.0.20 below.</li>
 </ul>
 <h3>0.0.20 — Four display and read defects fixed.</h3>
 <ul>
@@ -224,9 +228,28 @@ intellijPlatform {
             // via l'API officielle des versions (data.services.jetbrains.com,
             // build 263.7307.50 du 23/10/2026) et se telecharge depuis
             // download.jetbrains.com.
+            //
+            // 07/11/2026 (cycle 153) — CORRECTION DE LA MATRICE DE VERIFICATION.
+            // MESURE : `select { channels = EAP ; untilBuild = "263.*" }` NE filtre
+            // PAS sur le canal : l'API officielle des versions renvoie TOUTES les
+            // versions PyCharm Professional <= 263.* et le `select` les prend
+            // toutes. Log de verite (preuves/cycle153/06-build-verify-cycle153.log) :
+            //   "The verifyPlugin task is about to resolve 8 IDEs: python:pycharm-professional:2024.3,
+            //    263.7307.101, 262.10315.63, 261.27258.30, 253.31033.74,
+            //    252.26830.27, 251.26927.54, 243.23654.74"
+            // 8 verifications en parallele -> `java.lang.OutOfMemoryError: Java heap
+            // space` (lecture d'un jar d'IDE) -> `verifyPlugin` sort en ECHEC (RC 1).
+            // C'est aussi contraire a la consigne 51 (« AU PLUS 2 versions d'IDE :
+            // la plus ancienne visee et la plus recente »).
+            // CORRECTION : `sinceBuild.set("263.*")` borne la selection au build
+            // 263 -> la matrice redevient les DEUX extremes de la plage declaree
+            // (plancher 243 / plafond 263), exactement ce que dit le commentaire
+            // ci-dessus. Le comportement du plugin ne change pas : seule la
+            // matrice de verification change.
             select {
                 types.set(listOf(IntelliJPlatformType.PyCharmProfessional))
                 channels.set(listOf(ProductRelease.Channel.EAP))
+                sinceBuild.set("263.*")
                 untilBuild.set("263.*")
             }
         }

@@ -3,67 +3,67 @@ package com.slot5.mlexp.pro
 import java.util.Locale
 
 /**
- * Cœur pur de la comparaison de 2 runs — palier Pro n°1.
+ * Pure core of the comparison of 2 runs - Pro tier 1.
  *
- * v0.0.22. **Aucune dépendance IntelliJ ici** : ce fichier est le seul
- * endroit où se décide *ce qu'est* une comparaison. Il est donc testable dans
- * un JVM nu (8 des tests du palier n°1 vivent ici), et l'interface Swing
- * (`PanneauComparaison.kt`) ne fait que l'afficher.
+ * v0.0.22. **No IntelliJ dependency here**: this file is the only place where
+ * *what a comparison is* is decided. It is therefore testable in a bare JVM
+ * (8 of the tests of tier 1 live here), and the Swing interface
+ * (`PanneauComparaison.kt`) only displays it.
  *
- * Le modèle est **agnostique de la source** : un [RunRef] porte son
- * [origine] (l'URI du serveur), ses paramètres et ses métriques. Le palier
- * n°1 ne compare que des runs **MLflow** (plan § 2.2 : « ne compare pas des
- * runs Optuna, des sweeps W&B ni des modèles »), mais ajouter une source
- * plus tard ne demandera qu'un autre producteur de [RunRef].
+ * The model is **agnostic of the source**: a [RunRef] carries its
+ * [origine] (the URI of the server), its parameters and its metrics. Tier 1
+ * only compares **MLflow** runs (plan section 2.2: "it does not compare
+ * Optuna runs, W&B sweeps nor models"), but adding a source later will only
+ * require another producer of [RunRef].
  *
- * Format des nombres : séparateur décimal français (`0,86`), comme le reste
- * de l'interface du plugin.
+ * Number format: French decimal separator (`0,86`), like the rest of the
+ * plugin interface.
  */
 
-/** État d'une ligne de comparaison. */
+/** State of one comparison row. */
 enum class EtatComparaison(val libelle: String) {
-    /** La même valeur des deux côtés. */
-    IDENTIQUE("identique"),
+    /** The same value on both sides. */
+    IDENTIQUE("identical"),
 
-    /** Les deux côtés existent mais diffèrent. */
-    DIFFERENT("différent"),
+    /** Both sides exist but differ. */
+    DIFFERENT("different"),
 
-    /** La clé n'existe que dans le run B. */
-    ABSENT_A("absent de A"),
+    /** The key only exists in run B. */
+    ABSENT_A("absent from A"),
 
-    /** La clé n'existe que dans le run A. */
-    ABSENT_B("absent de B")
+    /** The key only exists in run A. */
+    ABSENT_B("absent from B")
 }
 
-/** Motifs de refus — un état, un motif précis (discipline du module `licence/`). */
+/** Reasons for a refusal - one state, one precise reason (discipline of the `licence/` module). */
 enum class CodeRefus {
-    /** Aucune licence Pro : la porte est fermée. */
+    /** No Pro licence: the gate is closed. */
     BLOQUE_SANS_LICENCE,
 
-    /** L'essai gratuit est terminé. */
+    /** The free trial has ended. */
     LICENCE_EXPIREE,
 
-    /** La plateforme ne peut pas conclure (facade non initialisé). */
+    /** The platform cannot conclude (facade not initialised). */
     FACADE_NON_INITIALISEE,
 
-    /** Les 2 runs viennent de 2 serveurs différents. */
+    /** The 2 runs come from 2 different servers. */
     ORIGINES_DIFFERENTES,
 
-    /** Plus de 2 runs demandés : le périmètre est exactement 2. */
+    /** More than 2 runs requested: the scope is exactly 2. */
     TROIS_RUNS_NON_SUPPORTES,
 
-    /** Moins de 2 runs demandés. */
+    /** Fewer than 2 runs requested. */
     DEUX_RUNS_REQUIS,
 
-    /** Un des 2 runs n'existe plus sur le serveur. */
+    /** One of the 2 runs no longer exists on the server. */
     RUN_INTROUVABLE
 }
 
 /**
- * Un run, vu par la comparaison.
+ * A run, as seen by the comparison.
  *
- * @param origine l'URI du serveur MLflow d'où vient le run : deux runs
- *        d'origines différentes ne sont **pas** comparables (refus
+ * @param origine the URI of the MLflow server the run comes from: two runs
+ *        from different sources are **not** comparable (refusal
  *        [CodeRefus.ORIGINES_DIFFERENTES]).
  */
 data class RunRef(
@@ -76,11 +76,11 @@ data class RunRef(
     val params: Map<String, String> = emptyMap(),
     val metriques: Map<String, Double> = emptyMap()
 ) {
-    /** Le nom lisible s'il existe, sinon les 8 premiers caractères de l'identifiant. */
+    /** The readable name if there is one, else the first 8 characters of the id. */
     fun libelle(): String = nom.ifEmpty { id.take(8) }
 }
 
-/** Une ligne du tableau des paramètres. */
+/** One row of the parameter table. */
 data class LigneParam(
     val cle: String,
     val valeurA: String?,
@@ -88,25 +88,25 @@ data class LigneParam(
     val etat: EtatComparaison
 )
 
-/** Une ligne du tableau des métriques. */
+/** One row of the metric table. */
 data class LigneMetrique(
     val cle: String,
     val valeurA: Double?,
     val valeurB: Double?,
-    /** Écart absolu (B − A) ; `null` si une des deux valeurs manque. */
+    /** Absolute gap (B - A); `null` if one of the two values is missing. */
     val ecartAbsolu: Double?,
-    /** Écart relatif en % ; `null` si la valeur de référence (A) est nulle ou absente. */
+    /** Relative gap in %; `null` if the reference value (A) is zero or absent. */
     val ecartRelatifPct: Double?,
     val etat: EtatComparaison
 )
 
-/** Résultat d'une demande de comparaison : soit un refus motivé, soit la comparaison. */
+/** Result of a comparison request: either a reasoned refusal, or the comparison. */
 sealed class ResultatComparaison {
 
-    /** Refus : la porte est fermée, ou la demande est hors périmètre. */
+    /** Refusal: the gate is closed, or the request is out of scope. */
     data class Refus(val code: CodeRefus, val message: String) : ResultatComparaison()
 
-    /** Comparaison calculée. */
+    /** The computed comparison. */
     data class Comparaison(
         val a: RunRef,
         val b: RunRef,
@@ -114,37 +114,37 @@ sealed class ResultatComparaison {
         val metriques: List<LigneMetrique>,
         val dureeA: String,
         val dureeB: String,
-        /** Nombre de lignes qui diffèrent (params + métriques). */
+        /** Number of rows that differ (params + metrics). */
         val nombreEcarts: Int
     ) : ResultatComparaison() {
-        /** Lignes de paramètres qui diffèrent. */
+        /** The parameter rows that differ. */
         val ecartsParams: List<LigneParam> get() = params.filter { it.etat != EtatComparaison.IDENTIQUE }
 
-        /** Lignes de métriques qui diffèrent. */
+        /** The metric rows that differ. */
         val ecartsMetriques: List<LigneMetrique> get() = metriques.filter { it.etat != EtatComparaison.IDENTIQUE }
 
-        /** Clés de métriques communes aux 2 runs (pour le sélecteur de métrique). */
+        /** The metric keys common to the 2 runs (for the metric selector). */
         val metriquesCommunes: List<String>
             get() = metriques.filter { it.valeurA != null && it.valeurB != null }.map { it.cle }
 
         /**
-         * La comparaison au format **Markdown** (2 tableaux) : c'est ce que le
-         * bouton « Copy » met dans le presse-papier. Pas de fichier, pas de
-         * CSV : l'export CSV/XLSX est le **palier n°2**.
+         * The comparison in **Markdown** format (2 tables): this is what the
+         * "Copy" button puts in the clipboard. No file, no CSV: the CSV/XLSX
+         * export is **tier 2**.
          */
         fun markdown(): String {
             val sb = StringBuilder()
-            sb.append("| paramètre | A | B | état |\n")
+            sb.append("| parameter | A | B | state |\n")
             sb.append("|---|---|---|---|\n")
             for (l in params) {
-                sb.append("| ${l.cle} | ${l.valeurA ?: "—"} | ${l.valeurB ?: "—"} | ${l.etat.libelle} |\n")
+                sb.append("| ${l.cle} | ${l.valeurA ?: "-"} | ${l.valeurB ?: "-"} | ${l.etat.libelle} |\n")
             }
             sb.append("\n")
-            sb.append("| métrique | A | B | écart absolu | écart relatif | état |\n")
+            sb.append("| metric | A | B | absolute gap | relative gap | state |\n")
             sb.append("|---|---|---|---|---|---|\n")
             for (l in metriques) {
-                sb.append("| ${l.cle} | ${ComparaisonRuns.formatNombre(l.valeurA) ?: "—"} | ${ComparaisonRuns.formatNombre(l.valeurB) ?: "—"} | ")
-                sb.append("${ComparaisonRuns.formatNombre(l.ecartAbsolu) ?: "—"} | ${ComparaisonRuns.formatEcartRelatif(l.ecartRelatifPct) ?: "—"} | ${l.etat.libelle} |\n")
+                sb.append("| ${l.cle} | ${ComparaisonRuns.formatNombre(l.valeurA) ?: "-"} | ${ComparaisonRuns.formatNombre(l.valeurB) ?: "-"} | ")
+                sb.append("${ComparaisonRuns.formatNombre(l.ecartAbsolu) ?: "-"} | ${ComparaisonRuns.formatEcartRelatif(l.ecartRelatifPct) ?: "-"} | ${l.etat.libelle} |\n")
             }
             return sb.toString()
         }
@@ -152,21 +152,21 @@ sealed class ResultatComparaison {
 }
 
 /**
- * Le cœur de la comparaison.
+ * The core of the comparison.
  *
- * Ordre des refus (volontaire) : **licence d'abord** (rien n'est calculé
- * sans licence), puis le nombre de runs, puis les origines.
+ * Order of the refusals (deliberate): **licence first** (nothing is computed
+ * without a licence), then the number of runs, then the origins.
  */
 object ComparaisonRuns {
 
-    /** Nombre de runs que le palier n°1 sait comparer. */
+    /** Number of runs that tier 1 knows how to compare. */
     const val NOMBRE_RUNS = 2
 
     /**
-     * Compare 2 runs.
+     * Compares 2 runs.
      *
-     * @param runs les runs à comparer — exactement [NOMBRE_RUNS].
-     * @param etat l'état de la porte Pro.
+     * @param runs the runs to compare - exactly [NOMBRE_RUNS].
+     * @param etat the state of the Pro gate.
      */
     fun calculer(runs: List<RunRef>, etat: ProState): ResultatComparaison {
         val codeLicence = codeRefusPourEtat(etat)
@@ -176,14 +176,14 @@ object ComparaisonRuns {
         if (runs.size < NOMBRE_RUNS) {
             return ResultatComparaison.Refus(
                 CodeRefus.DEUX_RUNS_REQUIS,
-                "Choisir exactement 2 runs a comparer (${runs.size} choisi)."
+                "Choose exactly 2 runs to compare (${runs.size} chosen)."
             )
         }
         if (runs.size > NOMBRE_RUNS) {
             return ResultatComparaison.Refus(
                 CodeRefus.TROIS_RUNS_NON_SUPPORTES,
-                "Le palier n°1 compare exactement 2 runs (${runs.size} demandés) : " +
-                    "la comparaison de 3 runs ou plus n'est pas supportee."
+                "Pro tier 1 compares exactly 2 runs (${runs.size} requested): " +
+                    "comparing 3 runs or more is not supported."
             )
         }
         val a = runs[0]
@@ -191,14 +191,14 @@ object ComparaisonRuns {
         if (a.id.isBlank() || b.id.isBlank()) {
             return ResultatComparaison.Refus(
                 CodeRefus.RUN_INTROUVABLE,
-                "Un des 2 runs n'existe plus sur le serveur : rechargez la liste des runs."
+                "One of the 2 runs no longer exists on the server: reload the list of runs."
             )
         }
         if (a.origine.isNotBlank() && b.origine.isNotBlank() && a.origine != b.origine) {
             return ResultatComparaison.Refus(
                 CodeRefus.ORIGINES_DIFFERENTES,
-                "Les 2 runs viennent de 2 serveurs differents (${a.origine} et ${b.origine}) : " +
-                    "ils ne sont pas comparables."
+                "The 2 runs come from 2 different servers (${a.origine} and ${b.origine}): " +
+                    "they cannot be compared."
             )
         }
 
@@ -218,7 +218,7 @@ object ComparaisonRuns {
         )
     }
 
-    /** Table des paramètres : union des clés, tri alphabétique. */
+    /** Parameter table: union of the keys, alphabetical order. */
     fun lignesParams(a: RunRef, b: RunRef): List<LigneParam> {
         val cles = (a.params.keys + b.params.keys).sorted()
         return cles.map { cle ->
@@ -234,7 +234,7 @@ object ComparaisonRuns {
         }
     }
 
-    /** Table des métriques : union des clés, tri alphabétique. */
+    /** Metric table: union of the keys, alphabetical order. */
     fun lignesMetriques(a: RunRef, b: RunRef): List<LigneMetrique> {
         val cles = (a.metriques.keys + b.metriques.keys).sorted()
         return cles.map { cle ->
@@ -247,8 +247,8 @@ object ComparaisonRuns {
                 else -> EtatComparaison.DIFFERENT
             }
             val ecartAbsolu = if (va != null && vb != null) vb - va else null
-            // L'écart relatif se calcule sur la valeur de référence A ; si A
-            // vaut 0, l'écart relatif n'a pas de sens (« — »).
+            // The relative gap is computed on the reference value A; if A is 0,
+            // the relative gap makes no sense ("-").
             val ecartRelatif = if (va != null && vb != null && va != 0.0) {
                 (vb - va) / kotlin.math.abs(va) * 100.0
             } else {
@@ -258,7 +258,7 @@ object ComparaisonRuns {
         }
     }
 
-    /** Le code de refus correspondant à un état de licence fermé. */
+    /** The refusal code matching a closed licence state. */
     fun codeRefusPourEtat(etat: ProState): CodeRefus? = when (etat) {
         ProState.PRO, ProState.ESSAI -> null
         ProState.EXPIRE -> CodeRefus.LICENCE_EXPIREE
@@ -266,30 +266,30 @@ object ComparaisonRuns {
         ProState.INCONNU -> CodeRefus.FACADE_NON_INITIALISEE
     }
 
-    /** Le message utilisateur d'un refus. */
+    /** The user message of a refusal. */
     fun messageRefus(code: CodeRefus): String = when (code) {
         CodeRefus.BLOQUE_SANS_LICENCE ->
-            "La comparaison de 2 runs fait partie de ML Experiment Cockpit Pro : " +
-                "aucune licence active sur cette machine."
+            "Comparing 2 runs is part of ML Experiment Cockpit Pro: " +
+                "no licence is active on this machine."
         CodeRefus.LICENCE_EXPIREE ->
-            "Votre essai gratuit de ML Experiment Cockpit Pro est termine."
+            "Your free trial of ML Experiment Cockpit Pro has ended."
         CodeRefus.FACADE_NON_INITIALISEE ->
-            "Impossible de verifier votre licence ML Experiment Cockpit Pro pour le moment."
+            "Your ML Experiment Cockpit Pro licence cannot be checked right now."
         CodeRefus.ORIGINES_DIFFERENTES ->
-            "Les 2 runs viennent de 2 serveurs differents : ils ne sont pas comparables."
+            "The 2 runs come from 2 different servers: they cannot be compared."
         CodeRefus.TROIS_RUNS_NON_SUPPORTES ->
-            "Le palier n°1 compare exactement 2 runs."
+            "Pro tier 1 compares exactly 2 runs."
         CodeRefus.DEUX_RUNS_REQUIS ->
-            "Choisir exactement 2 runs a comparer."
+            "Choose exactly 2 runs to compare."
         CodeRefus.RUN_INTROUVABLE ->
-            "Un des 2 runs n'existe plus sur le serveur."
+            "One of the 2 runs no longer exists on the server."
     }
 
-    /** Durée d'un run : « — » si l'heure de début est inconnue, sinon fin − début. */
+    /** Duration of a run: "-" if the start time is unknown, else end - start. */
     fun formatDuree(run: RunRef): String {
-        if (run.startTimeMs <= 0L || run.endTimeMs <= 0L) return "—"
+        if (run.startTimeMs <= 0L || run.endTimeMs <= 0L) return "-"
         val ms = run.endTimeMs - run.startTimeMs
-        if (ms < 0) return "—"
+        if (ms < 0) return "-"
         return when {
             ms < 1000L -> "$ms ms"
             ms < 60_000L -> String.format(Locale.FRANCE, "%.1f s", ms / 1000.0)
@@ -305,12 +305,12 @@ object ComparaisonRuns {
     }
 
     /**
-     * Un nombre au format français ; `null` si la valeur manque.
+     * A number in the French format; `null` if the value is missing.
      *
-     * Au plus 6 décimales, zéros de fin **supprimés** (`0,8` et non
-     * `0,800000`) : c'est ce que `%g` ne fait pas en Java (il garde les zéros
-     * de fin). Les valeurs extrêmes passent en notation scientifique pour ne
-     * pas afficher « 0 » pour un nombre non nul.
+     * At most 6 decimals, trailing zeros **removed** (`0,8` and not
+     * `0,800000`): that is what `%g` does not do in Java (it keeps the
+     * trailing zeros). Extreme values switch to scientific notation so that a
+     * non-zero number is never shown as "0".
      */
     fun formatNombre(v: Double?): String? {
         if (v == null) return null
@@ -324,7 +324,7 @@ object ComparaisonRuns {
         return fmt.format(v)
     }
 
-    /** Un écart relatif au format français : « +7,50 % ». */
+    /** A relative gap in the French format: "+7,50 %". */
     fun formatEcartRelatif(v: Double?): String? {
         if (v == null) return null
         return String.format(Locale.FRANCE, "%+.2f %%", v)

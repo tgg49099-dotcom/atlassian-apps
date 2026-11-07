@@ -1,67 +1,67 @@
 package com.slot5.mlexp.pro
 
 /**
- * Porte Pro du palier n°1 — « Compare 2 runs ».
+ * The Pro gate of tier 1 - "Compare 2 runs".
  *
- * v0.0.22. Le palier payant n°1 est vendu **par JetBrains** (modèle
- * *Freemium*) : c'est la plateforme qui détient la licence, pas nous. Il n'y
- * a donc **ni clé à nous, ni serveur, ni encaissement**. Notre travail se
- * limite à demander à la plateforme « cette machine a-t-elle le produit
- * `PPCOCKPITPRO` ? » et à traduire la réponse en états.
+ * v0.0.22. The paid tier 1 is sold **by JetBrains** (the *Freemium* model):
+ * the platform holds the licence, not us. There is therefore **no key of ours,
+ * no server and no cash handling**. Our work is limited to asking the platform
+ * "does this machine have the product `PPCOCKPITPRO`?" and to turn the answer
+ * into states.
  *
- * **Pourquoi ce fichier ne dépend d'aucune classe IntelliJ.** La porte doit
- * être testable dans un JVM nu (`./gradlew test` sans IDE) : la lecture du
- * facade natif vit dans `LicenceNatif.kt`, qui implémente [SourceLicence].
- * Ici on ne connaît que la *forme* de la réponse.
+ * **Why this file depends on no IntelliJ class.** The gate has to be testable
+ * in a bare JVM (`./gradlew test`, no IDE): the reading of the native facade
+ * lives in `LicenceNatif.kt`, which implements [SourceLicence]. Here we only
+ * know the *shape* of the answer.
  *
- * **La discipline reprise du module `licence/`** (plan § 3.3) : un état, un
- * motif précis, jamais d'exception vague. Cinq états, cinq motifs :
+ * **The discipline taken from the `licence/` module** (plan section 3.3): one
+ * state, one precise reason, never a vague exception. Five states, five
+ * reasons:
  *
- * | État | Signification | Motif affiché |
+ * | State | Meaning | Message shown |
  * |---|---|---|
- * | [ProState.PRO] | licence payante active | — |
- * | [ProState.ESSAI] | essai gratuit en cours | — |
- * | [ProState.EXPIRE] | l'essai est terminé | « votre essai est terminé » |
- * | [ProState.ABSENT] | aucune licence pour ce produit | « aucune licence » |
- * | [ProState.INCONNU] | la plateforme ne peut pas encore répondre | « je ne peux pas vérifier » |
+ * | [ProState.PRO] | active paid licence | - |
+ * | [ProState.ESSAI] | free trial in progress | - |
+ * | [ProState.EXPIRE] | the trial has ended | "your trial has ended" |
+ * | [ProState.ABSENT] | no licence for this product | "no licence" |
+ * | [ProState.INCONNU] | the platform cannot answer yet | "I cannot check" |
  *
- * Règle de sécurité : **INCONNU n'ouvre jamais une fonction payante** et
- * **INCONNU ne ferme jamais une fonction gratuite**. Le gratuit ne consulte
- * jamais cette porte (le test `GratuitInchangeTest` le prouve).
+ * Safety rule: **INCONNU never opens a paid feature** and **INCONNU never
+ * closes a free feature**. The free path never consults this gate (the
+ * `GratuitInchangeTest` proves it).
  */
 enum class ProState {
-    /** Licence payante active (compte JetBrains, code d'activation, serveur flottant). */
+    /** Active paid licence (JetBrains account, activation code, floating server). */
     PRO,
 
-    /** Essai gratuit en cours. */
+    /** Free trial in progress. */
     ESSAI,
 
-    /** Essai terminé (le sceau `eval:` porte une date de fin dépassée). */
+    /** Trial ended (the `eval:` stamp carries an end date in the past). */
     EXPIRE,
 
-    /** Aucune licence pour ce produit : le sceau est absent. */
+    /** No licence for this product: the stamp is absent. */
     ABSENT,
 
     /**
-     * La plateforme ne peut pas conclure : le facade de licence n'est pas
-     * encore initialisé (le IDE démarre), ou la classe n'est pas lisible.
-     * On ne devine jamais dans ce cas.
+     * The platform cannot conclude: the licence facade is not initialised yet
+     * (the IDE is starting), or the class cannot be read. We never guess here.
      */
     INCONNU;
 
-    /** Vrai si les fonctions Pro peuvent être utilisées. */
+    /** True when the Pro features can be used. */
     fun autorise(): Boolean = this == PRO || this == ESSAI
 }
 
 /**
- * Résultat d'une lecture de licence.
+ * Result of a licence reading.
  *
- * @param facadeInitialisee false quand le facade de la plateforme n'est pas
- *        encore initialisé : dans ce cas [sceau] est sans signification.
- * @param sceau le sceau de confirmation renvoyé par la plateforme pour le
- *        produit [ProGate.CODE_PRODUIT] ; `null` = pas de licence.
- * @param motif la raison précise d'un échec de lecture (jamais une
- *        exception vague) ; `null` quand la lecture a réussi.
+ * @param facadeInitialisee false when the platform facade is not initialised
+ *        yet: in that case [sceau] is meaningless.
+ * @param sceau the confirmation stamp returned by the platform for the product
+ *        [ProGate.CODE_PRODUIT]; `null` = no licence.
+ * @param motif the precise reason of a failed read (never a vague
+ *        exception); `null` when the read succeeded.
  */
 data class LectureLicence(
     val facadeInitialisee: Boolean,
@@ -69,62 +69,62 @@ data class LectureLicence(
     val motif: String? = null
 )
 
-/** Source de la licence. Implémentations : `LicenceNatif` (plateforme) et les doubles de test. */
+/** Source of the licence. Implementations: `LicenceNatif` (platform) and the test doubles. */
 interface SourceLicence {
     fun lire(): LectureLicence
 }
 
-/** Source installée par défaut : aucune licence n'est donc jamais concédée (fail-closed). */
+/** Default installed source: no licence is therefore ever granted (fail-closed). */
 object SourceLicenceAbsent : SourceLicence {
     override fun lire(): LectureLicence = LectureLicence(
         facadeInitialisee = false,
-        motif = "source de licence non installee"
+        motif = "licence source not installed"
     )
 }
 
 /**
- * La porte Pro elle-même.
+ * The Pro gate itself.
  *
- * Le code produit est écrit **à un seul endroit** dans le code ([CODE_PRODUIT]) ;
- * il est lu dans le descripteur `plugin.xml` par le test de cohérence
- * (`ProGateTest.leCodeProduitEstEcritAEcunEndroit`).
+ * The product code is written in **one single place** in the code
+ * ([CODE_PRODUIT]); it is read in the `plugin.xml` descriptor by the
+ * consistency test (`ProGateTest.leCodeProduitEstEcritAEcunEndroit`).
  */
 object ProGate {
 
     /**
-     * Code produit du palier n°1, enregistré dans le « JetBrains Sales
-     * System ». Il apparaît sur la facture et dans les comptes JetBrains, et
-     * la doc officielle le dit « rather difficult to change » : **il ne
-     * change plus jamais**. Format : `P` + 3 à 14 MAJUSCULES, sans chiffre
-     * ni symbole (doc « add-required-parameters »).
+     * Product code of tier 1, registered in the "JetBrains Sales System".
+     * It appears on the invoice and in the JetBrains accounts, and the
+     * official documentation says it is "rather difficult to change": **it
+     * never changes again**. Format: `P` + 3 to 14 UPPERCASE letters, without
+     * any digit or symbol (documentation "add-required-parameters").
      */
     const val CODE_PRODUIT = "PPCOCKPITPRO"
 
-    /** Licence obtenue via le compte JetBrains ou un code d'activation. */
+    /** Licence obtained through the JetBrains account or an activation code. */
     const val PREFIXE_CLE = "key:"
 
-    /** Licence obtenue via un serveur de licences flottant. */
+    /** Licence obtained through a floating licence server. */
     const val PREFIXE_STAMP = "stamp:"
 
-    /** Essai gratuit ; le sceau porte la date de fin de l'essai. */
+    /** Free trial; the stamp carries the end date of the trial. */
     const val PREFIXE_EVAL = "eval:"
 
     @Volatile
     private var source: SourceLicence = SourceLicenceAbsent
 
     /**
-     * Installe la source de licence (appelée au démarrage de l'IDE par la
-     * factory du tool window). Sans source installée, la porte est
-     * [ProState.INCONNU] : **fail-closed**.
+     * Installs the licence source (called at IDE startup by the tool window
+     * factory). Without an installed source, the gate is
+     * [ProState.INCONNU]: **fail-closed**.
      */
     fun installerSource(s: SourceLicence) {
         source = s
     }
 
-    /** État Pro courant, lu à chaque appel (jamais mis en cache : la licence peut changer). */
+    /** Current Pro state, read on every call (never cached: the licence may change). */
     fun etat(): ProState = etat(source.lire())
 
-    /** Traduit une lecture de licence en état. */
+    /** Turns a licence reading into a state. */
     fun etat(l: LectureLicence): ProState = when {
         !l.facadeInitialisee -> ProState.INCONNU
         l.sceau.isNullOrBlank() -> ProState.ABSENT
@@ -132,19 +132,19 @@ object ProGate {
     }
 
     /**
-     * Traduit un sceau en état.
+     * Turns a stamp into a state.
      *
-     * Les trois préfixes sont lus **tels quels**, sans interprétation : la
-     * signature du sceau est vérifiée par la plateforme (elle contrôle la
-     * licence au démarrage de l'IDE et au moins une fois par jour), nous on
-     * ne fait que constater sa présence. Un préfixe inconnu vaut
-     * [ProState.ABSENT] : **rien d'autre n'est une licence**.
+     * The three prefixes are read **as they are**, without interpretation: the
+     * signature of the stamp is checked by the platform (it controls the
+     * licence at IDE startup and at least once a day), we only note its
+     * presence. An unknown prefix means [ProState.ABSENT]: **nothing else is a
+     * licence**.
      */
     fun etatDepuisSceau(sceau: String): ProState {
         if (sceau.startsWith(PREFIXE_CLE)) return ProState.PRO
         if (sceau.startsWith(PREFIXE_STAMP)) return ProState.PRO
         if (sceau.startsWith(PREFIXE_EVAL)) {
-            // Le sceau d'essai porte la date de fin (un entier).
+            // The trial stamp carries the end date (an integer).
             val brut = sceau.removePrefix(PREFIXE_EVAL).substringBefore(':').trim().toLongOrNull()
                 ?: return ProState.INCONNU
             val fin = enMillisecondes(brut)
@@ -154,40 +154,39 @@ object ProGate {
     }
 
     /**
-     * Rend la lecture de l'horodatage du sceau d'essai **indépendante de
-     * l'unité**.
+     * Makes the reading of the trial stamp timestamp **independent of its
+     * unit**.
      *
-     * La plateforme ne documente pas l'unité de `expiration-date-long` (le
-     * sceau est produit par le sous-système de licence propriétaire, absent
-     * du code source public) : le même sceau peut être exprimé en
-     * **millisecondes** ou en **secondes**. Lire en millisecondes un sceau
-     * exprimé en secondes donne une date de 1970 → l'utilisateur en essai se
-     * voit annoncer « votre essai est terminé » et la porte Pro reste fermée
-     * pendant l'essai.
+     * The platform does not document the unit of `expiration-date-long` (the
+     * stamp is produced by the proprietary licence subsystem, absent from the
+     * public source code): the same stamp can be expressed in
+     * **milliseconds** or in **seconds**. Reading a stamp expressed in seconds
+     * as milliseconds gives a date in 1970 -> the user in trial is told
+     * "your trial has ended" and the Pro gate stays closed during the trial.
      *
-     * Le seuil sépare les deux unités **sans ambiguïté** :
-     * * `10^11` ms = mars 1973 ; `10^11` s = an 5138 ⇒ tout horodatage
-     *   plausible en **millisecondes** est `>= 10^11`, et tout horodatage
-     *   plausible en **secondes** est `< 10^11`.
+     * The threshold separates the two units **without ambiguity**:
+     * * `10^11` ms = March 1973; `10^11` s = the year 5138 => every plausible
+     *   timestamp in **milliseconds** is `>= 10^11`, and every plausible
+     *   timestamp in **seconds** is `< 10^11`.
      */
     private fun enMillisecondes(brut: Long): Long =
         if (brut >= SEUIL_MILLIORDES) brut else brut * 1000L
 
-    /** `10^11` : au-dessus, l'horodatage est en millisecondes ; en dessous, en secondes. */
+    /** `10^11`: above it the timestamp is in milliseconds; below it, in seconds. */
     private const val SEUIL_MILLIORDES = 100_000_000_000L
 
-    /** Message affiché à l'utilisateur quand la porte est fermée. Jamais une erreur : une porte. */
+    /** Message shown to the user when the gate is closed. Never an error: a gate. */
     fun messageVerrou(etat: ProState): String = when (etat) {
-        ProState.PRO -> "ML Experiment Cockpit Pro : licence active."
-        ProState.ESSAI -> "ML Experiment Cockpit Pro : essai gratuit en cours."
+        ProState.PRO -> "ML Experiment Cockpit Pro: active licence."
+        ProState.ESSAI -> "ML Experiment Cockpit Pro: free trial in progress."
         ProState.EXPIRE ->
-            "Votre essai gratuit de ML Experiment Cockpit Pro est terminé. " +
-                "La comparaison de 2 runs reste accessible avec une licence payante."
+            "Your free trial of ML Experiment Cockpit Pro has ended. " +
+                "Comparing 2 runs stays available with a paid licence."
         ProState.ABSENT ->
-            "La comparaison de 2 runs fait partie de ML Experiment Cockpit Pro. " +
-                "Aucune licence n'est active sur cette machine."
+            "Comparing 2 runs is part of ML Experiment Cockpit Pro. " +
+                "No licence is active on this machine."
         ProState.INCONNU ->
-            "Impossible de verifier votre licence ML Experiment Cockpit Pro pour le moment. " +
-                "Les fonctions gratuites restent disponibles."
+            "Your ML Experiment Cockpit Pro licence cannot be checked right now. " +
+                "The free features stay available."
     }
 }

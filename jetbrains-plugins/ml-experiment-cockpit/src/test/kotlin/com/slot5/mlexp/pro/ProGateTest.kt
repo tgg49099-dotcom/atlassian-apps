@@ -8,112 +8,112 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
 /**
- * Tests de la **porte Pro** du palier n°1.
+ * Tests of the **Pro gate** of tier 1.
  *
- * v0.0.22. La porte est testée **sans IDE** : elle ne connaît que la forme
- * de la réponse de la plateforme (`LectureLicence`), jamais la classe
- * IntelliJ. Les 4 tests du plan (`/work/cockpit-pro-n1-plan.md` § 4) :
- *   1. sans licence → la comparaison est bloquée ;
- *   2. avec licence → la comparaison passe ;
- *   3. licence expirée → la comparaison est bloquée, avec le motif exact ;
- *  12. le code produit est écrit à un seul endroit et il est cohérent avec
- *      le descripteur `plugin.xml`.
+ * v0.0.22. The gate is tested **without an IDE**: it only knows the shape of
+ * the platform answer (`LectureLicence`), never the IntelliJ class. The 4
+ * tests of the plan (`/work/cockpit-pro-n1-plan.md` section 4):
+ *   1. without a licence -> the comparison is blocked;
+ *   2. with a licence -> the comparison passes;
+ *   3. expired licence -> the comparison is blocked, with the exact reason;
+ *  12. the product code is written in one single place and it is consistent
+ *      with the `plugin.xml` descriptor.
  */
 class ProGateTest {
 
     // ------------------------------------------------------------------
-    // Test 1 — sans licence
+    // Test 1 - without a licence
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("1 - sans licence : la comparaison est bloquée, avec un motif")
+    @DisplayName("1 - without a licence: the comparison is blocked, with a reason")
     fun sansLicence_laComparaisonEstBloquee() {
         val etat = ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = null))
-        assertEquals(ProState.ABSENT, etat, "pas de sceau = pas de licence")
+        assertEquals(ProState.ABSENT, etat, "no stamp = no licence")
 
         val r = ComparaisonRuns.calculer(deuxRuns(), etat)
-        assertTrue(r is ResultatComparaison.Refus, "sans licence, rien ne doit être calculé : $r")
+        assertTrue(r is ResultatComparaison.Refus, "without a licence, nothing must be computed: $r")
         val refus = r as ResultatComparaison.Refus
         assertEquals(CodeRefus.BLOQUE_SANS_LICENCE, refus.code)
-        assertTrue(refus.message.isNotBlank(), "le refus doit avoir un motif lisible")
+        assertTrue(refus.message.isNotBlank(), "the refusal must carry a readable reason")
     }
 
     // ------------------------------------------------------------------
-    // Test 2 — avec licence
+    // Test 2 - with a licence
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("2 - avec licence : la comparaison passe (0 écart sur 2 runs identiques)")
+    @DisplayName("2 - with a licence: the comparison passes (0 gap on 2 identical runs)")
     fun avecLicence_laComparaisonPasse() {
         val etat = ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "key:une-cle"))
         assertEquals(ProState.PRO, etat)
 
         val r = ComparaisonRuns.calculer(deuxRuns(), etat)
-        assertTrue(r is ResultatComparaison.Comparaison, "avec licence, la comparaison doit aboutir : $r")
+        assertTrue(r is ResultatComparaison.Comparaison, "with a licence, the comparison must succeed: $r")
         assertEquals(0, (r as ResultatComparaison.Comparaison).nombreEcarts)
     }
 
     // ------------------------------------------------------------------
-    // Test 3 — licence expirée
+    // Test 3 - expired licence
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("3 - essai terminé : la comparaison est bloquée avec le motif exact")
+    @DisplayName("3 - trial ended: the comparison is blocked with the exact reason")
     fun licenceExpiree_laComparaisonEstBloquee() {
-        // Un sceau d'essai porte la date de fin (en millisecondes) : ici, une
-        // date passée = essai terminé.
+        // A trial stamp carries the end date (in milliseconds): here, a date
+        // in the past = trial ended.
         val sceau = "eval:" + (System.currentTimeMillis() - 60_000L)
         val etat = ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = sceau))
         assertEquals(ProState.EXPIRE, etat)
 
         val r = ComparaisonRuns.calculer(deuxRuns(), etat)
-        assertTrue(r is ResultatComparaison.Refus, "un essai terminé doit bloquer : $r")
+        assertTrue(r is ResultatComparaison.Refus, "an ended trial must block: $r")
         val refus = r as ResultatComparaison.Refus
         assertEquals(CodeRefus.LICENCE_EXPIREE, refus.code)
         assertTrue(
-            refus.message.contains("essai"),
-            "le motif doit nommer l'essai, il dit : ${refus.message}"
+            refus.message.contains("trial"),
+            "the reason must name the trial, it says: ${refus.message}"
         )
     }
 
     // ------------------------------------------------------------------
-    // Test 3 bis — les autres états
+    // Test 3 bis - the other states
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("3 bis - essai en cours, facade non initialisée, préfixe inconnu")
+    @DisplayName("3 bis - trial in progress, facade not initialised, unknown prefix")
     fun lesAutresEtatsDeLaPorte() {
         val futur = System.currentTimeMillis() + 86_400_000L
         assertEquals(
             ProState.ESSAI,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:$futur")),
-            "un sceau d'essai non echu = essai en cours"
+            "a trial stamp that has not expired = trial in progress"
         )
         assertEquals(
             ProState.INCONNU,
             ProGate.etat(LectureLicence(facadeInitialisee = false)),
-            "facade non initialise = on ne peut pas conclure"
+            "facade not initialised = we cannot conclude"
         )
         assertEquals(
             ProState.ABSENT,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "quelque-chose:autre")),
-            "un préfixe inconnu n'est pas une licence"
+            "an unknown prefix is not a licence"
         )
         assertEquals(
             ProState.PRO,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "stamp:serveur-flottant")),
-            "un sceau de serveur flottant = licence"
+            "a floating server stamp = licence"
         )
-        assertTrue(ProState.ESSAI.autorise(), "l'essai autorise la comparaison")
-        assertTrue(!ProState.INCONNU.autorise(), "l'inconnu n'ouvre rien")
+        assertTrue(ProState.ESSAI.autorise(), "the trial authorises the comparison")
+        assertTrue(!ProState.INCONNU.autorise(), "the unknown state opens nothing")
     }
 
     // ------------------------------------------------------------------
-    // Test 3 ter — l'unité de l'horodatage du sceau d'essai
+    // Test 3 ter - the unit of the trial stamp timestamp
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("3 ter - l'essai se lit en millisecondes ET en secondes (l'unité n'est pas documentée)")
+    @DisplayName("3 ter - the trial is read in milliseconds AND in seconds (the unit is not documented)")
     fun essaiSceauLuDansLesDeuxUnites() {
         val maintenant = System.currentTimeMillis()
         val dansUneSemaineMs = maintenant + 7L * 86_400_000L
@@ -121,62 +121,62 @@ class ProGateTest {
         val ilYAUneSemaineMs = maintenant - 7L * 86_400_000L
         val ilYAUneSemaineSec = ilYAUneSemaineMs / 1000L
 
-        // Un essai qui n'est pas echu = ESSAI, quelle que soit l'unite.
+        // A trial that has not expired = ESSAI, whatever the unit.
         assertEquals(
             ProState.ESSAI,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:$dansUneSemaineMs")),
-            "essai en millisecondes = essai en cours"
+            "trial in milliseconds = trial in progress"
         )
         assertEquals(
             ProState.ESSAI,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:$dansUneSemaineSec")),
-            "essai en SECONDES = essai en cours (l'unite du sceau n'est pas documentee)"
+            "trial in SECONDS = trial in progress (the unit of the stamp is not documented)"
         )
 
-        // Un essai echu = EXPIRE, quelle que soit l'unite.
+        // A trial that has expired = EXPIRE, whatever the unit.
         assertEquals(
             ProState.EXPIRE,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:$ilYAUneSemaineMs")),
-            "essai echu en millisecondes = essai termine"
+            "trial expired in milliseconds = trial ended"
         )
         assertEquals(
             ProState.EXPIRE,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:$ilYAUneSemaineSec")),
-            "essai echu en SECONDES = essai termine"
+            "trial expired in SECONDS = trial ended"
         )
 
-        // Un sceau illisible reste INCONNU (on ne devine pas).
+        // An unreadable stamp stays INCONNU (we never guess).
         assertEquals(
             ProState.INCONNU,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "eval:pas-un-nombre")),
-            "un sceau illisible ne donne pas de licence"
+            "an unreadable stamp gives no licence"
         )
     }
 
     // ------------------------------------------------------------------
-    // Test 12 — le code produit
+    // Test 12 - the product code
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("12 - le code produit est conforme et n'est écrit qu'à un seul endroit")
+    @DisplayName("12 - the product code is well formed and is written in one single place")
     fun leCodeProduitEstEcritAEcunEndroit() {
-        // Les 6 règles de forme de la doc officielle « add-required-parameters ».
+        // The 6 shape rules of the official documentation "add-required-parameters".
         val code = ProGate.CODE_PRODUIT
-        assertTrue(code.startsWith("P"), "le code produit doit commencer par P")
-        assertTrue(code.length in 4..15, "le code produit doit faire 4 à 15 caractères (il en fait ${code.length})")
-        assertTrue(code.all { it in 'A'..'Z' }, "le code produit ne contient que des MAJUSCULES")
+        assertTrue(code.startsWith("P"), "the product code must start with P")
+        assertTrue(code.length in 4..15, "the product code must be 4 to 15 characters long (it is ${code.length})")
+        assertTrue(code.all { it in 'A'..'Z' }, "the product code only contains UPPERCASE letters")
         assertEquals(code, "PPCOCKPITPRO")
 
-        // Le descripteur doit porter exactement le même code.
+        // The descriptor must carry exactly the same code.
         val descripteur = source("src/main/resources/META-INF/plugin.xml")
         val attendu = "<product-descriptor code=\"" + code + "\""
         assertTrue(
             descripteur.contains(attendu),
-            "plugin.xml doit porter <product-descriptor code=\"$code\" .../>, il porte :\n$descripteur"
+            "plugin.xml must carry <product-descriptor code=\"$code\" .../>, it carries:\n$descripteur"
         )
 
-        // Et le code ne doit apparaître dans **un seul** fichier Kotlin des sources
-        // principales : une constante unique, lisible par le descripteur.
+        // And the code must appear in **one single** Kotlin file of the main
+        // sources: one unique constant, readable from the descriptor.
         val fichiers = File("src/main/kotlin").walkTopDown()
             .filter { it.isFile && it.extension == "kt" }
             .toList()
@@ -184,17 +184,17 @@ class ProGateTest {
         assertEquals(
             1,
             porteurs.size,
-            "le code produit ne doit être écrit que dans ProGate.kt, il est dans : " +
+            "the product code must only be written in ProGate.kt, it is in: " +
                 porteurs.joinToString { it.name }
         )
         assertTrue(
             porteurs[0].name == "ProGate.kt",
-            "la constante doit vivre dans ProGate.kt, elle est dans ${porteurs[0].name}"
+            "the constant must live in ProGate.kt, it lives in ${porteurs[0].name}"
         )
     }
 
     // ------------------------------------------------------------------
-    // Outils
+    // Helpers
     // ------------------------------------------------------------------
 
     private fun deuxRuns(): List<RunRef> = listOf(
@@ -202,7 +202,7 @@ class ProGateTest {
         RunRef(id = "b", origine = "http://x:5000", params = mapOf("lr" to "0.1"))
     )
 
-    /** Lit un fichier du projet (le répertoire de travail du test = la racine du projet). */
+    /** Reads a file of the project (the working directory of the test = the project root). */
     private fun source(chemin: String): String {
         var d: File? = File(".").absoluteFile
         while (d != null) {
@@ -210,6 +210,6 @@ class ProGateTest {
             if (f.exists()) return f.readText(Charsets.UTF_8)
             d = d.parentFile
         }
-        throw AssertionError("source introuvable : $chemin")
+        throw AssertionError("source not found: $chemin")
     }
 }

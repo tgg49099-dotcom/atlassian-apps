@@ -20,7 +20,7 @@ JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML exper
    Optuna Dashboard, click a study in the left tree to populate the right
    panel with: summary (name, direction, n_trials, n_complete, best value,
    datetime_start), top-5 trials table sorted by value, and a horizontal
-   bar chart of the most-chosen hyperparameter.
+   bar chart of the hyperparameter that takes the most distinct values.
 5. **Tab "Models" (v0.0.6)**: click "Refresh" to list registered
    models from your MLflow Model Registry (no new settings — uses the
    same tracking URI). Expand a model to see its latest versions with
@@ -33,8 +33,8 @@ JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML exper
    `POST https://api.wandb.ai/graphql`. The tree is grouped by sweep
    state (running / finished / failed / crashed / pending / stopped),
    coloured per-state (blue/green/red). Click a sweep to see name, id,
-   state, runs total, created + updated timestamps, best run (id, name,
-   state, top-8 summary metrics).
+   state, runs total, created + updated timestamps (the W&B API does not
+   expose a best run for a sweep).
 
 ### MLflow (Experiments tab, unchanged from v0.0.3)
 
@@ -113,7 +113,9 @@ fallback. `buildPlugin` without `clean` leaves the previous ZIPs in place.
 the sources: it extracts the plugin JAR out of the distribution ZIP and scans the
 `META-INF/plugin.xml` inside it for placeholder / withdrawn-feature residue, checks the
 id / version / vendor / `until-build`, checks that both icons are inside the JAR, and
-checks that the change-notes hold exactly one entry. Exit 0 = green, non-zero = do not publish.
+checks that the change-notes start with the shipped version (2026.1.0) and list at
+least one bullet (the older published versions may follow as history). Exit 0 = green,
+non-zero = do not publish.
 
 ## Upload to JetBrains Marketplace
 

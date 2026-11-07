@@ -30,47 +30,48 @@ import javax.swing.JTextArea
 import javax.swing.table.DefaultTableModel
 
 /**
- * Onglet **Compare** — palier Pro n°1 (« comparer 2 runs »).
+ * **Compare** tab - Pro tier 1 ("compare 2 runs").
  *
- * v0.0.22. Le 5ᵉ onglet du tool window « ML Experiment Cockpit ». Il est
- * **visible par tout le monde** et **verrouillé sans licence** : ce n'est
- * jamais un message d'erreur, c'est une porte (texte court + bouton
- * « Get Pro » qui ouvre le dialogue d'achat JetBrains).
+ * v0.0.22. The 5th tab of the "ML Experiment Cockpit" tool window. It is
+ * **visible by everybody** and **locked without a licence**: it is never an
+ * error message, it is a gate (short text + a "Get Pro" button that opens the
+ * JetBrains purchase dialog).
  *
- * Contenu quand la porte est ouverte :
- *   - un en-tête **A / B** (nom, `run_id`, statut, début, durée) ;
- *   - le tableau des **paramètres** côte à côte ;
- *   - le tableau des **métriques** côte à côte (écart absolu + écart relatif) ;
- *   - un sélecteur de métrique et la **courbe superposée** (A en bleu, B en
- *     orange) ;
- *   - le bouton **« Copy (Markdown) »** : le geste « je veux tout exporter »
- *     du plan — il met les 2 tableaux dans le presse-papier (pas de fichier,
- *     pas de CSV : l'export CSV/XLSX est le palier n°2).
+ * Content when the gate is open:
+ *   - an **A / B** header (name, `run_id`, status, start, duration);
+ *   - the **parameter** table side by side;
+ *   - the **metric** table side by side (absolute gap + relative gap);
+ *   - a metric selector and the **overlaid curve** (A in blue, B in orange);
+ *   - the **"Copy (Markdown)"** button: the "I want to export everything"
+ *     gesture of the plan - it puts the 2 tables in the clipboard (no file,
+ *     no CSV: the CSV/XLSX export is tier 2).
  *
- * Le panneau est **lecture seule** : il n'écrit jamais sur le serveur.
+ * The panel is **read-only**: it never writes to the server.
  */
 class PanneauComparaison(private val hub: ComparaisonHub) {
 
-    /** Le composant Swing que la plateforme héberge. */
+    /** The Swing component hosted by the platform. */
     val rootComponent: JPanel = JPanel(BorderLayout())
 
     private val carte = CardLayout()
-    /** Le panneau qui PORTE le CardLayout : c'est lui qu'on ajoute à la racine. */
+    /** The panel that HOLDS the CardLayout: it is the one added to the root. */
     private val porte = JPanel(carte)
     private val carteContenu = JPanel(BorderLayout())
     private val carteVerrou = JPanel(BorderLayout())
 
-    private val badge = JBLabel("licence : —").apply {
+    private val badge = JBLabel("licence: -").apply {
         foreground = java.awt.Color(0x55, 0x55, 0x55)
     }
     private val boutonGetPro = JButton("Get Pro")
     private val boutonCopier = JButton("Copy (Markdown)").apply { isEnabled = false }
-    private val statusLabel = JBLabel("Select a run in the Experiments tab, then right-click > Compare with…")
+    private val statusLabel = JBLabel(
+        "Select a run in the Experiments tab, then right-click it to compare it with another run."
+    )
 
     private val entete = JTable(ModeleNonEditable(arrayOf<Any>("A", "B"), 5))
-    private val tableParams = JTable(ModeleNonEditable(arrayOf<Any>("paramètre", "A", "B", "état"), 0))
+    private val tableParams = JTable(ModeleNonEditable(arrayOf<Any>("parameter", "A", "B", "state"), 0))
     private val tableMetriques = JTable(
-        ModeleNonEditable(arrayOf<Any>("métrique", "A", "B", "écart absolu", "écart relatif", "état"), 0)
+        ModeleNonEditable(arrayOf<Any>("metric", "A", "B", "absolute gap", "relative gap", "state"), 0)
     )
     private val comboMetrique = JComboBox<String>(DefaultComboBoxModel<String>())
     private val comboRuns = JComboBox<String>(DefaultComboBoxModel<String>())
@@ -85,7 +86,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     private var enCours = false
 
     init {
-        // ---- NORTH : titre, état de la licence, boutons ----
+        // ---- NORTH : title, licence state, buttons ----
         val topBar = JPanel(FlowLayout(FlowLayout.LEFT)).apply {
             add(JBLabel("Compare 2 runs").apply {
                 font = com.intellij.util.ui.JBFont.regular()
@@ -96,7 +97,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         }
         rootComponent.add(topBar, BorderLayout.NORTH)
 
-        // ---- CENTER : contenu ou porte fermée ----
+        // ---- CENTER : content or closed gate ----
         rootComponent.add(porte, BorderLayout.CENTER)
 
         construireContenu()
@@ -116,7 +117,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     }
 
     // ------------------------------------------------------------------
-    // Construction de l'interface
+    // Building the interface
     // ------------------------------------------------------------------
 
     private fun construireContenu() {
@@ -172,24 +173,24 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         messageVerrou.border = javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20)
         carteVerrou.add(messageVerrou, BorderLayout.CENTER)
         val bas = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
-            add(JLabel("ML Experiment Cockpit Pro — 29 $/an, essai gratuit 14 jours."))
+            add(JLabel("ML Experiment Cockpit Pro - $29/year, 14-day free trial."))
         }
         carteVerrou.add(bas, BorderLayout.SOUTH)
     }
 
     // ------------------------------------------------------------------
-    // Porte Pro
+    // Pro gate
     // ------------------------------------------------------------------
 
-    /** Relit l'état de la licence et bascule entre contenu et porte fermée. */
+    /** Reads the licence state again and switches between content and closed gate. */
     private fun rafraichirEtatPro() {
         etatPro = ProGate.etat()
         badge.text = when (etatPro) {
-            ProState.PRO -> "licence : active"
-            ProState.ESSAI -> "licence : essai gratuit"
-            ProState.EXPIRE -> "licence : essai terminé"
-            ProState.ABSENT -> "licence : aucune"
-            ProState.INCONNU -> "licence : non vérifiable"
+            ProState.PRO -> "licence: active"
+            ProState.ESSAI -> "licence: free trial"
+            ProState.EXPIRE -> "licence: trial ended"
+            ProState.ABSENT -> "licence: none"
+            ProState.INCONNU -> "licence: not verifiable"
         }
         if (etatPro.autorise()) {
             messageVerrou.text = ""
@@ -201,10 +202,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     }
 
     /**
-     * Ouvre le **dialogue d'achat JetBrains** (c'est lui qui affiche le prix
-     * et encaisse) via l'action `RegisterPlugins` (ou `Register` dans une
-     * distribution commerciale). Le code produit transmis est
-     * [ProGate.CODE_PRODUIT] : **aucun montant n'est écrit dans le code**.
+     * Opens the **JetBrains purchase dialog** (it is the one that shows the
+     * price and takes the payment) through the `RegisterPlugins` action (or
+     * `Register` in a commercial distribution). The product code passed is
+     * [ProGate.CODE_PRODUIT]: **no amount is written in the code**.
      */
     private fun ouvrirDialogueAchat() {
         ApplicationManager.getApplication().invokeLater({
@@ -213,13 +214,13 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                 var action = am.getAction("RegisterPlugins")
                 if (action == null) action = am.getAction("Register")
                 if (action == null) {
-                    status("Le dialogue d'achat JetBrains n'est pas disponible dans cet IDE.")
+                    status("The JetBrains purchase dialog is not available in this IDE.")
                     return@invokeLater
                 }
                 val contexte = DataContext { id ->
                     when (id) {
                         "register.product-descriptor.code" -> ProGate.CODE_PRODUIT
-                        "register.message" -> "ML Experiment Cockpit Pro : comparaison de 2 runs."
+                        "register.message" -> "ML Experiment Cockpit Pro: compare 2 runs."
                         else -> null
                     }
                 }
@@ -227,13 +228,13 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                     AnActionEvent.createFromDataContext("", Presentation(), contexte)
                 )
             } catch (t: Throwable) {
-                status("Ouverture du dialogue d'achat impossible : ${t.javaClass.simpleName}")
+                status("Could not open the purchase dialog: ${t.javaClass.simpleName}")
             }
         }, ModalityState.NON_MODAL)
     }
 
     // ------------------------------------------------------------------
-    // Demande de comparaison
+    // Comparison request
     // ------------------------------------------------------------------
 
     private fun traiterDemande(d: DemandeComparaison) {
@@ -243,19 +244,19 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         boutonCopier.isEnabled = false
         rafraichirEtatPro()
         if (!etatPro.autorise()) {
-            status("Comparaison verrouillee : licence ML Experiment Cockpit Pro requise.")
+            status("Comparison locked: a ML Experiment Cockpit Pro licence is required.")
             return
         }
-        status("Chargement des runs de l'experience ${d.experimentNom} ...")
+        status("Loading the runs of experiment ${d.experimentNom} ...")
         chargerRunsCandidats()
     }
 
-    /** Charge la liste des runs de l'expérience (candidats pour B). */
+    /** Loads the list of runs of the experiment (candidates for B). */
     private fun chargerRunsCandidats() {
         val a = runA ?: return
         val base = MlflowSettingsImpl.getInstance().getTrackingUri().trimEnd('/')
         if (base.isEmpty()) {
-            status("Configurez d'abord l'URI MLflow (Settings > Tools > ML Experiment Cockpit).")
+            status("Configure the MLflow URI first (Settings > Tools > ML Experiment Cockpit).")
             return
         }
         Thread({
@@ -270,46 +271,46 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                     }
                     comboRuns.model = model
                     if (runs.isEmpty()) {
-                        status("Aucun autre run dans cette experience : rien a comparer.")
+                        status("No other run in this experiment: nothing to compare.")
                     } else {
-                        status("${runs.size} run(s) disponible(s) pour la comparaison.")
-                        // La comparaison est calculée dès que B est choisi.
+                        status("${runs.size} run(s) available for the comparison.")
+                        // The comparison is computed as soon as B is chosen.
                         onRunBChoisi()
                     }
                 }
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
-                    status("Echec du chargement des runs : ${e.message}")
+                    status("Failed to load the runs: ${e.message}")
                 }
             } catch (t: Throwable) {
                 ApplicationManager.getApplication().invokeLater {
-                    status("Erreur inattendue : ${t.message ?: t.javaClass.simpleName}")
+                    status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
         }, "mlexp-compare-runs").start()
     }
 
     // ------------------------------------------------------------------
-    // Comparaison
+    // Comparison
     // ------------------------------------------------------------------
 
-    /** Le run B choisi dans la liste (null si aucun). */
+    /** The run B chosen in the list (null if none). */
     private fun runChoisi(): Run? {
         val i = comboRuns.selectedIndex
         return if (i >= 0 && i < candidats.size) candidats[i] else null
     }
 
-    /** Appelé quand l'utilisateur change le run B dans la liste. */
+    /** Called when the user changes run B in the list. */
     private fun onRunBChoisi() {
         if (candidats.isEmpty()) return
         if (!etatPro.autorise()) {
-            status("Comparaison verrouillee : licence ML Experiment Cockpit Pro requise.")
+            status("Comparison locked: a ML Experiment Cockpit Pro licence is required.")
             return
         }
         calculerComparaison()
     }
 
-    /** Calcule et affiche la comparaison entre A et le run B choisi. */
+    /** Computes and displays the comparison between A and the chosen run B. */
     private fun calculerComparaison() {
         val a = runA ?: return
         val b = runChoisi() ?: return
@@ -318,7 +319,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         val base = MlflowSettingsImpl.getInstance().getTrackingUri().trimEnd('/')
         if (base.isEmpty()) {
             enCours = false
-            status("Configurez d'abord l'URI MLflow (Settings > Tools > ML Experiment Cockpit).")
+            status("Configure the MLflow URI first (Settings > Tools > ML Experiment Cockpit).")
             return
         }
         Thread({
@@ -354,12 +355,12 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
                     enCours = false
-                    status("Echec du chargement des runs : ${e.message}")
+                    status("Failed to load the runs: ${e.message}")
                 }
             } catch (t: Throwable) {
                 ApplicationManager.getApplication().invokeLater {
                     enCours = false
-                    status("Erreur inattendue : ${t.message ?: t.javaClass.simpleName}")
+                    status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
         }, "mlexp-compare-calcul").start()
@@ -379,7 +380,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                 remplirTableaux(resultat)
                 remplirMetriques(resultat)
                 boutonCopier.isEnabled = true
-                status("${resultat.nombreEcarts} ecart(s) entre les 2 runs.")
+                status("${resultat.nombreEcarts} difference(s) between the 2 runs.")
             }
         }
     }
@@ -402,7 +403,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         val mp = tableParams.model as DefaultTableModel
         mp.rowCount = 0
         for (l in c.params) {
-            mp.addRow(arrayOf(l.cle, l.valeurA ?: "—", l.valeurB ?: "—", l.etat.libelle))
+            mp.addRow(arrayOf(l.cle, l.valeurA ?: "-", l.valeurB ?: "-", l.etat.libelle))
         }
         val mm = tableMetriques.model as DefaultTableModel
         mm.rowCount = 0
@@ -410,10 +411,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
             mm.addRow(
                 arrayOf(
                     l.cle,
-                    ComparaisonRuns.formatNombre(l.valeurA) ?: "—",
-                    ComparaisonRuns.formatNombre(l.valeurB) ?: "—",
-                    ComparaisonRuns.formatNombre(l.ecartAbsolu) ?: "—",
-                    ComparaisonRuns.formatEcartRelatif(l.ecartRelatifPct) ?: "—",
+                    ComparaisonRuns.formatNombre(l.valeurA) ?: "-",
+                    ComparaisonRuns.formatNombre(l.valeurB) ?: "-",
+                    ComparaisonRuns.formatNombre(l.ecartAbsolu) ?: "-",
+                    ComparaisonRuns.formatEcartRelatif(l.ecartRelatifPct) ?: "-",
                     l.etat.libelle
                 )
             )
@@ -436,7 +437,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     }
 
     // ------------------------------------------------------------------
-    // Courbe superposée
+    // Overlaid curve
     // ------------------------------------------------------------------
 
     private fun onMetriqueChoisie() {
@@ -445,7 +446,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         val c = comparaison ?: return
         val base = MlflowSettingsImpl.getInstance().getTrackingUri().trimEnd('/')
         if (base.isEmpty()) return
-        status("Chargement de l'historique de $metrique ...")
+        status("Loading the history of $metrique ...")
         Thread({
             try {
                 val client = MlflowClient(base)
@@ -458,18 +459,18 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                     val nB = pageB.points.size
                     status(
                         if (tronque)
-                            "$metrique : $nA point(s) pour A, $nB pour B — serie tronquee a $PLAFOND_POINTS_PRO points."
+                            "$metrique: $nA point(s) for A, $nB for B - series truncated at $PLAFOND_POINTS_PRO points."
                         else
-                            "$metrique : $nA point(s) pour A, $nB pour B."
+                            "$metrique: $nA point(s) for A, $nB for B."
                     )
                 }
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
-                    status("Echec du chargement de l'historique : ${e.message}")
+                    status("Failed to load the history: ${e.message}")
                 }
             } catch (t: Throwable) {
                 ApplicationManager.getApplication().invokeLater {
-                    status("Erreur inattendue : ${t.message ?: t.javaClass.simpleName}")
+                    status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
         }, "mlexp-compare-histoire").start()
@@ -483,14 +484,14 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         val c = comparaison ?: return
         try {
             Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(c.markdown()), null)
-            status("Comparaison copiee dans le presse-papier (Markdown).")
+            status("Comparison copied to the clipboard (Markdown).")
         } catch (t: Throwable) {
-            status("Copie impossible : ${t.javaClass.simpleName}")
+            status("Copy failed: ${t.javaClass.simpleName}")
         }
     }
 
     // ------------------------------------------------------------------
-    // Aides
+    // Helpers
     // ------------------------------------------------------------------
 
     private fun status(message: String) {
@@ -498,7 +499,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     }
 
     private fun formatInstant(ms: Long): String {
-        if (ms <= 0L) return "—"
+        if (ms <= 0L) return "-"
         return java.time.format.DateTimeFormatter
             .ofPattern("yyyy-MM-dd HH:mm:ss")
             .format(java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()))
@@ -506,15 +507,15 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
 
     companion object {
         /**
-         * Plafond de points par métrique pour le palier Pro n°1 : 100 000
-         * (le gratuit garde 5 000). Au-delà, la série est **déclarée tronquée**
-         * à l'utilisateur — jamais une courbe silencieusement incomplète.
+         * Ceiling of points per metric for Pro tier 1: 100 000 (the free tier
+         * keeps 5 000). Beyond it, the series is **declared truncated** to the
+         * user - never a silently incomplete curve.
          */
         const val PLAFOND_POINTS_PRO = 100000
     }
 }
 
-/** Tableau non éditable (l'interface est en lecture seule). */
+/** Non editable table (the interface is read-only). */
 private class ModeleNonEditable(columns: Array<Any>, rows: Int) : DefaultTableModel(columns, rows) {
     override fun isCellEditable(rowIndex: Int, columnIndex: Int): Boolean = false
 }

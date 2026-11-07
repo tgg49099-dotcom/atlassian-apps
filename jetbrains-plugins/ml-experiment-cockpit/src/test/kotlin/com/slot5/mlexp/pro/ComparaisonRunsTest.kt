@@ -11,27 +11,27 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
 /**
- * Tests du **cœur de comparaison** du palier Pro n°1 (« Compare 2 runs »).
+ * Tests of the **comparison core** of Pro tier 1 ("Compare 2 runs").
  *
- * v0.0.22. Ces tests ne dépendent que du JDK et de JUnit 5 : aucun serveur
- * MLflow, aucun réseau (le faux serveur est un
- * `com.sun.net.httpserver.HttpServer`, comme dans les tests existants).
+ * v0.0.22. These tests only depend on the JDK and JUnit 5: no MLflow server,
+ * no network (the fake server is a `com.sun.net.httpserver.HttpServer`, as in
+ * the existing tests).
  *
- * Chaque test mord sur un **comportement** du plan
- * (`/work/cockpit-pro-n1-plan.md` § 4) :
- *   4. deux runs différents → le tableau montre les écarts ;
- *   5. deux runs identiques → 0 écart ;
- *   6. une métrique absente → état « absent de B », jamais 0.0 ;
- *   7. deux serveurs différents → refus motivé ;
- *   8. 5 000 points → moins de 2 s ;
- *   9. au-delà de 5 000 points → le Pro pagine, le gratuit reste plafonné ;
- *  10. plus de 2 runs → refus explicite ;
- *  11. la copie Markdown contient l'en-tête et les lignes attendues.
+ * Each test bites on a **behaviour** of the plan
+ * (`/work/cockpit-pro-n1-plan.md` section 4):
+ *   4. two different runs -> the table shows the gaps;
+ *   5. two identical runs -> 0 gap;
+ *   6. a missing metric -> state "absent from B", never 0.0;
+ *   7. two different servers -> reasoned refusal;
+ *   8. 5 000 points -> less than 2 s;
+ *   9. beyond 5 000 points -> the Pro paginates, the free tier stays capped;
+ *  10. more than 2 runs -> explicit refusal;
+ *  11. the Markdown copy contains the header and the expected rows.
  */
 class ComparaisonRunsTest {
 
     // ------------------------------------------------------------------
-    // Données de test
+    // Test data
     // ------------------------------------------------------------------
 
     private fun runA() = RunRef(
@@ -58,21 +58,21 @@ class ComparaisonRunsTest {
 
     private fun comparaison(a: RunRef, b: RunRef): ResultatComparaison.Comparaison {
         val r = ComparaisonRuns.calculer(listOf(a, b), ProState.PRO)
-        assertTrue(r is ResultatComparaison.Comparaison, "la comparaison doit aboutir : $r")
+        assertTrue(r is ResultatComparaison.Comparaison, "the comparison must succeed: $r")
         return r as ResultatComparaison.Comparaison
     }
 
     // ------------------------------------------------------------------
-    // Test 4 — deux runs différents
+    // Test 4 - two different runs
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("4 - deux runs différents : le tableau montre les écarts (lr et acc, +7,50 %)")
+    @DisplayName("4 - two different runs: the table shows the gaps (lr and acc, +7,50 %)")
     fun deuxRunsDifferents_leTableauMontreLesEcarts() {
         val c = comparaison(runA(), runB())
 
-        // 1 écart de paramètre (lr) + 1 écart de métrique (acc) = 2.
-        assertEquals(2, c.nombreEcarts, "il doit y avoir exactement 2 écarts")
+        // 1 parameter gap (lr) + 1 metric gap (acc) = 2.
+        assertEquals(2, c.nombreEcarts, "there must be exactly 2 gaps")
         assertEquals(1, c.ecartsParams.size)
         assertEquals(1, c.ecartsMetriques.size)
 
@@ -83,27 +83,27 @@ class ComparaisonRunsTest {
 
         val acc = c.metriques.first { it.cle == "acc" }
         assertEquals(EtatComparaison.DIFFERENT, acc.etat)
-        assertEquals(0.06, acc.ecartAbsolu!!, 1e-9, "écart absolu = 0,86 − 0,80")
-        assertEquals(7.50, acc.ecartRelatifPct!!, 1e-9, "écart relatif = (0,86 − 0,80) / 0,80")
+        assertEquals(0.06, acc.ecartAbsolu!!, 1e-9, "absolute gap = 0,86 - 0,80")
+        assertEquals(7.50, acc.ecartRelatifPct!!, 1e-9, "relative gap = (0,86 - 0,80) / 0,80")
         assertEquals("+7,50 %", ComparaisonRuns.formatEcartRelatif(acc.ecartRelatifPct))
 
-        // Le paramètre identique reste affiché, mais il n'est pas un écart.
+        // The identical parameter is still displayed, but it is not a gap.
         val batch = c.params.first { it.cle == "batch_size" }
         assertEquals(EtatComparaison.IDENTIQUE, batch.etat)
     }
 
     // ------------------------------------------------------------------
-    // Test 5 — deux runs identiques
+    // Test 5 - two identical runs
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("5 - deux runs identiques : 0 écart, état « identique » partout")
+    @DisplayName("5 - two identical runs: 0 gap, state \"identical\" everywhere")
     fun deuxRunsIdentiques_leTableauEstVideDEcarts() {
         val a = runA()
         val b = runB().copy(params = a.params, metriques = a.metriques)
         val c = comparaison(a, b)
 
-        assertEquals(0, c.nombreEcarts, "2 runs identiques ne doivent produire aucun écart")
+        assertEquals(0, c.nombreEcarts, "2 identical runs must produce no gap")
         assertTrue(c.ecartsParams.isEmpty())
         assertTrue(c.ecartsMetriques.isEmpty())
         assertTrue(c.params.all { it.etat == EtatComparaison.IDENTIQUE })
@@ -111,11 +111,11 @@ class ComparaisonRunsTest {
     }
 
     // ------------------------------------------------------------------
-    // Test 6 — une métrique absente d'un des 2 runs
+    // Test 6 - a metric missing from one of the 2 runs
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("6 - une métrique absente de B est marquée « absent de B », jamais 0.0")
+    @DisplayName("6 - a metric missing from B is marked \"absent from B\", never 0.0")
     fun metriquesManquantes_leTableauMarqueAbsent() {
         val b = runB().copy(metriques = mapOf("acc" to 0.86))
         val c = comparaison(runA(), b)
@@ -123,38 +123,38 @@ class ComparaisonRunsTest {
         val loss = c.metriques.first { it.cle == "loss" }
         assertEquals(EtatComparaison.ABSENT_B, loss.etat)
         assertEquals(0.5, loss.valeurA!!, 1e-9)
-        assertNull(loss.valeurB, "la valeur absente ne doit pas devenir 0.0")
-        assertNull(loss.ecartAbsolu, "pas d'écart si une valeur manque")
-        assertNull(loss.ecartRelatifPct, "pas d'écart relatif si une valeur manque")
-        assertEquals("—", ComparaisonRuns.formatNombre(loss.valeurB) ?: "—")
+        assertNull(loss.valeurB, "the missing value must not become 0.0")
+        assertNull(loss.ecartAbsolu, "no gap when a value is missing")
+        assertNull(loss.ecartRelatifPct, "no relative gap when a value is missing")
+        assertEquals("-", ComparaisonRuns.formatNombre(loss.valeurB) ?: "-")
     }
 
     // ------------------------------------------------------------------
-    // Test 7 — deux serveurs différents
+    // Test 7 - two different servers
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("7 - deux runs de 2 serveurs différents : la comparaison est refusée")
+    @DisplayName("7 - two runs from 2 different servers: the comparison is refused")
     fun deuxServeursDifferents_laComparaisonEstRefusee() {
         val r = ComparaisonRuns.calculer(
             listOf(runA(), runB().copy(origine = "http://autre:5000")),
             ProState.PRO
         )
-        assertTrue(r is ResultatComparaison.Refus, "la comparaison doit être refusée : $r")
+        assertTrue(r is ResultatComparaison.Refus, "the comparison must be refused: $r")
         val refus = r as ResultatComparaison.Refus
         assertEquals(CodeRefus.ORIGINES_DIFFERENTES, refus.code)
         assertTrue(
             refus.message.contains("http://mlflow:5000") && refus.message.contains("http://autre:5000"),
-            "le message doit nommer les 2 URI, il dit : ${refus.message}"
+            "the message must name the 2 URIs, it says: ${refus.message}"
         )
     }
 
     // ------------------------------------------------------------------
-    // Test 8 — performance sur 5 000 points
+    // Test 8 - performance on 5 000 points
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("8 - 5 000 points d'historique sont lus en moins de 2 secondes")
+    @DisplayName("8 - 5 000 points of history are read in less than 2 seconds")
     fun performance_5000Points_enMoinsDe2s() {
         val (server, base) = fauxHistorique(total = 5000, page = 5000)
         try {
@@ -163,174 +163,173 @@ class ComparaisonRunsTest {
             val points = client.getMetricHistory("run1", "loss")
             val duree = System.currentTimeMillis() - debut
             assertEquals(5000, points.size)
-            assertTrue(duree < 2000, "5 000 points doivent être lus en moins de 2 s (mesuré : ${duree} ms)")
+            assertTrue(duree < 2000, "5 000 points must be read in less than 2 s (measured: ${duree} ms)")
         } finally {
             server.stop(0)
         }
     }
 
     // ------------------------------------------------------------------
-    // Test 9 — la pagination (au-delà de 5 000 points)
+    // Test 9 - the pagination (beyond 5 000 points)
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("9 - au-delà de 5 000 points : le Pro pagine, le gratuit reste plafonné à 5 000")
+    @DisplayName("9 - beyond 5 000 points: the Pro paginates, the free tier stays capped at 5 000")
     fun auDelaDe5000Points_leProPagine() {
         val (server, base) = fauxHistorique(total = 12000, page = 5000)
         try {
             val client = MlflowClient(base)
 
-            // Le gratuit : 5 000 points, il ne suit pas le jeton de page.
+            // The free tier: 5 000 points, it does not follow the page token.
             val gratuit = client.getMetricHistory("run1", "loss")
-            assertEquals(5000, gratuit.size, "le gratuit doit rester plafonné à 5 000 points")
+            assertEquals(5000, gratuit.size, "the free tier must stay capped at 5 000 points")
 
-            // Le Pro : il suit les pages jusqu'au plafond de 100 000.
+            // The Pro: it follows the pages up to the ceiling of 100 000.
             val pro = client.getMetricHistoryAll("run1", "loss", 100000)
-            assertEquals(12000, pro.points.size, "le Pro doit récupérer les 12 000 points")
-            assertTrue(!pro.tronque, "12 000 points < 100 000 : la série n'est pas tronquée")
-            // Les points sont triés par pas.
+            assertEquals(12000, pro.points.size, "the Pro must fetch the 12 000 points")
+            assertTrue(!pro.tronque, "12 000 points < 100 000: the series is not truncated")
+            // The points are sorted by step.
             val pas = pro.points.map { it.step }
-            assertEquals(pas.sorted(), pas, "les points doivent être triés par pas")
+            assertEquals(pas.sorted(), pas, "the points must be sorted by step")
         } finally {
             server.stop(0)
         }
     }
 
     @Test
-    @DisplayName("9 bis - au plafond de 100 000 points, la série est déclarée tronquée")
+    @DisplayName("9 bis - at the ceiling of 100 000 points, the series is declared truncated")
     fun auPlafond_laSerieEstDeclareeTronquee() {
         val (server, base) = fauxHistorique(total = 12000, page = 5000)
         try {
             val client = MlflowClient(base)
             val pro = client.getMetricHistoryAll("run1", "loss", 3000)
             assertEquals(3000, pro.points.size)
-            assertTrue(pro.tronque, "le plafond atteint doit être signalé, pas caché")
+            assertTrue(pro.tronque, "the ceiling being reached must be reported, not hidden")
         } finally {
             server.stop(0)
         }
     }
 
     // ------------------------------------------------------------------
-    // Test 10 — plus de 2 runs
+    // Test 10 - more than 2 runs
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("10 - 3 runs demandés : la comparaison est refusée explicitement")
+    @DisplayName("10 - 3 runs requested: the comparison is explicitly refused")
     fun plusDeDeuxRuns_estRefuse() {
         val r = ComparaisonRuns.calculer(listOf(runA(), runB(), runB().copy(id = "c3")), ProState.PRO)
-        assertTrue(r is ResultatComparaison.Refus, "3 runs doivent être refusés : $r")
+        assertTrue(r is ResultatComparaison.Refus, "3 runs must be refused: $r")
         val refus = r as ResultatComparaison.Refus
         assertEquals(CodeRefus.TROIS_RUNS_NON_SUPPORTES, refus.code)
-        assertTrue(refus.message.contains("2 runs"), "le message doit rappeler le périmètre : ${refus.message}")
+        assertTrue(refus.message.contains("2 runs"), "the message must recall the scope: ${refus.message}")
     }
 
     // ------------------------------------------------------------------
-    // Test 11 — la copie Markdown
+    // Test 11 - the Markdown copy
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("11 - la copie Markdown contient l'en-tête et les 2 lignes attendues")
+    @DisplayName("11 - the Markdown copy contains the header and the 2 expected rows")
     fun copierLeTableau_donneLeMarkdownAttendu() {
         val c = comparaison(runA(), runB())
         val md = c.markdown()
 
         assertTrue(
-            md.contains("| paramètre | A | B | état |"),
-            "l'en-tête des paramètres doit être présent :\n$md"
+            md.contains("| parameter | A | B | state |"),
+            "the parameter header must be present:\n$md"
         )
         assertTrue(
-            md.contains("| métrique | A | B | écart absolu | écart relatif | état |"),
-            "l'en-tête des métriques doit être présent :\n$md"
+            md.contains("| metric | A | B | absolute gap | relative gap | state |"),
+            "the metric header must be present:\n$md"
         )
         assertTrue(
-            md.contains("| lr | 0.01 | 0.05 | différent |"),
-            "la ligne du paramètre lr doit être présente :\n$md"
+            md.contains("| lr | 0.01 | 0.05 | different |"),
+            "the lr parameter row must be present:\n$md"
         )
         assertTrue(
-            md.contains("| acc | 0,8 | 0,86 | 0,06 | +7,50 % | différent |"),
-            "la ligne de la métrique acc doit être présente :\n$md"
+            md.contains("| acc | 0,8 | 0,86 | 0,06 | +7,50 % | different |"),
+            "the acc metric row must be present:\n$md"
         )
     }
 
     // ------------------------------------------------------------------
-    // Test 13 — intégrité : ce qui est affiché vient bien des 2 runs choisis
+    // Test 13 - integrity: what is displayed really comes from the 2 chosen runs
     // ------------------------------------------------------------------
 
     /**
-     * Échoue si la comparaison affiche des paramètres ou des métriques qui
-     * ne sont pas ceux des 2 runs choisis.
+     * Fails if the comparison displays parameters or metrics that are not the
+     * ones of the 2 chosen runs.
      *
-     * 4 contrôles, du plus faible au plus fort :
-     *   1. les **clés** affichées sont exactement l'union des clés des 2 runs
-     *      choisis (ni une de plus, ni une de moins) ;
-     *   2. chaque **valeur** affichée est bien celle du bon côté (A à gauche,
-     *      B à droite) ;
-     *   3. la comparaison **n'inverse pas** A et B (et le dit dans son
-     *      résultat : `c.a` est le run choisi comme A) ;
-     *   4. une comparaison **ne laisse pas fuir** les données d'un autre
-     *      couple de runs : comparer (D, E) après (A, B) ne doit pas ressusciter
-     *      les paramètres ni les métriques propres à A et B.
+     * 4 checks, from the weakest to the strongest:
+     *   1. the displayed **keys** are exactly the union of the keys of the 2
+     *      chosen runs (not one more, not one less);
+     *   2. each displayed **value** is the one of the right side (A on the
+     *      left, B on the right);
+     *   3. the comparison does **not** swap A and B (and says so in its
+     *      result: `c.a` is the run chosen as A);
+     *   4. a comparison does **not** leak** the data of another pair of
+     *      runs: comparing (D, E) after (A, B) must not bring back the
+     *      parameters nor the metrics specific to A and B.
      */
     @Test
-    @DisplayName("13 - la comparaison n'affiche que les paramètres et métriques des 2 runs choisis")
+    @DisplayName("13 - the comparison only displays the parameters and metrics of the 2 chosen runs")
     fun laComparaisonNExhibeQueLes2RunsChoisis() {
         val a = runA()
         val b = runB()
         val c = comparaison(a, b)
 
-        // (1) les clés affichées sont EXACTEMENT celles des 2 runs choisis
+        // (1) the displayed keys are EXACTLY those of the 2 chosen runs
         assertEquals(
             (a.params.keys + b.params.keys).sorted(),
             c.params.map { it.cle },
-            "les paramètres affichés doivent être exactement ceux des 2 runs choisis"
+            "the displayed parameters must be exactly those of the 2 chosen runs"
         )
         assertEquals(
             (a.metriques.keys + b.metriques.keys).sorted(),
             c.metriques.map { it.cle },
-            "les métriques affichées doivent être exactement celles des 2 runs choisis"
+            "the displayed metrics must be exactly those of the 2 chosen runs"
         )
 
-        // (2) chaque valeur affichée est celle du bon côté
+        // (2) each displayed value is the one of the right side
         for (l in c.params) {
-            assertEquals(a.params[l.cle], l.valeurA, "valeur A du paramètre ${l.cle}")
-            assertEquals(b.params[l.cle], l.valeurB, "valeur B du paramètre ${l.cle}")
+            assertEquals(a.params[l.cle], l.valeurA, "value A of the parameter ${l.cle}")
+            assertEquals(b.params[l.cle], l.valeurB, "value B of the parameter ${l.cle}")
         }
         for (l in c.metriques) {
-            assertEquals(a.metriques[l.cle], l.valeurA, "valeur A de la métrique ${l.cle}")
-            assertEquals(b.metriques[l.cle], l.valeurB, "valeur B de la métrique ${l.cle}")
+            assertEquals(a.metriques[l.cle], l.valeurA, "value A of the metric ${l.cle}")
+            assertEquals(b.metriques[l.cle], l.valeurB, "value B of the metric ${l.cle}")
         }
 
-        // (3) A et B ne sont pas inversés
-        assertEquals("a1", c.a.id, "le résultat doit dire qu'il compare bien le run A")
-        assertEquals("b2", c.b.id, "le résultat doit dire qu'il compare bien le run B")
+        // (3) A and B are not swapped
+        assertEquals("a1", c.a.id, "the result must say it really compares run A")
+        assertEquals("b2", c.b.id, "the result must say it really compares run B")
         val lr = c.params.first { it.cle == "lr" }
-        assertEquals("0.01", lr.valeurA, "A ne doit pas être inversé avec B")
-        assertEquals("0.05", lr.valeurB, "A ne doit pas être inversé avec B")
+        assertEquals("0.01", lr.valeurA, "A must not be swapped with B")
+        assertEquals("0.05", lr.valeurB, "A must not be swapped with B")
 
-        // (4) une comparaison ne doit pas laisser fuir un autre couple de runs
+        // (4) a comparison must not leak another pair of runs
         val d = RunRef(id = "d1", params = mapOf("lr" to "0.11"), metriques = mapOf("acc" to 0.70))
         val e = RunRef(id = "e1", params = mapOf("lr" to "0.12"), metriques = mapOf("acc" to 0.72))
         val c2 = comparaison(d, e)
-        assertEquals(listOf("lr"), c2.params.map { it.cle }, "la 2ᵉ comparaison ne doit afficher que D et E")
-        assertEquals(listOf("acc"), c2.metriques.map { it.cle }, "la 2ᵉ comparaison ne doit afficher que D et E")
+        assertEquals(listOf("lr"), c2.params.map { it.cle }, "the 2nd comparison must only display D and E")
+        assertEquals(listOf("acc"), c2.metriques.map { it.cle }, "the 2nd comparison must only display D and E")
         assertTrue(
             c2.params.none { it.cle == "batch_size" },
-            "« batch_size » n'appartient qu'à A et B : il ne doit pas rester dans la comparaison (D, E)"
+            "\"batch_size\" only belongs to A and B: it must not remain in the comparison (D, E)"
         )
         assertTrue(
             c2.metriques.none { it.cle == "loss" },
-            "« loss » n'appartient qu'à A et B : il ne doit pas rester dans la comparaison (D, E)"
+            "\"loss\" only belongs to A and B: it must not remain in the comparison (D, E)"
         )
     }
 
     // ------------------------------------------------------------------
-    // Outils
+    // Helpers
     // ------------------------------------------------------------------
 
     /**
-     * Faux serveur qui sert un historique de métrique paginé : chaque page
-     * porte un `next_page_token`, comme le vrai MLflow
-     * (`metrics/get-history`).
+     * Fake server that serves a paginated metric history: each page carries a
+     * `next_page_token`, like the real MLflow (`metrics/get-history`).
      */
     private fun fauxHistorique(total: Int, page: Int): Pair<HttpServer, String> {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)

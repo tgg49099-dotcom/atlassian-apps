@@ -44,7 +44,8 @@ import javax.swing.tree.DefaultTreeModel
  *                                             sorted by value
  *                                  - Bottom : HorizontalBarChart canvas
  *                                             showing the distribution of
- *                                             the most-chosen hyperparameter
+ *                                             the values of the hyperparameter
+ *                                             that takes the most distinct
  *                                             values across trials.
  *
  * Network I/O runs on worker threads ("mlexp-optuna-refresh", "mlexp-optuna-detail"),

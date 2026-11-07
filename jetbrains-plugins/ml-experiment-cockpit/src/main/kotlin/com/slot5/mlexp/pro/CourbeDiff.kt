@@ -12,20 +12,20 @@ import java.text.DecimalFormat
 import javax.swing.JComponent
 
 /**
- * Courbe **superposée** de 2 runs — palier Pro n°1.
+ * **Overlaid** curve of 2 runs - Pro tier 1.
  *
- * v0.0.22. Ce fichier est **neuf** : `MetricsChartPanel.kt` (le graphique du
- * gratuit) n'est **pas** modifié — il continue de dessiner une seule série
- * avec son propre code. Le palier n°1 a donc son propre moteur de dessin,
- * comme le prévoit le plan (« ne pas modifier `MetricsChartPanel.kt` »).
+ * v0.0.22. This file is **new**: `MetricsChartPanel.kt` (the chart of the
+ * free tier) is **not** modified - it keeps drawing a single series with its
+ * own code. Tier 1 therefore has its own drawing engine, as the plan
+ * requires ("do not modify `MetricsChartPanel.kt`").
  *
- * Deux séries, deux couleurs :
- *   - **A** en bleu (`#1E88E5`), la même teinte que la courbe du gratuit ;
- *   - **B** en orange (`#FB8C00`).
+ * Two series, two colours:
+ *   - **A** in blue (`#1E88E5`), the same shade as the curve of the free tier;
+ *   - **B** in orange (`#FB8C00`).
  *
- * Les deux séries partagent **le même repère** (même échelle Y, même échelle
- * X) : c'est tout l'intérêt d'une superposition. Les points non finis
- * (NaN / Infinity) sont ignorés, comme dans le graphique du gratuit.
+ * Both series share **the same scale** (same Y range, same X range): that is
+ * the whole point of an overlay. The non-finite points (NaN / Infinity) are
+ * ignored, as in the chart of the free tier.
  */
 class CourbeDiff : JComponent() {
 
@@ -49,7 +49,7 @@ class CourbeDiff : JComponent() {
     private val plotTop = 52f
     private val plotBottomMargin = 26f
 
-    /** Remplace les 2 séries. Une série vide = absente de la comparaison. */
+    /** Replaces the 2 series. An empty series = absent from the comparison. */
     fun setSeries(a: List<MetricPoint>, b: List<MetricPoint>, titre: String) {
         serieA = a.filter { it.value.isFinite() }
         serieB = b.filter { it.value.isFinite() }
@@ -84,7 +84,7 @@ class CourbeDiff : JComponent() {
             return
         }
 
-        // Un repère commun aux 2 séries.
+        // One common scale for the 2 series.
         val xMin = tous.minOf { it.step }
         val xMax = tous.maxOf { it.step }
         val yMin = tous.minOf { it.value }
@@ -127,7 +127,7 @@ class CourbeDiff : JComponent() {
             return plotY0 + plotH - (t * plotH).toFloat()
         }
 
-        // Grille + graduations Y.
+        // Grid + Y ticks.
         g2.font = smallFont
         g2.color = gridColor
         g2.stroke = BasicStroke(0.5f)
@@ -142,7 +142,7 @@ class CourbeDiff : JComponent() {
             g2.color = gridColor
         }
 
-        // Axe X + graduations.
+        // X axis + ticks.
         g2.color = axisColor
         g2.drawLine(plotX0.toInt(), (plotY0 + plotH).toInt(), (plotX0 + plotW).toInt(), (plotY0 + plotH).toInt())
         g2.color = labelColor
@@ -154,16 +154,16 @@ class CourbeDiff : JComponent() {
             g2.drawString(text, lx, (plotY0 + plotH + 16))
         }
 
-        // Légende : A en bleu, B en orange.
+        // Legend: A in blue, B in orange.
         g2.font = smallFont
         g2.color = labelColor
         g2.drawString("A", plotX0 + 6f, plotY0 + 14f)
         g2.color = colorA
-        g2.drawString("■", plotX0 + 18f, plotY0 + 14f)
+        g2.fillRect(plotX0.toInt() + 18, plotY0.toInt() + 4, 8, 8)
         g2.color = labelColor
         g2.drawString("B", plotX0 + 32f, plotY0 + 14f)
         g2.color = colorB
-        g2.drawString("■", plotX0 + 44f, plotY0 + 14f)
+        g2.fillRect(plotX0.toInt() + 44, plotY0.toInt() + 4, 8, 8)
 
         dessinerSerie(g2, serieA, colorA, ::toScreenX, ::toScreenY)
         dessinerSerie(g2, serieB, colorB, ::toScreenX, ::toScreenY)

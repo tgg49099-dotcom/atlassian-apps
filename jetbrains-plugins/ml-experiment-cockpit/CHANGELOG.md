@@ -18,9 +18,10 @@ version is a local build only.
   **parameters** in one table and the **metrics** in another (last value of
   each side, absolute gap, relative gap).
 - **Superposed curves.** Pick a metric and the two runs’ histories are drawn
-  **on the same axes** (A in blue, B in orange). The Pro history goes up to
-  100 000 points per metric; beyond that the interface says the series is
-  truncated instead of silently showing an incomplete curve.
+  **on the same axes** (A in blue, B in orange). **In the Compare view**, the
+  Pro history goes up to 100 000 points per metric; beyond that the interface
+  says the series is truncated instead of silently showing an incomplete curve.
+  (The free chart stays at 5 000 points per metric, licence or not.)
 - **Markdown export.** « Copy (Markdown) » puts both comparison tables in the
   clipboard.
 - **Native JetBrains licence gate.** The only file that touches
@@ -39,6 +40,34 @@ version is a local build only.
   the announced limits are still there, **no free-path file ever consults the
   Pro gate**, and the free client still sends exactly the same request limits
   (measured against a fake HTTP server).
+
+### Fixed — the text now says what the code does
+- **Marketplace description (`plugin.xml` + `build.gradle.kts`).** Two sentences
+  promised features the code does not have and are removed:
+  * “the most-chosen hyperparameter” → **“a bar chart of the hyperparameter
+    that takes the most distinct values”** (the Optuna chart sorts by number
+    of distinct values, `numeric` only as the tie-breaker);
+  * “with the best run and its top summary metrics” → **“with their run count
+    and timestamps (the W&B API does not expose a best run for a sweep)”**
+    (live API answer: `Cannot query field "bestRun" on type "Sweep".`).
+- **Tier price.** “29 $/an” → **“$29/year”** in the English description; the
+  Marketplace form keeps **“29 $/an”**.
+- **Free/Pro table.** The row now reads “Metric points per metric, per run —
+  5 000 points (free chart) — 100 000 points (in the Compare view)”: the
+  100 000 points exist **only in the Compare view**, the free chart stays at
+  5 000 points per metric.
+- **Compare tab.** Its texts are now **in English** (they were French without
+  accents); the **behaviour is unchanged**.
+- **Right-click menu.** The tree no longer registers a Swing popup menu: the
+  “Compare with…” entry is shown only on a run, so an empty menu can no longer
+  appear (and the menu can no longer appear twice).
+- **Sweeps tab hint.** The panel’s hint line promised a “best run + summary
+  metrics” that the W&B API never exposes; it now lists what is really shown
+  (state, timestamps, runs total). The detail panel already said
+  “(not exposed by the W&B API for sweeps)”.
+- **`README.md`** described the same two non-existent features; its wording is
+  corrected. The **historical entries of this changelog are left untouched** —
+  the truth is recorded here.
 
 ## [0.0.21] — 2026-11-03
 
@@ -496,9 +525,9 @@ No earlier version was published, so the public change-notes hold a single entry
 - **Top-5 trials table** sorted by value (direction-aware: `maximize`
   sorts descending, `minimize` sorts ascending). Trials with `null` value
   (RUNNING, PRUNED, FAIL) are filtered out of the top table.
-- **Horizontal bar chart** of the most-chosen hyperparameter (`Graphics2D`
-  only, no JFreeChart). Heuristic: prefer numeric params, then by
-  number of distinct values; top 8 buckets shown.
+- **Horizontal bar chart** of the hyperparameter that takes the most
+  distinct values (`Graphics2D` only, no JFreeChart). Heuristic: prefer
+  numeric params, then by number of distinct values; top 8 buckets shown.
 - **Settings UI second field**: Settings → Tools → ML Experiment Cockpit
   now has TWO text fields (MLflow URI, Optuna URI). Existing MLflow URI
   field is unchanged and keeps its stored value after upgrade.

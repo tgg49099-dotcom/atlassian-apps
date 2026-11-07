@@ -10,32 +10,31 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
 /**
- * Preuve que **le gratuit n'a pas bougé** — palier Pro n°1 (v0.0.22).
+ * Proof that **the free tier has not moved** - Pro tier 1 (v0.0.22).
  *
- * C'est la contrainte forte de la consigne : « le gratuit doit rester
- * strictement identique : 4 onglets, toutes les limites annoncées
- * (500 experiments, 100 runs/expo, 500 modèles, 500 versions, 5 000
- * points/run), 0 fonction perdue. Un test le prouve. »
+ * This is the strong constraint of the brief: "the free tier must stay
+ * strictly identical: 4 tabs, all the announced limits (500 experiments,
+ * 100 runs/experiment, 500 models, 500 versions, 5 000 points/run), 0 feature
+ * lost. A test proves it."
  *
- * Ce fichier prouve les 4 points, sur 3 niveaux :
- *   1. **les 4 onglets gratuits existent toujours** (lecture de la factory) ;
- *   2. **les limites annoncées sont toujours là** (lecture du descripteur) ;
- *   3. **le chemin gratuit ne consulte jamais la porte Pro** (lecture des
- *      sources des 4 onglets : ni `ProGate`, ni `LicenceNatif`, ni
- *      `LicensingFacade`, ni le code produit) ;
- *   4. **les requêtes du client libre portent toujours les mêmes limites**
- *      (mesure : un faux serveur HTTP enregistre ce qui est réellement
- *      envoyé).
+ * This file proves the 4 points, on 3 levels:
+ *   1. **the 4 free tabs still exist** (read of the factory);
+ *   2. **the announced limits are still there** (read of the descriptor);
+ *   3. **the free path never queries the Pro gate** (read of the sources of
+ *      the 4 free tabs: neither `ProGate`, nor `LicenceNatif`, nor
+ *      `LicensingFacade`, nor the product code);
+ *   4. **the requests of the free client still carry the same limits**
+ *      (measure: a fake HTTP server records what is really sent).
  *
- * Le point 4 est le plus fort : il prouve le comportement, pas le texte.
+ * Point 4 is the strongest: it proves the behaviour, not the text.
  */
 class GratuitInchangeTest {
 
     /**
-     * Les fichiers qui implémentent le **chemin gratuit**. La factory
-     * (`MlflowToolWindowFactory.kt`) est volontairement exclue : c'est elle
-     * qui branche l'onglet Compare et qui installe le lecteur de licence —
-     * c'est du câblage, pas du chemin gratuit.
+     * The files that implement the **free path**. The factory
+     * (`MlflowToolWindowFactory.kt`) is deliberately excluded: it is the one
+     * that wires the Compare tab and installs the licence reader - that is
+     * wiring, not the free path.
      */
     private val fichiersGratuits = listOf(
         "src/main/kotlin/com/slot5/mlexp/ConnectToMlflowAction.kt",
@@ -54,29 +53,29 @@ class GratuitInchangeTest {
     )
 
     // ------------------------------------------------------------------
-    // 1. Les 4 onglets gratuits
+    // 1. The 4 free tabs
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("1 - les 4 onglets gratuits (Experiments, Optuna, Models, Sweeps) existent toujours")
+    @DisplayName("1 - the 4 free tabs (Experiments, Optuna, Models, Sweeps) still exist")
     fun les4OngletsGratuitsExistentToujours() {
         val factory = source("src/main/kotlin/com/slot5/mlexp/MlflowToolWindowFactory.kt")
         for (titre in listOf("Experiments", "Optuna", "Models", "Sweeps")) {
             assertTrue(
                 factory.contains("\"$titre\""),
-                "l'onglet $titre doit toujours être créé par la factory"
+                "the tab $titre must still be created by the factory"
             )
         }
-        // Le 5ᵉ onglet est bien le palier Pro n°1, et il ne remplace rien.
-        assertTrue(factory.contains("\"Compare\""), "l'onglet Compare (palier Pro n°1) doit exister")
+        // The 5th tab is Pro tier 1, and it replaces nothing.
+        assertTrue(factory.contains("\"Compare\""), "the Compare tab (Pro tier 1) must exist")
     }
 
     // ------------------------------------------------------------------
-    // 2. Les limites annoncées
+    // 2. The announced limits
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("2 - les limites annoncées sont toujours dans le descripteur")
+    @DisplayName("2 - the announced limits are still in the descriptor")
     fun lesLimitesAnnonceesSontToujoursLa() {
         val descripteur = source("src/main/resources/META-INF/plugin.xml")
         for (limite in listOf(
@@ -88,31 +87,31 @@ class GratuitInchangeTest {
         )) {
             assertTrue(
                 descripteur.contains(limite),
-                "la limite annoncée « $limite » a disparu du descripteur"
+                "the announced limit \"$limite\" has disappeared from the descriptor"
             )
         }
     }
 
     // ------------------------------------------------------------------
-    // 3. Le chemin gratuit ne consulte jamais la porte Pro
+    // 3. The free path never queries the Pro gate
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("3 - aucun fichier du chemin gratuit ne consulte la porte Pro")
+    @DisplayName("3 - no file of the free path queries the Pro gate")
     fun leCheminGratuitNeConsulteJamaisLaPortePro() {
         for (chemin in fichiersGratuits) {
             val texte = source(chemin)
             for (interdit in listOf("ProGate", "LicenceNatif", "LicensingFacade", "getConfirmationStamp", "PPCOCKPITPRO")) {
                 assertTrue(
                     !texte.contains(interdit),
-                    "$chemin ne doit pas contenir « $interdit » : le gratuit ne consulte jamais la porte Pro"
+                    "$chemin must not contain \"$interdit\": the free tier never queries the Pro gate"
                 )
             }
         }
     }
 
     @Test
-    @DisplayName("3 bis - le lecteur de licence natif n'existe que dans le paquet pro")
+    @DisplayName("3 bis - the native licence reader exists only in the pro package")
     fun leLecteurDeLicenceEstUnique() {
         val racine = File("src/main/kotlin/com/slot5/mlexp")
         val porteurs = racine.walkTopDown()
@@ -122,18 +121,18 @@ class GratuitInchangeTest {
         assertEquals(
             1,
             porteurs.size,
-            "seul LicenceNativ.kt doit parler à LicensingFacade, trouvé dans : " +
+            "only LicenceNatif.kt may talk to LicensingFacade, found in: " +
                 porteurs.joinToString { it.name }
         )
         assertTrue(porteurs[0].name == "LicenceNatif.kt")
     }
 
     // ------------------------------------------------------------------
-    // 4. Les requêtes du client libre gardent leurs limites
+    // 4. The requests of the free client keep their limits
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("4 - les requêtes du client libre portent toujours les mêmes limites")
+    @DisplayName("4 - the requests of the free client still carry the same limits")
     fun lesRequetesDuClientGardentLeursLimites() {
         val faux = FauxServeur()
         try {
@@ -144,7 +143,7 @@ class GratuitInchangeTest {
             faux.dernierCorps()!!.let { corps ->
                 assertTrue(
                     corps.contains("\"max_results\":500"),
-                    "listExperiments doit toujours demander 500 experiments, il a demandé : $corps"
+                    "listExperiments must still ask for 500 experiments, it asked for: $corps"
                 )
             }
 
@@ -152,7 +151,7 @@ class GratuitInchangeTest {
             faux.dernierCorps()!!.let { corps ->
                 assertTrue(
                     corps.contains("\"max_results\":100"),
-                    "listRuns doit toujours demander 100 runs, il a demandé : $corps"
+                    "listRuns must still ask for 100 runs, it asked for: $corps"
                 )
             }
 
@@ -160,7 +159,7 @@ class GratuitInchangeTest {
             faux.derniereUri()!!.let { uri ->
                 assertTrue(
                     uri.contains("max_results=500"),
-                    "listRegisteredModels doit toujours demander 500 modeles, il a demandé : $uri"
+                    "listRegisteredModels must still ask for 500 models, it asked for: $uri"
                 )
             }
 
@@ -168,7 +167,7 @@ class GratuitInchangeTest {
             faux.derniereUri()!!.let { uri ->
                 assertTrue(
                     uri.contains("max_results=500"),
-                    "listModelVersions doit toujours demander 500 versions, il a demandé : $uri"
+                    "listModelVersions must still ask for 500 versions, it asked for: $uri"
                 )
             }
 
@@ -176,7 +175,7 @@ class GratuitInchangeTest {
             faux.derniereUri()!!.let { uri ->
                 assertTrue(
                     uri.contains("max_results=5000"),
-                    "getMetricHistory doit toujours demander 5 000 points, il a demandé : $uri"
+                    "getMetricHistory must still ask for 5 000 points, it asked for: $uri"
                 )
             }
         } finally {
@@ -185,27 +184,27 @@ class GratuitInchangeTest {
     }
 
     // ------------------------------------------------------------------
-    // 5. Sans licence : comportement gratuit strictement identique
+    // 5. Without a licence: strictly identical free behaviour
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("5 - quand aucune licence n'est installée, le gratuit reste strictement identique")
+    @DisplayName("5 - when no licence is installed, the free tier stays strictly identical")
     fun sansLicenceLeGratuitResteStrictementIdentique() {
         val sansLicence = LectureLicence(facadeInitialisee = true, sceau = null)
         val etat = ProGate.etat(sansLicence)
-        assertEquals(ProState.ABSENT, etat, "sans licence, l'état doit être ABSENT")
-        assertTrue(!etat.autorise(), "sans licence, aucune fonction Pro n'est autorisée")
+        assertEquals(ProState.ABSENT, etat, "without a licence, the state must be ABSENT")
+        assertTrue(!etat.autorise(), "without a licence, no Pro feature is authorised")
 
-        // 1. Les 4 onglets gratuits doivent être présents
+        // 1. The 4 free tabs must be present
         val factory = source("src/main/kotlin/com/slot5/mlexp/MlflowToolWindowFactory.kt")
         for (onglet in listOf("Experiments", "Optuna", "Models", "Sweeps")) {
             assertTrue(
                 factory.contains("\"$onglet\""),
-                "sans licence, l'onglet $onglet doit impérativement exister"
+                "without a licence, the tab $onglet must exist at all costs"
             )
         }
 
-        // 2. Les limites annoncées doivent rester strictement intactes
+        // 2. The announced limits must stay strictly intact
         val descripteur = source("src/main/resources/META-INF/plugin.xml")
         val limites = listOf(
             "500 experiments",
@@ -217,22 +216,22 @@ class GratuitInchangeTest {
         for (limite in limites) {
             assertTrue(
                 descripteur.contains(limite),
-                "sans licence, la limite « $limite » doit rester strictement identique"
+                "without a licence, the limit \"$limite\" must stay strictly identical"
             )
         }
 
-        // 3. Le chemin de code gratuit ne consulte aucune porte Pro
+        // 3. The free code path queries no Pro gate
         for (chemin in fichiersGratuits) {
             val code = source(chemin)
             for (interdit in listOf("ProGate", "LicenceNatif", "LicensingFacade", "getConfirmationStamp", "PPCOCKPITPRO")) {
                 assertTrue(
                     !code.contains(interdit),
-                    "$chemin ne doit pas dépendre de $interdit : le gratuit reste strictement isolé"
+                    "$chemin must not depend on $interdit: the free tier stays strictly isolated"
                 )
             }
         }
 
-        // 4. Les appels client gratuits gardent strictement leurs limites réseau
+        // 4. The free client calls keep their strict network limits
         val faux = FauxServeur()
         try {
             val base = faux.demarrer()
@@ -241,51 +240,51 @@ class GratuitInchangeTest {
             client.listExperiments()
             assertTrue(
                 faux.dernierCorps()!!.contains("\"max_results\":500"),
-                "sans licence, listExperiments doit demander 500 experiments"
+                "without a licence, listExperiments must ask for 500 experiments"
             )
 
             client.listRuns("exp1")
             assertTrue(
                 faux.dernierCorps()!!.contains("\"max_results\":100"),
-                "sans licence, listRuns doit demander 100 runs"
+                "without a licence, listRuns must ask for 100 runs"
             )
 
             client.listRegisteredModels()
             assertTrue(
                 faux.derniereUri()!!.contains("max_results=500"),
-                "sans licence, listRegisteredModels doit demander 500 modeles"
+                "without a licence, listRegisteredModels must ask for 500 models"
             )
 
             client.listModelVersions("modele1")
             assertTrue(
                 faux.derniereUri()!!.contains("max_results=500"),
-                "sans licence, listModelVersions doit demander 500 versions"
+                "without a licence, listModelVersions must ask for 500 versions"
             )
 
             client.getMetricHistory("run1", "loss")
             assertTrue(
                 faux.derniereUri()!!.contains("max_results=5000"),
-                "sans licence, getMetricHistory doit demander 5000 points"
+                "without a licence, getMetricHistory must ask for 5000 points"
             )
         } finally {
             faux.arreter()
         }
 
-        // 5. Sans licence, la porte Pro bloque la comparaison
+        // 5. Without a licence, the Pro gate blocks the comparison
         val runs = listOf(
             RunRef(id = "r1", origine = "http://localhost:5000"),
             RunRef(id = "r2", origine = "http://localhost:5000")
         )
         val resultat = ComparaisonRuns.calculer(runs, etat)
-        assertTrue(resultat is ResultatComparaison.Refus, "sans licence, la comparaison doit être refusée")
+        assertTrue(resultat is ResultatComparaison.Refus, "without a licence, the comparison must be refused")
         assertEquals(CodeRefus.BLOQUE_SANS_LICENCE, (resultat as ResultatComparaison.Refus).code)
     }
 
     // ------------------------------------------------------------------
-    // Outils
+    // Helpers
     // ------------------------------------------------------------------
 
-    /** Lit un fichier du projet (le répertoire de travail du test = la racine du projet). */
+    /** Reads a file of the project (the working directory of the test = the project root). */
     private fun source(chemin: String): String {
         var d: File? = File(".").absoluteFile
         while (d != null) {
@@ -293,10 +292,10 @@ class GratuitInchangeTest {
             if (f.exists()) return f.readText(Charsets.UTF_8)
             d = d.parentFile
         }
-        throw AssertionError("source introuvable : $chemin")
+        throw AssertionError("source not found: $chemin")
     }
 
-    /** Faux serveur MLflow : enregistre ce qui est demandé, répond `{}`. */
+    /** Fake MLflow server: records what is asked, answers `{}`. */
     private class FauxServeur {
         private lateinit var server: HttpServer
         private val corps = ArrayList<String>()

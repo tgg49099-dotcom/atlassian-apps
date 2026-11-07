@@ -3,26 +3,24 @@ package com.slot5.mlexp.pro
 import com.intellij.ui.LicensingFacade
 
 /**
- * Lecture de la licence **native** de la plateforme IntelliJ.
+ * Reading of the **native** licence of the IntelliJ platform.
  *
- * v0.0.22. C'est le seul endroit du code qui parle à `LicensingFacade`.
+ * v0.0.22. This is the only place in the code that talks to `LicensingFacade`.
  *
- * Ce que fait la plateforme, et que nous ne refaisons pas (doc officielle
- * « Add license verification calls to the plugin code ») :
- *   - la licence est vérifiée par l'IDE au démarrage, puis au moins une fois
- *     par jour ;
- *   - le sceau nous est fourni **signé** par la plateforme — « there are no
- *     private keys in the platform » ;
- *   - notre rôle se limite à constater la présence d'un sceau pour NOTRE
- *     code produit.
+ * What the platform does, and what we do not redo (official documentation,
+ * "Add license verification calls to the plugin code"):
+ *   - the licence is checked by the IDE at startup, then at least once a day;
+ *   - the stamp is handed to us **signed** by the platform - "there are no
+ *     private keys in the platform";
+ *   - our only job is to note the presence of a stamp for OUR product code.
  *
- * Deux cas de retour précis, jamais une exception vague :
- *   - `LicensingFacade.getInstance() == null` : le facade n'est pas encore
- *     initialisé (démarrage de l'IDE) → [ProState.INCONNU] ;
- *   - la classe n'est pas lisible (IDE propriétaire d'une version qui l'a
- *     retirée) → [ProState.INCONNU] avec le motif exact.
+ * Two precise return cases, never a vague exception:
+ *   - `LicensingFacade.getInstance() == null`: the facade is not initialised
+ *     yet (IDE startup) -> [ProState.INCONNU];
+ *   - the class cannot be read (IDE owner of a version that removed it)
+ *     -> [ProState.INCONNU] with the exact reason.
  *
- * Dans les deux cas, **rien n'est ouvert** : fail-closed.
+ * In both cases **nothing is unlocked**: fail-closed.
  */
 class LicenceNatif : SourceLicence {
 
@@ -31,7 +29,7 @@ class LicenceNatif : SourceLicence {
         if (facade == null) {
             LectureLicence(
                 facadeInitialisee = false,
-                motif = "LicensingFacade non initialise (demarrage de l'IDE)"
+                motif = "LicensingFacade not initialised (IDE startup)"
             )
         } else {
             LectureLicence(
@@ -40,11 +38,11 @@ class LicenceNatif : SourceLicence {
             )
         }
     } catch (t: Throwable) {
-        // La classe peut disparaitre d'une version d'IDE : on ne casse pas
-        // l'IDE, on refuse poliment la partie payante.
+        // The class may disappear from a version of the IDE: we do not break
+        // the IDE, we politely refuse the paid part.
         LectureLicence(
             facadeInitialisee = false,
-            motif = "lecture de licence impossible : ${t.javaClass.simpleName}"
+            motif = "licence read failed: ${t.javaClass.simpleName}"
         )
     }
 }

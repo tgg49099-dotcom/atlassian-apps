@@ -36,8 +36,9 @@ import javax.swing.tree.DefaultTreeModel
  *   NORTH  : [entity textfield] [project textfield] [Refresh] [Status label]
  *   LEFT   : Tree of Sweeps (grouped by state — running / finished / failed).
  *   RIGHT  : Detail panel showing: sweep name, state, runs count, created
- *            and updated timestamps, best run (id + name + summary metrics),
- *            and a top-N hyperparameter view if present in summary metrics.
+ *            and updated timestamps. The W&B API exposes no "best run" on a
+ *            sweep (field `bestRun` absent from the `Sweep` type), so the
+ *            panel says so instead of showing one.
  *
  * Network I/O runs on worker threads ("mlexp-wandb-refresh",
  * "mlexp-wandb-detail") then marshals back to the EDT via `invokeLater`.
@@ -65,7 +66,7 @@ class SweepToolWindowPanel(
     private val statusLabel = JBLabel("Idle. Configure entity + project, then click Refresh.")
 
     private val detailArea = JBLabel(
-        "Select a sweep in the tree to view its details (state, timestamps, runs total, best run + summary metrics)."
+        "Select a sweep in the tree to view its details (state, timestamps, runs total)."
     )
 
     private val treeRoot = DefaultMutableTreeNode("(no data)")
