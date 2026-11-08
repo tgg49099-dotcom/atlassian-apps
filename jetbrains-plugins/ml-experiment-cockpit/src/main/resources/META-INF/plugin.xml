@@ -40,7 +40,7 @@
 <li><b>Models</b> — the MLflow Model Registry: registered models, their versions, stage, status and run id.</li>
 <li><b>Sweeps</b> — W&B hyperparameter sweeps grouped by state, with their run count and timestamps (the W&B API does not expose a best run for a sweep).</li>
 </ul>
-<p>All four tabs live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
+<p>All five tabs (Experiments, Optuna, Models, Sweeps and the Compare view) live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
 <table>
 <tr><th>Function</th><th>Free</th><th>Pro ($29/year, 14-day trial)</th></tr>
