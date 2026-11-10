@@ -61,6 +61,17 @@ by JetBrains' privacy policy.
 We (Tgg Labs) receive nothing from the Marketplace about who installs the
 Plugin. The only contact channel we offer is the support mailbox below.
 
+### 4.1 The Pro tier ("Compare 2 runs") — added 2026-11-10
+
+The Pro tier of ML Experiment Cockpit — the **Compare 2 runs** view — is sold
+and licensed by **JetBrains Marketplace**, not by us. The Plugin only reads the
+licence state inside the IDE (through the platform's own licence facade, for the
+product code `PPCOCKPITPRO`) and **sends no data about it**: nothing about the
+licence, its state or its holder reaches us, JetBrains' Marketplace API, or our
+website. The payment for the Pro tier is handled entirely by JetBrains: it
+neither transits through us nor through our website, and we handle no payment
+data of any kind.
+
 ## 5. Uninstalling
 
 Uninstalling the Plugin removes its settings from the IDE. The MLflow / Optuna
