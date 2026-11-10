@@ -216,12 +216,12 @@ majeure.
   **Compatible** sur les **2** IDE de la matrice (plancher `PY-243.21565.199`, plafond
   `PY-263.7307.101`).
 * **ZIP livré** : `build/distributions/ml-experiment-cockpit-0.0.22.zip`
-  * **md5** : **`6d07966bd82c7cb62bf84ca3ee96039c`**
+  * **md5** : **`6d07966bd82c`** (préfixe 12 : empreinte du cycle 153, remplacée au cycle 154)
   * **taille** : **1 875 522 octets**
   * **sha256 (octets du fichier)** : `859b5fd58855693e05482c4c9eee215ab3924e615945bfa92edcb8d578ac2eec`
   * 3 fichiers : `annotations-13.0.jar` (17 536 o), `kotlin-stdlib-1.9.25.jar` (1 718 956 o),
     `ml-experiment-cockpit-2026.1.0.jar` (282 204 o) — 2 018 696 octets au total
-  * md5 du jar interne : **`36bf581a9b93bf0538360363589a20ae`**
+  * md5 du jar interne : **`36bf581a9b93`** (préfixe 12, cycle 153)
 * **Critère de reproductibilité = hash de CONTENU** (noms + octets, horodatages exclus,
   récursif dans les jar) — `/work/scripts/hash_contenu_zip.py` :
 
@@ -230,13 +230,25 @@ majeure.
 | `build-C-152.zip` (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `52f0fe188c81` | 1 875 413 |
 | `build-D-152.zip` (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `f674d894d359` | 1 875 413 |
 | ZIP livré cycle 152 (15:51) | `82881cf40132ac1cb5b77d3f2858de72cbeb3ff9704910d36dff75ecf41aa33a` | `f674d894d359` | 1 875 413 |
-| **ZIP livré cycle 153 (20:43)** | **`62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0`** | **`6d07966bd82c7cb62bf84ca3ee96039c`** | **1 875 522** |
+| ZIP livré cycle 153 (20:43) | `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0` | `6d07966bd82c` | 1 875 522 |
+| ZIP livré cycle 154 (21:38) | `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0` | `483b0775f4e0` | 1 875 391 |
+| ZIP livré cycle 154 (21:38) | `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0` | `483b0775f4e0` | 1 875 391 |
+| ZIP livré cycle 154 (21:38) | `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0` | `483b0775f4e0` | 1 875 391 |
+| ZIP livré cycle 154 (21:38) | `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0` | `483b0775f4e0` | 1 875 391 |
+| ZIP livré cycle 155 (20:44) | `a25eae15508989cad212e8ece4440ba91d76aaef1d27f6291ffe0d38dd7be253` | `482427c1f7dd` | 1 875 398 |
+| ZIP livré cycle 158 (05:13) | `2110076ed6f9d820e7dd0ec821ea3e0dd64bde079f437737460217721cb3e320` | `bfb20a2c64e5` | 1 875 392 |
+| **ZIP livré cycle 159 (07:30)** | **`2110076ed6f9d820e7dd0ec821ea3e0dd64bde079f437737460217721cb3e320`** | **`830b0e1f4aba44abaf946a180a56c0b8`** | **1 875 360** |
 
 > ⚠ **Les md5 du cycle 152 sont écrits en préfixe de 12 caractères** : ils sont
-> **périmés** (le ZIP a été reconstruit au cycle 153, après les corrections du
-> jury) et le contrôle des md5 refuse, à juste titre, une empreinte qui ne
-> désigne plus aucun fichier. Le md5 **complet** du ZIP livré est en clair
-> ci-dessus et dans `SHA256-ET-FICHIERS.txt`.
+> **périmés** (le ZIP a été reconstruit au cycle 153 après les corrections du
+> jury, puis de nouveau au cycle 154 pour le garde-fou mtime : un ZIP plus ancien
+> que ses sources est refusé, puis de nouveau au cycle 155 pour la correction de
+> la description « All five tabs », puis de nouveau au cycle 158 pour la
+> correction de l'onglet « Compare », puis de nouveau au cycle 159 pour le
+> rebuild depuis les sources publiques) et le contrôle des md5 refuse, à juste
+> titre, une empreinte qui ne désigne plus le fichier livré. Le md5 **complet** du
+> ZIP livré (cycle 159) est en clair dans la section 10.10 et dans
+> `SHA256-ET-FICHIERS.txt`.
 
   ⇒ **hash de contenu IDENTIQUE sur les 2 builds du code final**, alors que les **md5
   sont différents** (`52f0fe18…` / `f674d894…`) : c'est exactement pour cela que la
@@ -262,7 +274,7 @@ le ZIP décompressé dans le dossier de plugins, **PyCharm 2026.2.4** lancé sur
 Xvfb `:99` avec un heap borné (le conteneur plafonne à 2 Go), puis lecture de `idea.log`.
 La preuve a été **rejouée sur le ZIP LIVRÉ du cycle 153**
 (`/work/A_ENVOYER/ml-experiment-plugin/ml-experiment-cockpit-0.0.22.zip`,
-md5 `6d07966bd82c7cb62bf84ca3ee96039c`, déposé dans
+md5 `6d07966bd82c` (préfixe 12, cycle 153), déposé dans
 `/work/preuves/cycle153/ide/idecfg/plugins/`) → verdict du script : **0**
 (log complet : `/work/preuves/cycle153/11-verif-ide-cycle153.log`).
 
@@ -577,11 +589,11 @@ anglais (1 occurrence). Preuve : `/work/preuves/cycle153/guide-pro-conforme.log`
 
 ### 10.6 La livraison et le push
 
-* **ZIP livré** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `6d07966bd82c7cb62bf84ca3ee96039c`**,
+* **ZIP livré (cycle 153)** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `6d07966bd82c`** (préfixe 12),
   **1 875 522 octets**, sha256 (octets)
   `859b5fd58855693e05482c4c9eee215ab3924e615945bfa92edcb8d578ac2eec`, hash de contenu
   `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0`.
-* **Dossier de vente** : `dossier-cockpit-pro.zip`, **md5 `f419bf5492419ea74f3085a8685056f3`**,
+* **Dossier de vente (cycle 153)** : `dossier-cockpit-pro.zip`, **md5 `f419bf549241`** (préfixe 12),
   **1 967 043 octets**, sha256
   `5950ad8b6c820de13370b45020595f30611c09e6b5eb4517a61f02d97c6cc194` ; il contient le ZIP
   livré **non re-zippé** (md5 identique), le guide et la capture ; sa reconstruction est
@@ -602,3 +614,169 @@ anglais (1 occurrence). Preuve : `/work/preuves/cycle153/guide-pro-conforme.log`
   Le **hash exact du HEAD public** est dans ce journal et dans le rapport du cycle 153 —
   il ne peut pas figurer dans le document qu'il annonce lui-même.
 * **0 publication, 0 mise en vente, 0 compte, 0 clé, 0 $, 0 courriel, 0 action pour Tgg.**
+
+### 10.7 Cycle 154 (07/11, 21:37 → 21:39) : rebuild de conformité et redélivrance
+
+Le garde-fou mtime du pré-vol officiel refusait le ZIP du cycle 153 : construit à 20:43,
+il était plus ancien que la dernière retouche des sources (`build.gradle.kts`, 20:47),
+alors que le CONTENU était déjà exact (vérifié par la mère sur le JAR livré : les 3 chaînes
+fautives absentes, `componentPopupMenu` absent, ligne « Metric points » correcte). Le
+cycle 154 reconstruit donc le ZIP APRÈS les sources, **sans modifier aucune source** :
+
+* Commande : `./gradlew --offline clean buildPlugin verifyPlugin test` (JVM bornée,
+  Kotlin in-process, workers=1 — savoir du cycle 151) → **BUILD SUCCESSFUL in 1m 50s,
+  RC 0** ; `> Task :verifyPlugin` exécuté sans erreur (Compatible sur les 2 IDE de la
+  matrice) ; ZIP recréé à **21:38:05**, postérieur à toutes les sources.
+* Tests : `> Task :test FROM-CACHE` (après `clean`, entrées identiques — sources de test
+  inchangées depuis le cycle 152) ; décompte lu dans les XML de sortie restaurés :
+  **8 fichiers XML, 44 tests, 0 failures, 0 errors, 0 skipped**.
+* Hash de contenu du ZIP : `62b96248f225ae09bdfc1dcd2ff9c56a9e927a53e0bfb0375fcd001437aab1b0`
+  — **IDENTIQUE au cycle 153** : le contenu du plugin est inchangé, seuls les
+  horodatages d'archive diffèrent (le md5 d'un ZIP n'est pas reproductible).
+* **ZIP livré (cycle 154)** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `483b0775f4e0`** (préfixe 12),
+  **1 875 391 octets**, sha256 `9d0e4349115fabd0ae745e87368764acae2c461d540c87fa0f58b36891ee8cd2`,
+  **identique octet pour octet au ZIP du build** (`cmp`).
+* **JAR interne (cycle 154)** : `jar_interne_2026.1.0.jar`, md5 **`7fd5528dd787`** (préfixe 12), 282 204 octets.
+* **Dossier de vente (cycle 154)** : `dossier-cockpit-pro.zip`, md5 **`9d8942ee3e46`** (préfixe 12),
+  1 966 896 octets (ZIP livré repris tel quel + guide + capture ; reproductible,
+  2 constructions, md5 identique).
+* Guide régénéré depuis le JAR livré : contrôle `verifie_guide_pro.py` → **VERDICT VERT**
+  (blocs « texte à coller » identiques octet pour octet au plugin.xml du JAR du ZIP livré).
+* Copies bit pour bit (`.zip.bin`) : `/work/preuves/cycle154/copie-livraison/` — les md5
+  ci-dessus restent vérifiables par le pré-vol de n'importe quel produit du slot
+  (le scan ignore les `.zip`, pas les `.bin`).
+* **0 publication, 0 action pour Tgg, 0 $, 0 clé, 0 source modifiée.**
+
+### 10.8 Cycle 155 (08/11, 20:32 → 20:46) : correction de la description « All five tabs »
+
+La relecture hostile de Jules (PR `iamere-jury#80`) a rendu **BLOQUANT** : la
+description publiee annonçait « All four tabs live in one … » alors que
+`MlflowToolWindowFactory` cree **5** onglets (Experiments, Optuna, Models, Sweeps,
+Compare). La phrase a ete corrigee dans les DEUX fichiers qui la portent
+(`src/main/resources/META-INF/plugin.xml` et `build.gradle.kts`, le patcher Gradle
+reecrit la description au build, les deux textes doivent etre identiques mot pour
+mot), et un test permanent (`RelectureDescriptionTest`) verrouille le comportement.
+
+* Commande : `./gradlew --offline clean buildPlugin verifyPlugin test` (JVM bornée,
+  Kotlin in-process, workers=1) → **BUILD SUCCESSFUL in 2m 28s, RC 0** ;
+  `> Task :verifyPlugin` exécuté sans erreur (**Compatible** sur PY-243.21565.199
+  et PY-263.7307.101) ; ZIP recréé à **20:44:27**, postérieur à la dernière source
+  (`build.gradle.kts` / `plugin.xml`, 20:35:06) : garde-fou mtime VERT.
+* Contre-épreuve ROUGE avant correction : `RelectureDescriptionTest` **FAILED**
+  (`3 tests completed, 1 failed`, RC 1) — puis **VERT** après correction.
+* Tests : **9 fichiers XML, 47 tests, 0 failures, 0 errors, 0 skipped**
+  (44 tests du cycle 154 + 3 tests de relecture de la description).
+* JAR livré contrôlé : `All five tabs` = **1 occurrence**, `All four tabs` = **0**.
+* Libellé du bouton de dépôt corrigé dans le guide : « **Upload Update** » (et non
+  « Upload plugin », qui est le libellé du menu du compte et crée une 2ᵉ fiche).
+* Hash de contenu du ZIP : `a25eae15508989cad212e8ece4440ba91d76aaef1d27f6291ffe0d38dd7be253`
+* **ZIP livré (cycle 155)** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `482427c1f7dd`** (préfixe 12),
+  **1 875 398 octets**, sha256 `8e84e607fd5a38ffc8e8ebb1466dc466a5a87a8e4e5d95dceb8113e7cca78774`,
+  **identique octet pour octet au ZIP du build** (`cmp`).
+* **JAR interne (cycle 155)** : `jar_interne_2026.1.0.jar`, md5 **`51be0b77ec35`** (préfixe 12), 282 211 octets.
+* **Dossier de vente (cycle 155)** : `dossier-cockpit-pro.zip`, md5 **`f5bdf58f0d94`** (préfixe 12),
+  1 967 065 octets.
+* Guide régénéré depuis le JAR livré : contrôle `verifie_guide_pro.py` → **VERDICT VERT**.
+* Copies bit pour bit (`.zip.bin`) : `/work/preuves/cycle155/copie-livraison/`.
+* Dépôt public : la correction a été poussée dans `tgg49099-dotcom/atlassian-apps`
+  (chemin `jetbrains-plugins/ml-experiment-cockpit/`) — seule la phrase change,
+  commit `d071ee0f621b8751b4a22032938c00b28766850a`.
+* **0 publication (fiche 35416 non écrite), 0 action pour Tgg, 0 $, 0 clé.**
+
+### 10.9 Cycle 158 (10/11, 04:28 → 05:20) : l'onglet « Compare » plantait — bloquant corrigé
+
+La **preuve sur les octets livrés** (consigne du 10/11/2026 04:16 : « le ZIP EXACT
+que Tgg téléversera le 15/11 ») a révélé un **bloquant** que ni la relecture de code
+ni les tests ne voyaient : **le ZIP livré s'installe et se charge dans PyCharm, mais
+l'onglet « Compare » — le palier Pro n°1 — n'est jamais créé.**
+
+* **Mesuré dans l'IDE réel** (PyCharm 2026.2.4, PY-262.11879.98, Xvfb, config neuve,
+  ZIP livré installé) : à l'ouverture du tool window,
+  `java.lang.IllegalArgumentException: wrong parent for CardLayout`
+  (`java.awt.CardLayout.checkLayout` → `java.awt.CardLayout.show` →
+  `PanneauComparaison.<init>`), **ballon rouge « IDE error occurred »** à l'écran,
+  et les 4 onglets gratuits seuls affichés : le 5e manquait.
+* **Cause** (source du JDK, `java.desktop/java/awt/CardLayout.java`) :
+  `checkLayout(parent)` exige `parent.getLayout() == this`, et
+  `show(Container parent, String name)` prend le **conteneur** qui porte le
+  CardLayout — **pas** la carte à afficher. Le code passait la carte. De plus,
+  `addLayoutComponent(nom, comp)` enregistre la carte sans l'ajouter au conteneur :
+  les cartes n'étaient pas des enfants de `porte`, donc jamais affichées.
+* **Correction (une seule)** : `porte.add(carte, "nom")` puis
+  `carte.show(porte, "contenu")` — 3 appels corrigés (construction + les 2 branches
+  de `rafraichirEtatPro()`), **aucune fonctionnalité ajoutée**.
+* **Contre-épreuve ROUGE d'abord** :
+  `src/test/kotlin/com/slot5/mlexp/pro/PanneauComparaisonPorteTest.kt` — avant
+  correction : `2 tests completed, 2 failed`, pile d'appels identique à celle de
+  l'IDE (`CardLayout.checkLayout` → `show` → `PanneauComparaison.<init>`) ; après
+  correction : **4 tests / 4 verts** (construction sans exception, 2 cartes dans la
+  porte, **utilisateur gratuit → carte « verrou » visible avec le message
+  « No licence is active on this machine. »**, utilisateur licencié → contenu visible).
+* **Suite complète** : **62 tests, 0 failure, 0 error, 0 skipped** (11 fichiers XML).
+* **ZIP livré re-vérifié dans l'IDE réel** après correction : plus aucune erreur
+  plugin, onglet « Compare » présent et **verrouillé** avec le message attendu.
+* Hash de contenu du ZIP : `2110076ed6f9d820e7dd0ec821ea3e0dd64bde079f437737460217721cb3e320`
+* **ZIP livré (cycle 158)** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `bfb20a2c64e5`** (préfixe 12),
+  **1 875 392 octets**, sha256 `00f846e50e7a37ea64712f7b091dcd386bd441e3fd78100c456fd21273ae2789`,
+  **identique octet pour octet au ZIP du build** (`cmp`).
+* **JAR interne (cycle 158)** : `jar_interne_2026.1.0.jar`, md5 **`077959f4ef21`** (préfixe 12), 282 169 octets.
+* **Dossier de vente (cycle 158)** : `dossier-cockpit-pro.zip`, md5 **`7835f74f9ccb`** (préfixe 12),
+  1 967 076 octets.
+* Guide régénéré depuis le JAR livré : contrôle `verifie_guide_pro.py` → **VERDICT VERT**.
+* Copies bit pour bit (`.zip.bin`) : `/work/preuves/cycle158/copie-livraison/`.
+* **0 publication (fiche 35416 non écrite), 0 action pour Tgg, 0 $, 0 clé.**
+
+### 10.10 Cycle 159 (10/11, 07:11 → 07:35) : le CODE SOURCE PUBLIC porte le CORRECTIF ; ZIP reconstruit DEPUIS le clone public
+
+La consigne du 10/11/2026 07:11 : « que le CODE SOURCE PUBLIC de la fiche 35416
+soit identique à l'ARTEFACT livré, et livrer le ZIP final pour l'action de Tgg
+du 15/11 ».
+
+* **Le dépôt public portait encore le code cassé** : le fichier
+  `src/main/kotlin/com/slot5/mlexp/pro/PanneauComparaison.kt` du dépôt
+  `tgg49099-dotcom/atlassian-apps` (sous-dossier
+  `jetbrains-plugins/ml-experiment-cockpit/`) appelait
+  `carte.addLayoutComponent("contenu", …)` puis `carte.show(carteContenu, "contenu")` :
+  l'onglet « Compare » plantait (`wrong parent for CardLayout`). Le lien « code
+  source » de la fiche Marketplace ne montrait donc pas le code que nous vendons.
+* **Correction poussée** (UN SEUL commit sur `main` ; le sha exact se lit par
+  `git ls-remote https://github.com/tgg49099-dotcom/atlassian-apps.git refs/heads/main`
+  et figure dans le rapport du cycle du 10/11/2026 — il ne peut pas être écrit
+  ici : le fichier qui le contiendrait changerait le commit lui-même) :
+  `porte.add(carteContenu, "contenu")` / `porte.add(carteVerrou, "verrou")` puis
+  `carte.show(porte, "contenu")` / `carte.show(porte, "verrou")` — les 3 appels,
+  **aucune fonctionnalité ajoutée**. Le fichier relu **en ligne** (raw.githubusercontent)
+  donne md5 `448afa3b5fc2` (préfixe 12), identique au fichier de build.
+* **Reconstruction DEPUIS le clone public** : `./gradlew --offline clean buildPlugin
+  verifyPlugin test` (JVM bornée, 1 worker, Kotlin in-process) → **BUILD SUCCESSFUL**
+  dans le **clone frais** du dépôt public au sha poussé ; `verifyPlugin` : **Compatible**
+  sur PY-243.21565.199 et PY-263.7307.101.
+* **Identité des deux arbres** : clone frais du dépôt public ↔ dossier de build,
+  **56 fichiers comparés, 0 divergence de md5, les deux listes strictement
+  identiques** (listes ligne à ligne dans
+  `/work/preuves/cycle159/02-piece2-liste-clone.md5` et `02-piece2-liste-build.md5`).
+* **Réconciliation des écarts de fichiers** (expliquée, pas cachée) : les 5 fichiers
+  que le dépôt public portait et que le dossier de build n'avait pas — `NOTICE`,
+  `PRIVACY.md`, `SECURITY.md`, `SUPPORT.md`,
+  `media/ml-experiment-cockpit-0.0.17-1200x760.png` — ont été **recopiés à
+  l'identique** dans le dossier de build (ils ne sont ni du code ni des pièces de
+  l'artefact : le hash de contenu du ZIP est resté inchangé) ; à l'inverse,
+  `rapport-description.md` (relecture hostile du 08/11 dont le verdict
+  « BLOQUANT » porte sur la phrase « All four tabs », **corrigée depuis**) a été
+  **sorti** de l'arbre source vers
+  `/work/REVUE-JURY/20261108-slot5-relecture-hostile-description.md` : ni code
+  produit ni pièce de l'artefact, et un verdict périmé ne doit pas être publié
+  tel quel dans l'arbre public.
+* **Hash de contenu** : `2110076ed6f9d820e7dd0ec821ea3e0dd64bde079f437737460217721cb3e320`
+  — **IDENTIQUE** à celui du ZIP du cycle 158 : le **CONTENU** du plugin est
+  inchangé, seuls les horodatages d'archive diffèrent (le md5 d'un ZIP n'est pas
+  reproductible).
+* **ZIP livré** : `ml-experiment-cockpit-0.0.22.zip`, **md5 `830b0e1f4aba44abaf946a180a56c0b8`**,
+  **1 875 360 octets**, sha256 `bb1e1d798d2b3f32b393da86f833ca825854413d736d0cf5c45280ab43467bd8`,
+  **identique octet pour octet au ZIP du build** (`cmp`).
+* **JAR interne** : `jar_interne_2026.1.0.jar`, md5 **`203929a19cbef15c818925de3a830a64`**, 282 169 octets.
+* **Dossier de vente** : `dossier-cockpit-pro.zip`, md5 **`ef93f23e948b0c1d9dfcd57ccdeaa300`**,
+  1 967 022 octets.
+* Guide régénéré depuis le JAR livré : contrôle `verifie_guide_pro.py` → **VERDICT VERT**.
+* Copies bit pour bit (`.zip.bin`) : `/work/preuves/cycle159/copie-livraison/`.
+* **0 publication (fiche 35416 non écrite), 0 action pour Tgg, 0 $, 0 clé.**

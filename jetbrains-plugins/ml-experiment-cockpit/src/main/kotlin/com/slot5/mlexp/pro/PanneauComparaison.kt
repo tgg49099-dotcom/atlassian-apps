@@ -103,9 +103,40 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         construireContenu()
         construireVerrou()
 
-        carte.addLayoutComponent("contenu", carteContenu)
-        carte.addLayoutComponent("verrou", carteVerrou)
-        carte.show(carteContenu, "contenu")
+        // 10/11/2026 (cycle 158) — CORRECTION D'UN BLOQUANT MESURE DANS UN IDE REEL.
+        //
+        // MESURE (PyCharm 2026.2.4, ZIP livre installe) : a l'ouverture du tool
+        // window, la construction de ce panneau levait
+        //   java.lang.IllegalArgumentException: wrong parent for CardLayout
+        //       at java.awt.CardLayout.checkLayout(CardLayout.java:413)
+        //       at java.awt.CardLayout.show(CardLayout.java:535)
+        //       at com.slot5.mlexp.pro.PanneauComparaison.<init>(PanneauComparaison.kt:108)
+        // L'onglet « Compare » n'etait donc JAMAIS cree (les 4 onglets gratuits
+        // s'affichaient, le 5e manquait, et l'IDE affichait un ballon rouge
+        // « IDE error occurred »).
+        //
+        // CAUSE (lue dans la source du JDK, java.desktop/java/awt/CardLayout.java) :
+        //   void checkLayout(Container parent) {
+        //       if (parent.getLayout() != this) {
+        //           throw new IllegalArgumentException("wrong parent for CardLayout");
+        //   public void show(Container parent, String name) { checkLayout(parent); ... }
+        // Le 1er argument de `show` est le CONTENEUR qui porte le CardLayout,
+        // pas la carte a afficher. Le code passait la CARTE (`carteContenu`,
+        // dont le layout est un BorderLayout) : le garde-fou du JDK a vu que
+        // `carteContenu.getLayout() != carte` et a leve.
+        // De plus, `CardLayout.addLayoutComponent(nom, comp)` enregistre la
+        // carte mais ne l'ajoute PAS au conteneur : les cartes n'etaient pas
+        // des enfants de `porte`, donc elles n'auraient jamais ete affichees.
+        //
+        // CORRECTION : `porte.add(carte, "nom")` (Container.add fait les deux
+        // choses : il ajoute la carte AU conteneur et l'enregistre dans le
+        // CardLayout avec sa cle), puis `carte.show(porte, "contenu")` — on
+        // passe bien le conteneur.
+        // Contre-epreuve : src/test/kotlin/com/slot5/mlexp/pro/PanneauComparaisonPorteTest.kt
+        // (test rouge avant la correction, vert apres).
+        porte.add(carteContenu, "contenu")
+        porte.add(carteVerrou, "verrou")
+        carte.show(porte, "contenu")
 
         boutonGetPro.addActionListener { ouvrirDialogueAchat() }
         boutonCopier.addActionListener { copierMarkdown() }
@@ -194,10 +225,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         }
         if (etatPro.autorise()) {
             messageVerrou.text = ""
-            carte.show(carteContenu, "contenu")
+            carte.show(porte, "contenu")
         } else {
             messageVerrou.text = ProGate.messageVerrou(etatPro)
-            carte.show(carteVerrou, "verrou")
+            carte.show(porte, "verrou")
         }
     }
 
