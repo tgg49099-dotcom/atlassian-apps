@@ -74,6 +74,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         ModeleNonEditable(arrayOf<Any>("metric", "A", "B", "absolute gap", "relative gap", "state"), 0)
     )
     private val comboMetrique = JComboBox<String>(DefaultComboBoxModel<String>())
+    // Jury 11/11 (amelioration 3) : the listener is detached while the list
+    // of the metrics is filled, so emptying it and filling it again do not
+    // trigger the loading of a history several times.
+    private val listenerMetrique = java.awt.event.ActionListener { onMetriqueChoisie() }
     private val comboRuns = JComboBox<String>(DefaultComboBoxModel<String>())
     private val courbe = CourbeDiff()
     private val messageVerrou = JTextArea()
@@ -84,6 +88,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     private var comparaison: ResultatComparaison.Comparaison? = null
     private var etatPro: ProState = ProState.INCONNU
     private var enCours = false
+    // Jury 11/11 (amelioration 2) : every request for a history gets a
+    // number; a response that is not the last one is dropped, so a slow
+    // answer cannot overwrite the curve of the metric chosen afterwards.
+    private var compteurDemandeHistoire: Long = 0L
 
     init {
         // ---- NORTH : title, licence state, buttons ----
@@ -99,6 +107,10 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
 
         // ---- CENTER : content or closed gate ----
         rootComponent.add(porte, BorderLayout.CENTER)
+        // Jury 11/11 : la ligne d'etat est sous les DEUX cartes, sinon ses
+        // messages (achat impossible, comparaison verrouillee) sont invisibles
+        // quand la carte « verrou » est affichee.
+        rootComponent.add(statusLabel, BorderLayout.SOUTH)
 
         construireContenu()
         construireVerrou()
@@ -140,10 +152,20 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
 
         boutonGetPro.addActionListener { ouvrirDialogueAchat() }
         boutonCopier.addActionListener { copierMarkdown() }
-        comboMetrique.addActionListener { onMetriqueChoisie() }
+        comboMetrique.addActionListener(listenerMetrique)
         comboRuns.addActionListener { onRunBChoisi() }
 
         hub.ecouter { demande -> traiterDemande(demande) }
+        // Jury 11/11 : relire la licence chaque fois que l'onglet redevient
+        // visible (apres un achat, ou si la licence n'etait pas lisible au
+        // demarrage de l'IDE), au lieu d'attendre une nouvelle comparaison.
+        rootComponent.addHierarchyListener { e ->
+            if ((e.changeFlags and java.awt.event.HierarchyEvent.SHOWING_CHANGED.toLong()) != 0L &&
+                rootComponent.isShowing
+            ) {
+                rafraichirEtatPro()
+            }
+        }
         rafraichirEtatPro()
     }
 
@@ -193,7 +215,6 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         }
 
         carteContenu.add(centre, BorderLayout.CENTER)
-        carteContenu.add(statusLabel, BorderLayout.SOUTH)
     }
 
     private fun construireVerrou() {
@@ -204,7 +225,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         messageVerrou.border = javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20)
         carteVerrou.add(messageVerrou, BorderLayout.CENTER)
         val bas = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
-            add(JLabel("ML Experiment Cockpit Pro - $29/year, 14-day free trial."))
+            add(JLabel("ML Experiment Cockpit Pro - $29/year, free trial."))
         }
         carteVerrou.add(bas, BorderLayout.SOUTH)
     }
@@ -275,7 +296,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         boutonCopier.isEnabled = false
         rafraichirEtatPro()
         if (!etatPro.autorise()) {
-            status("Comparison locked: a ML Experiment Cockpit Pro licence is required.")
+            status("Comparison locked: an ML Experiment Cockpit Pro licence is required.")
             return
         }
         status("Loading the runs of experiment ${d.experimentNom} ...")
@@ -290,7 +311,11 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
             status("Configure the MLflow URI first (Settings > Tools > ML Experiment Cockpit).")
             return
         }
-        Thread({
+        // Jury 11/11 (amelioration 5) : the IDE's pooled threads are used
+        // instead of a raw `Thread(...)` (the former thread was named
+        // "mlexp-compare-runs"). The work is identical, only the thread
+        // comes from the platform's pool.
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val runs = client.listRuns(experimentId).filter { it.id != a.id }
@@ -318,7 +343,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                     status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
-        }, "mlexp-compare-runs").start()
+        }
     }
 
     // ------------------------------------------------------------------
@@ -335,7 +360,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
     private fun onRunBChoisi() {
         if (candidats.isEmpty()) return
         if (!etatPro.autorise()) {
-            status("Comparison locked: a ML Experiment Cockpit Pro licence is required.")
+            status("Comparison locked: an ML Experiment Cockpit Pro licence is required.")
             return
         }
         calculerComparaison()
@@ -353,7 +378,9 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
             status("Configure the MLflow URI first (Settings > Tools > ML Experiment Cockpit).")
             return
         }
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform
+        // (the former raw thread was named "mlexp-compare-calcul").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val detailsA = client.getRunDetails(a.id)
@@ -381,7 +408,13 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                 val resultat = ComparaisonRuns.calculer(listOf(refA, refB), ProGate.etat())
                 ApplicationManager.getApplication().invokeLater {
                     enCours = false
-                    afficher(resultat)
+                    // Jury 11/11 : si l'utilisateur a change B pendant le calcul,
+                    // ne pas afficher la comparaison d'un autre run : recalculer.
+                    if (runChoisi()?.id != b.id) {
+                        calculerComparaison()
+                    } else {
+                        afficher(resultat)
+                    }
                 }
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
@@ -394,7 +427,7 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                     status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
-        }, "mlexp-compare-calcul").start()
+        }
     }
 
     private fun afficher(resultat: ResultatComparaison) {
@@ -454,10 +487,22 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
 
     private fun remplirMetriques(c: ResultatComparaison.Comparaison) {
         val model = comboMetrique.model as DefaultComboBoxModel<String>
-        model.removeAllElements()
-        for (m in c.metriquesCommunes) model.addElement(m)
-        comboMetrique.isEnabled = model.size > 0
-        if (model.size > 0) comboMetrique.selectedIndex = 0
+        // Jury 11/11 (amelioration 3) : the listener is removed for the time
+        // of the filling; emptying the list and adding the metrics fire the
+        // action event of the combo box, and each of them started a thread
+        // loading the history of 100 000 points.
+        comboMetrique.removeActionListener(listenerMetrique)
+        try {
+            model.removeAllElements()
+            for (m in c.metriquesCommunes) model.addElement(m)
+            comboMetrique.isEnabled = model.size > 0
+            if (model.size > 0) comboMetrique.selectedIndex = 0
+        } finally {
+            comboMetrique.addActionListener(listenerMetrique)
+        }
+        // The listener was off during the filling: the history of the first
+        // metric is loaded once, on purpose.
+        if (model.size > 0) onMetriqueChoisie()
     }
 
     private fun viderTableaux() {
@@ -477,13 +522,20 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
         val c = comparaison ?: return
         val base = MlflowSettingsImpl.getInstance().getTrackingUri().trimEnd('/')
         if (base.isEmpty()) return
+        // Jury 11/11 (amelioration 2) : the request is numbered; the answer
+        // of a request that is not the last one is ignored (it would show the
+        // curve of a metric that is not the selected one any more).
+        val demande = ++compteurDemandeHistoire
         status("Loading the history of $metrique ...")
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform
+        // (the former raw thread was named "mlexp-compare-histoire").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val pageA = client.getMetricHistoryAll(c.a.id, metrique, PLAFOND_POINTS_PRO)
                 val pageB = client.getMetricHistoryAll(c.b.id, metrique, PLAFOND_POINTS_PRO)
                 ApplicationManager.getApplication().invokeLater {
+                    if (demande != compteurDemandeHistoire) return@invokeLater
                     courbe.setSeries(pageA.points, pageB.points, metrique)
                     val tronque = pageA.tronque || pageB.tronque
                     val nA = pageA.points.size
@@ -497,14 +549,16 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
                 }
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
+                    if (demande != compteurDemandeHistoire) return@invokeLater
                     status("Failed to load the history: ${e.message}")
                 }
             } catch (t: Throwable) {
                 ApplicationManager.getApplication().invokeLater {
+                    if (demande != compteurDemandeHistoire) return@invokeLater
                     status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
-        }, "mlexp-compare-histoire").start()
+        }
     }
 
     // ------------------------------------------------------------------

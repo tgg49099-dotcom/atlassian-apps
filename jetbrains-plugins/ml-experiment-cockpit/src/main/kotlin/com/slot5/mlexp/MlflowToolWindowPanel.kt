@@ -188,7 +188,10 @@ class MlflowToolWindowPanel(
         refreshButton.isEnabled = false
         showStatus("Loading experiments from $base ...", false)
 
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform instead
+        // of a raw `Thread(...)` (the former thread was named
+        // "mlexp-tw-refresh").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val experiments = client.listExperiments()
@@ -223,7 +226,7 @@ class MlflowToolWindowPanel(
                     showBalloonError("Project unexpected error: ${t.message}")
                 }
             }
-        }, "mlexp-tw-refresh").start()
+        }
     }
 
     private fun populateTree(rows: List<ExperimentNode>) {
@@ -274,7 +277,9 @@ class MlflowToolWindowPanel(
     private fun loadRunDetail(run: Run) {
         detailArea.text = "Loading run ${run.id.take(8)} ..."
         clearChart()
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform
+        // (the former raw thread was named "mlexp-tw-rundetail").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(MlflowSettingsImpl.getInstance().getTrackingUri().trimEnd('/'))
                 val params = client.getRunParams(run.id)
@@ -293,7 +298,7 @@ class MlflowToolWindowPanel(
                     detailArea.text = "<html><body>Unexpected error: ${escape(t.message ?: t.javaClass.simpleName)}</body></html>"
                 }
             }
-        }, "mlexp-tw-rundetail").start()
+        }
     }
 
     /**

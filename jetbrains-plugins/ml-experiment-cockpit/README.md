@@ -175,5 +175,5 @@ ml-experiment-plugin/
 
 The plugin stays free: install it and use it without paying anything. If it saves you time, you can support its maintenance with a voluntary donation. The donation is optional, it unlocks no feature, and it is not a purchase.
 
-- Voluntary donation (any amount): https://tggster.gumroad.com/l/piazge
+- Voluntary donation (3.00 CHF): https://tggster.gumroad.com/l/piazge
 - Plugin page (JetBrains Marketplace): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit

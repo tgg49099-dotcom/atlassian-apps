@@ -1,5 +1,6 @@
 package com.slot5.mlexp
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.JBFont
 import java.awt.BasicStroke
@@ -121,7 +122,10 @@ class MetricsChartPanel(
         pointsLabel.text = "loading $metric ..."
         canvas.setData(emptyList(), metric)
 
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform instead
+        // of a raw `Thread(...)` (the former thread was named
+        // "mlexp-tw-history-$metric").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val data = client.getMetricHistory(runId, metric)
@@ -147,7 +151,7 @@ class MetricsChartPanel(
                     onStatus("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
                 }
             }
-        }, "mlexp-tw-history-$metric").start()
+        }
     }
 }
 

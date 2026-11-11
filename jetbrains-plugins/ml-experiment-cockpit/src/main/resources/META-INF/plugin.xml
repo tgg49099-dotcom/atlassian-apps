@@ -15,7 +15,7 @@
          plugin pickaxe livré (`0.0.3` en ZIP, `2026.1.0` affiché).
          On ne touche à rien d'autre : ni le `release-date`, ni le code
          produit `PPCOCKPITPRO`, ni `optional`, ni l'id, ni le <depends>. -->
-    <version>2026.1.0</version>
+    <version>2026.1.1</version>
 
     <vendor>Tgg Labs</vendor>
 
@@ -43,7 +43,7 @@
 <p>All five tabs (Experiments, Optuna, Models, Sweeps and the Compare view) live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
 <table>
-<tr><th>Function</th><th>Free</th><th>Pro ($29/year, 14-day trial)</th></tr>
+<tr><th>Function</th><th>Free</th><th>Pro ($29/year, free trial)</th></tr>
 <tr><td>Experiments, Optuna, Models, Sweeps tabs</td><td>yes</td><td>yes</td></tr>
 <tr><td>Compare 2 runs: parameters, metrics with gaps, both curves on one axis, Markdown export</td><td>tab visible, locked</td><td>yes</td></tr>
 <tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>
@@ -51,12 +51,22 @@
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>]]></description>
 
-    <change-notes><![CDATA[<h3>2026.1.0 — Pro tier: Compare 2 runs.</h3>
+    <change-notes><![CDATA[<h3>2026.1.1 - Compare tab: the real price, the licence read again, and the platform's pooled threads.</h3>
+<ul>
+    <li>The locked Compare tab now states the price set on the Marketplace: $29/year, and mentions the free trial without promising a duration (the trial length is the one set in the Marketplace sale settings).</li>
+    <li>The licence state is read again every time the Compare tab becomes visible again (for instance when the IDE had just started and the licence could not be read yet), so the tab is not left locked for a customer who has a licence.</li>
+    <li>The status line is now shown under both views of the tab, so a purchase dialog that cannot be opened is reported instead of failing silently.</li>
+    <li>If the second run is changed while the comparison is being computed, the comparison is computed again for the new run instead of showing the previous one.</li>
+    <li>A late answer for a metric that is no longer selected is ignored, and the metric list is filled without loading the history several times.</li>
+    <li>All the background requests now run on the IDE's pooled threads instead of raw threads, as recommended by JetBrains.</li>
+    <li>The wording of the paid tier in the interface has been corrected (an ML Experiment Cockpit Pro licence).</li>
+</ul>
+<h3>2026.1.0 — Pro tier: Compare 2 runs.</h3>
 <ul>
     <li>A fifth tab, <b>Compare</b>: right-click a run in the Experiments tree and choose « Compare with… ». The two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis.</li>
     <li>The whole comparison can be copied as <b>Markdown</b> (both tables) with one click.</li>
     <li>Pro only: in the Compare view, a run's metric history goes up to 100 000 points per metric (the free chart stays at 5 000 points per metric; the interface then says the series is truncated).</li>
-    <li>Without a ML Experiment Cockpit Pro licence, the Compare tab stays visible but locked, with a « Get Pro » button that opens the JetBrains purchase dialog. The four free tabs — Experiments, Optuna, Models, Sweeps — are unchanged, with the same limits as before (500 experiments, 100 runs per experiment, 500 registered models, 500 model versions, 5 000 metric points per run).</li>
+    <li>Without an ML Experiment Cockpit Pro licence, the Compare tab stays visible but locked, with a « Get Pro » button that opens the JetBrains purchase dialog. The four free tabs — Experiments, Optuna, Models, Sweeps — are unchanged, with the same limits as before (500 experiments, 100 runs per experiment, 500 registered models, 500 model versions, 5 000 metric points per run).</li>
 </ul>
 <h3>0.0.21 — New description, easier to find.</h3>
 <ul>

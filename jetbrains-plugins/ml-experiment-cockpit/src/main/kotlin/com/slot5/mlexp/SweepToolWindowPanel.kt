@@ -148,7 +148,10 @@ class SweepToolWindowPanel(
 
         refreshButton.isEnabled = false
         showStatus("Loading sweeps from W&B ($entity/$project) ...", false)
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform instead
+        // of a raw `Thread(...)` (the former thread was named
+        // "mlexp-wandb-refresh").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = WandbClient(
                     baseUri = "https://api.wandb.ai",
@@ -177,7 +180,7 @@ class SweepToolWindowPanel(
                     showBalloonError("W&B sweeps unexpected error: ${t.message}")
                 }
             }
-        }, "mlexp-wandb-refresh").start()
+        }
     }
 
     private fun populateTree(rows: List<SweepSummary>) {

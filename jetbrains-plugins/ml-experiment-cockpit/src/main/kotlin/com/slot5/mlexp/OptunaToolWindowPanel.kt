@@ -143,7 +143,10 @@ class OptunaToolWindowPanel(
 
         refreshButton.isEnabled = false
         showStatus("Loading studies from $base ...", false)
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform instead
+        // of a raw `Thread(...)` (the former thread was named
+        // "mlexp-optuna-refresh").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = OptunaClient(base)
                 val loaded = client.listStudies()
@@ -166,7 +169,7 @@ class OptunaToolWindowPanel(
                     showBalloonError("Optuna unexpected error: ${t.message}")
                 }
             }
-        }, "mlexp-optuna-refresh").start()
+        }
     }
 
     private fun populateTree(rows: List<StudySummary>) {
@@ -200,7 +203,9 @@ class OptunaToolWindowPanel(
         summaryLabel.text = "Loading study ${summary.name} ..."
         trialsTableModel.setDataVector(arrayOf<Array<Any>>(), trialsColumns)
         barChart.setData(emptyList(), "")
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform
+        // (the former raw thread was named "mlexp-optuna-detail").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = OptunaClient(base)
                 val study = client.getStudy(summary.id)
@@ -223,7 +228,7 @@ class OptunaToolWindowPanel(
                     showStatus("Unexpected error: ${t.message ?: t.javaClass.simpleName}", true)
                 }
             }
-        }, "mlexp-optuna-detail").start()
+        }
     }
 
     /**

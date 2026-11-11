@@ -5,6 +5,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import java.net.URI
 import java.net.http.HttpClient
@@ -56,10 +57,12 @@ class ConnectToMlflowAction : AnAction() {
         }
 
         // Run the probe on a worker, not the EDT. The action's updateThread is
-        // BGT, but `actionPerformed` still runs on EDT by default — so we use
-        // a small inline Runnable via `Thread` to keep v0.0.1 minimal. v0.0.2
-        // will switch to `Task.Backgroundable` for proper progress UI.
-        Thread({ probeAndNotify(project, base) }, "mlexp-probe").start()
+        // BGT, but `actionPerformed` still runs on EDT by default — so the
+        // probe is handed to the IDE's pooled thread (the former raw thread
+        // was named "mlexp-probe").
+        ApplicationManager.getApplication().executeOnPooledThread {
+            probeAndNotify(project, base)
+        }
     }
 
     override fun getActionUpdateThread(): ActionUpdateThread =

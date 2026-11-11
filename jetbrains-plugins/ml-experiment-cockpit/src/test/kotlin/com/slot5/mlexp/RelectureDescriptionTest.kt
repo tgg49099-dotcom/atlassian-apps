@@ -69,9 +69,45 @@ class RelectureDescriptionTest {
             "5 000 metric points per run",
             "100 000 points",
             "29/year",
-            "14-day trial"
+            "free trial"
         )) {
             assertTrue(pluginXml.contains(terme), "La description doit mentionner la limite/valeur : $terme")
         }
+    }
+
+    /**
+     * 4 - Aucune duree d'essai ne doit etre promise dans un texte public.
+     *
+     * La duree reelle de l'essai est accordee par le Marketplace (reglage de
+     * vente), pas par le code : le texte public ne doit donc annoncer aucune
+     * duree, pour ne pas pouvoir mentir si la duree change.
+     */
+    @Test
+    @DisplayName("4 - Aucun texte public ne promet une duree d'essai")
+    fun aucuneDureePromisee() {
+        val pluginXml = lire("src/main/resources/META-INF/plugin.xml")
+        val buildGradle = lire("build.gradle.kts")
+        val panneau = lire("src/main/kotlin/com/slot5/mlexp/pro/PanneauComparaison.kt")
+        val duree = Regex("""\b\d+\s*-?\s*days?\b""")
+
+        for (nom in listOf("plugin.xml", "build.gradle.kts")) {
+            val texte = if (nom == "plugin.xml") pluginXml else buildGradle
+            val trouve = duree.find(texte)
+            assertTrue(
+                trouve == null,
+                "$nom ne doit promettre aucune duree d'essai (trouve : ${trouve?.value})"
+            )
+        }
+
+        // le libelle de l'onglet verrouille : le prix et l'essai, sans duree
+        assertTrue(
+            panneau.contains("ML Experiment Cockpit Pro - \$29/year, free trial."),
+            "Le libelle de l'onglet verrouille doit dire le prix et l'essai, sans duree"
+        )
+        val trouvePanneau = duree.find(panneau)
+        assertTrue(
+            trouvePanneau == null,
+            "Le panneau ne doit afficher aucune duree (trouve : ${trouvePanneau?.value})"
+        )
     }
 }

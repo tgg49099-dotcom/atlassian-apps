@@ -2,12 +2,16 @@ package com.slot5.mlexp.pro
 
 import java.awt.CardLayout
 import java.awt.Component
+import java.awt.GraphicsEnvironment
+import java.awt.event.HierarchyEvent
+import javax.swing.JFrame
 import javax.swing.JPanel
 import javax.swing.JTextArea
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeFalse
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 
@@ -89,6 +93,18 @@ class PanneauComparaisonPorteTest {
         override fun lire() = LectureLicence(facadeInitialisee = true, sceau = null)
     }
 
+    /**
+     * The IDE is still starting: the platform licence facade is NOT
+     * initialised yet, so the answer is INCONNU (never a licence).
+     */
+    private object LicencePasLisible : SourceLicence {
+        override fun lire() = LectureLicence(
+            facadeInitialisee = false,
+            sceau = null,
+            motif = "licence facade not initialised yet"
+        )
+    }
+
     // ------------------------------------------------------------------
     // P0 - the panel must build (this is the RED of the counter-proof)
     // ------------------------------------------------------------------
@@ -153,6 +169,104 @@ class PanneauComparaisonPorteTest {
                 contientUnTextArea(visible),
                 "with an active licence the content card must be the visible one"
             )
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // P3 - the licence is read AGAIN when the tab becomes visible again
+    //      (jury 11/11, point 2 of the review)
+    // ------------------------------------------------------------------
+
+    /** Waits (up to [delaiMs]) until the gate shows the CONTENT card. */
+    private fun attendreDeverrouillage(porte: JPanel, delaiMs: Long = 3000): Boolean {
+        val fin = System.currentTimeMillis() + delaiMs
+        while (System.currentTimeMillis() < fin) {
+            if (!contientUnTextArea(carteVisible(porte))) return true
+            Thread.sleep(25)
+        }
+        return false
+    }
+
+    /** Waits (up to [delaiMs]) until the gate shows the LOCK card. */
+    private fun attendreVerrouillage(porte: JPanel, delaiMs: Long = 3000): Boolean {
+        val fin = System.currentTimeMillis() + delaiMs
+        while (System.currentTimeMillis() < fin) {
+            if (contientUnTextArea(carteVisible(porte))) return true
+            Thread.sleep(25)
+        }
+        return false
+    }
+
+    @Test
+    @DisplayName("P3 - licence absent at startup then active: the tab unlocks when it becomes visible again")
+    fun licenceActiveeApresDemarrageDeverrouille() {
+        // The platform only fires SHOWING_CHANGED on a component that is
+        // really showing, which needs a display (Xvfb). Without a display
+        // this test is SKIPPED (never a false green): the suite stays green
+        // everywhere and the proof is done where a display exists.
+        assumeFalse(
+            GraphicsEnvironment.isHeadless(),
+            "a display is required (DISPLAY set): SHOWING_CHANGED only happens on a visible window"
+        )
+        avecLicence(LicencePasLisible) {
+            // 1. at startup the licence facade is not initialised yet
+            //    -> INCONNU -> the tab is locked.
+            val panneau = PanneauComparaison(ComparaisonHub())
+            val porte = porteDe(panneau)
+            assertTrue(
+                contientUnTextArea(carteVisible(porte)),
+                "without a readable licence the lock card must be the visible one"
+            )
+
+            val frame = JFrame("PanneauComparaisonPorteTest")
+            try {
+                frame.add(panneau.rootComponent)
+                frame.setSize(320, 240)
+                // 2. the tab becomes visible for the first time: the platform
+                //    fires SHOWING_CHANGED, but the licence is STILL not
+                //    readable -> the tab must stay locked.
+                frame.isVisible = true
+                Thread.sleep(200)
+                assertTrue(
+                    contientUnTextArea(carteVisible(porte)),
+                    "the tab must stay locked while the licence cannot be read"
+                )
+
+                // 3. the licence becomes readable (the IDE finished starting,
+                //    or the purchase completed): the source now answers PRO.
+                ProGate.installerSource(LicenceActive)
+
+                // 4. the tab becomes visible again -> the licence must be read
+                //    again -> the tab is unlocked.
+                frame.isVisible = false
+                Thread.sleep(100)
+                frame.isVisible = true
+                assertTrue(
+                    attendreDeverrouillage(porte),
+                    "the licence must be read again when the tab becomes visible again"
+                )
+
+                // 5. the same, with the event dispatched explicitly
+                //    (HIERARCHY_CHANGED id + SHOWING_CHANGED flags): the
+                //    licence can no longer be read, so the tab must lock again.
+                ProGate.installerSource(LicencePasLisible)
+                Thread.sleep(100)
+                panneau.rootComponent.dispatchEvent(
+                    HierarchyEvent(
+                        panneau.rootComponent,
+                        HierarchyEvent.HIERARCHY_CHANGED,
+                        panneau.rootComponent,
+                        frame.contentPane,
+                        HierarchyEvent.SHOWING_CHANGED.toLong()
+                    )
+                )
+                assertTrue(
+                    attendreVerrouillage(porte),
+                    "an explicit SHOWING_CHANGED event must also trigger a new licence reading"
+                )
+            } finally {
+                frame.dispose()
+            }
         }
     }
 }

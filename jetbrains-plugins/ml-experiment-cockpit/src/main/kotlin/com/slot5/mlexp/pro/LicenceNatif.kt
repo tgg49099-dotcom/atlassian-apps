@@ -10,9 +10,8 @@ import com.intellij.ui.LicensingFacade
  * What the platform does, and what we do not redo (official documentation,
  * "Add license verification calls to the plugin code"):
  *   - the licence is checked by the IDE at startup, then at least once a day;
- *   - the stamp is handed to us **signed** by the platform - "there are no
- *     private keys in the platform";
- *   - our only job is to note the presence of a stamp for OUR product code.
+ *   - the platform hands us a stamp for our product code and we only note its
+ *     presence here, which is not a protection and is not presented as one.
  *
  * Two precise return cases, never a vague exception:
  *   - `LicensingFacade.getInstance() == null`: the facade is not initialised

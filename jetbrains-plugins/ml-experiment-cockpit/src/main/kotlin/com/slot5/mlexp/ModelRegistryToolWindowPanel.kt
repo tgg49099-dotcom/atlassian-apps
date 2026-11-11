@@ -112,7 +112,10 @@ class ModelRegistryToolWindowPanel(
 
         refreshButton.isEnabled = false
         showStatus("Loading registered models from $base ...", false)
-        Thread({
+        // Jury 11/11 (amelioration 5) : pooled thread of the platform instead
+        // of a raw `Thread(...)` (the former thread was named
+        // "mlexp-mreg-refresh").
+        ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
                 val loaded = client.listRegisteredModels()
@@ -144,7 +147,7 @@ class ModelRegistryToolWindowPanel(
                     refreshButton.isEnabled = true
                 }
             }
-        }, "mlexp-mreg-refresh").start()
+        }
     }
 
     private fun populateTree(rows: List<RegisteredModel>) {
