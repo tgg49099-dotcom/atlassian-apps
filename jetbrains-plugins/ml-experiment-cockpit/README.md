@@ -170,3 +170,10 @@ ml-experiment-plugin/
 ├── LICENSE                                     Apache 2.0
 └── README.md
 ```
+
+## Support
+
+The plugin stays free: install it and use it without paying anything. If it saves you time, you can support its maintenance with a voluntary donation. The donation is optional, it unlocks no feature, and it is not a purchase.
+
+- Voluntary donation (any amount): https://tggster.gumroad.com/l/piazge
+- Plugin page (JetBrains Marketplace): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
