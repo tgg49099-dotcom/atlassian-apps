@@ -4,6 +4,21 @@ JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML exper
 
 > **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
+## Install
+
+The plugin is published on the JetBrains Marketplace (listing **35416**).
+
+1. In your IDE, open `Settings/Preferences > Plugins > Marketplace`.
+2. Search for **ML Experiment Cockpit** and click **Install**.
+3. Restart the IDE if it asks for it, then open the tool window with
+   `View > Tool Windows > ML Experiment Cockpit`.
+
+Compatibility: the published build declares `since-build 243.0` and `until-build 263.*`
+(IntelliJ-based IDEs from 2022.3 up to 2026.3).
+
+- Marketplace listing (plugin 35416): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
+- Product README (full documentation): https://github.com/tgg49099-dotcom/atlassian-apps/blob/main/jetbrains-plugins/ml-experiment-cockpit/README.md
+
 ## What this plugin does (v0.0.22 - in JetBrains review; v0.0.21 is live)
 
 1. **Configure the five fields** in `Settings → Tools → ML Experiment Cockpit`:
