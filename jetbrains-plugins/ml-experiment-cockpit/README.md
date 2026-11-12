@@ -2,9 +2,7 @@
 
 JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML experiments without leaving the IDE.
 
-> **Status: v0.0.22 (local build only — not yet published).**
-> Slot 5 (JetBrains Marketplace) business mission, second plugin.
-> Niche: ML engineer tooling for PyCharm Professional + DataSpell. See `/work/CYCLE4_NICHE_TOP.md` for the market analysis.
+> **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
 ## What this plugin does (v0.0.22)
 
@@ -61,6 +59,7 @@ JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML exper
     four free tabs are **strictly unchanged** (same limits: 500 experiments,
     100 runs per experiment, 500 registered models, 500 model versions,
     5 000 metric points per run) — `GratuitInchangeTest` proves it.
+> The **Compare** tab requires a licence sold by the JetBrains Marketplace — see the plugin page for availability: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
 That is the entire v0.0.22 surface. The build pipeline (`buildPlugin` + `verifyPlugin`)
 and the upload script (`scripts/upload_to_marketplace.sh`) are validated so the
