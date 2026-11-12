@@ -124,7 +124,7 @@ Once `JETBRAINS_MARKETPLACE_TOKEN` is set:
 ```bash
 export JETBRAINS_MARKETPLACE_TOKEN="perm:..."
 ./scripts/upload_to_marketplace.sh \
-    ./build/distributions/ml-experiment-cockpit-0.0.22.zip
+    ./build/distributions/ml-experiment-cockpit-0.0.23.zip
 ```
 
 The script auto-extracts `xmlId=com.tgglabs.mlexp` from `plugin.xml` inside the ZIP.
