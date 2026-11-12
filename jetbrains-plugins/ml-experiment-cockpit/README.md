@@ -4,7 +4,7 @@ JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML exper
 
 > **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
-## What this plugin does (v0.0.22)
+## What this plugin does (v0.0.22 - in JetBrains review; v0.0.21 is live)
 
 1. **Configure the five fields** in `Settings → Tools → ML Experiment Cockpit`:
    - MLflow: e.g. `http://localhost:5000`.
@@ -80,27 +80,28 @@ owner can publish as soon as `JETBRAINS_MARKETPLACE_TOKEN` arrives.
 | 0.0.9 | W&B API key migrated to `PasswordSafe`; verification matrix now covers PyCharm 2025.2 / 2026.1 / 2026.2 | ✅ done (cycle 18) |
 | 0.0.10 | Vendor info patched to the real owner profile (`Tgg Labs`, `tgg.apps.support@gmail.com`, `vendor/tgg-labs`) | ✅ done (cycle 48) |
 | 0.0.11 | First-public-release change-notes (never published; superseded by 0.0.12) | ✅ built, never shipped |
-| 0.0.12 | Public plugin id `com.slot5.mlexp` → `com.tgglabs.mlexp`; `META-INF/pluginIcon.svg` + `pluginIcon_dark.svg` shipped; change-notes collapsed to the single real first release | ✅ built, ready to publish |
-| 0.0.22 | **Pro tier n°1 — “Compare 2 runs”**: 5th tab (Compare), parameters + metrics side by side, superposed curves, Markdown export, native JetBrains licence gate (`PPCOCKPITPRO`). The four free tabs are strictly unchanged. | ✅ built (cycle 149), **not published** |
+| 0.0.12 | Public plugin id `com.slot5.mlexp` → `com.tgglabs.mlexp`; `META-INF/pluginIcon.svg` + `pluginIcon_dark.svg` shipped; change-notes collapsed to the single real first release | ✅ published on the Marketplace |
+| 0.0.13 - 0.0.21 | Intermediate releases published on the Marketplace (version list on the plugin page) | ✅ published |
+| 0.0.22 | **Pro tier n°1 — “Compare 2 runs”**: 5th tab (Compare), parameters + metrics side by side, superposed curves, Markdown export, native JetBrains licence gate (`PPCOCKPITPRO`). The four free tabs are strictly unchanged. | ✅ built - in JetBrains review (submitted 10/11/2026), not yet live |
 
-Each version adds a thin slice of the niche. See `/work/CYCLE4_NICHE_TOP.md` for the full plan.
+Each version adds a thin slice of the niche.
 
 ## Build
 
-Same toolchain as the sibling `/work/hello-world-plugin` project:
+Build with JDK 21 and the Gradle wrapper:
 
 ```bash
-export JAVA_HOME=/work/tools/jdk-21.0.12.1+1
+export JAVA_HOME=<your JDK 21>
 export PATH="$JAVA_HOME/bin:$PATH"
-cd /work/ml-experiment-plugin
+cd ml-experiment-plugin
 ./gradlew buildPlugin verifyPlugin
 ./scripts/prevol.sh          # pre-flight, on the BUILT jar — never publish without it
 ```
 
-Output ZIP (ready to publish, but **do not push yet**):
+Output ZIP (the shipped version is 2026.1.1, file name 0.0.23):
 
 ```
-build/distributions/ml-experiment-cockpit-0.0.22.zip
+build/distributions/ml-experiment-cockpit-0.0.23.zip
 ```
 
 `./gradlew clean` deletes the whole `build/` tree, including any earlier ZIP kept as a
@@ -118,7 +119,6 @@ non-zero = do not publish.
 
 ## Upload to JetBrains Marketplace
 
-Blocked until the vendor publishes the first plugin manually (UI required for the first publication).
 Once `JETBRAINS_MARKETPLACE_TOKEN` is set:
 
 ```bash
@@ -172,7 +172,7 @@ ml-experiment-plugin/
 
 ## Support
 
-The plugin stays free: install it and use it without paying anything. If it saves you time, you can support its maintenance with a voluntary donation. The donation is optional, it unlocks no feature, and it is not a purchase.
+The four main tabs are free to use. The optional Compare tab is a separate paid licence sold by the JetBrains Marketplace (see the plugin page). If it saves you time, you can support its maintenance with a voluntary donation. The donation is optional, it unlocks no feature, and it is not a purchase.
 
 - Voluntary donation (3.00 CHF): https://tggster.gumroad.com/l/piazge
 - Plugin page (JetBrains Marketplace): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
