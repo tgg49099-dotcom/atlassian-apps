@@ -16,11 +16,11 @@ import org.junit.jupiter.api.Test
  *         (le bon article est « an », parce que « ML » se lit « em-el ») ;
  *   - A2  le prix : « $29/year » et « free trial » dans les **3 endroits**
  *         (le panneau Compare, le `plugin.xml`, le `build.gradle.kts`) ;
- *   - A3  l'essai : **aucune duree** annoncée dans les sources livrees
- *         (la duree de l'essai est accordee par le Marketplace, dans le
- *         reglage de vente : le code ne decide pas, le texte ne promet
- *         donc pas) ;
- *   - A4  les notes de version : une section « 2026.1.1 » propre, et le
+ *   - A3  l'essai : la duree annoncee dans les sources livrees est
+ *         **exactement celle que le Marketplace a reglee** (30 jours,
+ *         `purchaseInfo.trialPeriod`) ; aucune autre duree ne peut etre
+ *         promisee, pour ne pas pouvoir mentir si le reglage change ;
+ *   - A4  les notes de version : une section « 2026.1.2 » propre, et le
  *         **meme texte** dans le `plugin.xml` et dans le `build.gradle.kts`
  *         (c'est le second qui ecrase le premier a la construction : c'est
  *         la source REELLE de ce qui est livre).
@@ -29,6 +29,15 @@ import org.junit.jupiter.api.Test
  * aucune API, ils ne creent aucun compte.
  */
 class RelectureAnglaisPrixTest {
+
+    /**
+     * The trial length the Marketplace has settled for the Pro tier:
+     * `purchaseInfo.trialPeriod` of the public API of the plugin 35416,
+     * measured on 12/11/2026 = 30 days.  The delivered version announces that
+     * length, and only that one.  If the vendor changes the setting, this
+     * constant and the texts that carry the announcement change together.
+     */
+    private val dureeReglee = 30
 
     private fun lire(chemin: String): String {
         val f = File(chemin)
@@ -98,22 +107,33 @@ class RelectureAnglaisPrixTest {
         }
     }
 
+    /**
+     * The trial length is settled by the Marketplace (`purchaseInfo.trialPeriod`),
+     * not by the code.  The delivered version announces the settled length, so
+     * a source may promise that one and no other: a public text promising a
+     * length of its own would be wrong the day the setting moves.
+     */
     @Test
-    @DisplayName("A3 - no trial duration is promised anywhere in the delivered sources")
-    fun aucuneDureePromisee() {
+    @DisplayName("A3 - the only trial length the delivered sources may promise is the settled one (30 days)")
+    fun dureeAnnonceeEgaleDureeReglee() {
         val coupables = mutableListOf<String>()
-        val duree = Regex("""\b\d+\s*-?\s*days?\b""")
+        val duree = Regex("""\b(\d+)\s*-?\s*days?\b""")
         for (chemin in sourcesLivrees()) {
             val texte = lire(chemin)
-            val trouve = duree.find(texte)
-            if (trouve != null) {
-                coupables.add("$chemin (${trouve.value})")
+            for (trouve in duree.findAll(texte)) {
+                val annoncee = trouve.groupValues[1].toInt()
+                if (annoncee != dureeReglee) {
+                    coupables.add(
+                        "$chemin: '$annoncee day(s)' announced, $dureeReglee days settled"
+                    )
+                }
             }
         }
         assertTrue(
             coupables.isEmpty(),
-            "the trial length is granted by the Marketplace, not by the plugin: " +
-                "no duration may be promised in $coupables"
+            "the trial length is settled by the Marketplace ($dureeReglee days, " +
+                "purchaseInfo.trialPeriod): the announced length must be the settled " +
+                "one - $coupables"
         )
     }
 
@@ -137,7 +157,7 @@ class RelectureAnglaisPrixTest {
     }
 
     @Test
-    @DisplayName("A4b - the release notes describe the 2026.1.1")
+    @DisplayName("A4b - the release notes describe the 2026.1.2")
     fun section2026Presente() {
         for (chemin in listOf(
             "src/main/resources/META-INF/plugin.xml",
@@ -145,12 +165,12 @@ class RelectureAnglaisPrixTest {
         )) {
             val texte = lire(chemin)
             assertTrue(
-                texte.contains("<h3>2026.1.1 "),
-                "$chemin must describe the version 2026.1.1 in its release notes"
+                texte.contains("<h3>2026.1.2 "),
+                "$chemin must describe the version 2026.1.2 in its release notes"
             )
             assertTrue(
                 texte.contains("\$29/year") && texte.contains("free trial"),
-                "$chemin must state the real price and the free trial in the 2026.1.1 notes"
+                "$chemin must state the real price and the free trial in the 2026.1.2 notes"
             )
             assertTrue(
                 texte.contains("pooled threads"),

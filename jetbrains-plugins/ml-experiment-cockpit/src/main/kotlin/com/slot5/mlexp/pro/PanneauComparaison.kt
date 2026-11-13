@@ -48,7 +48,10 @@ import javax.swing.table.DefaultTableModel
  *
  * The panel is **read-only**: it never writes to the server.
  */
-class PanneauComparaison(private val hub: ComparaisonHub) {
+class PanneauComparaison(
+    private val hub: ComparaisonHub,
+    private val acheteur: AcheteurPro = AcheteurPlateforme()
+) {
 
     /** The Swing component hosted by the platform. */
     val rootComponent: JPanel = JPanel(BorderLayout())
@@ -255,34 +258,22 @@ class PanneauComparaison(private val hub: ComparaisonHub) {
 
     /**
      * Opens the **JetBrains purchase dialog** (it is the one that shows the
-     * price and takes the payment) through the `RegisterPlugins` action (or
-     * `Register` in a commercial distribution). The product code passed is
+     * price and takes the payment). The product code passed is
      * [ProGate.CODE_PRODUIT]: **no amount is written in the code**.
+     *
+     * The dialog is opened through [AcheteurPro] (the seam): in a real IDE it
+     * is the JetBrains purchase dialog, in the test it is a double.
+     *
+     * **The licence is read again when the dialog closes.** The platform
+     * checks the licence "at least once a day" (official documentation), so it
+     * can appear *during* the session: without this reading, the customer who
+     * has just paid would keep seeing a locked tab.
      */
     private fun ouvrirDialogueAchat() {
-        ApplicationManager.getApplication().invokeLater({
-            try {
-                val am = ActionManager.getInstance()
-                var action = am.getAction("RegisterPlugins")
-                if (action == null) action = am.getAction("Register")
-                if (action == null) {
-                    status("The JetBrains purchase dialog is not available in this IDE.")
-                    return@invokeLater
-                }
-                val contexte = DataContext { id ->
-                    when (id) {
-                        "register.product-descriptor.code" -> ProGate.CODE_PRODUIT
-                        "register.message" -> "ML Experiment Cockpit Pro: compare 2 runs."
-                        else -> null
-                    }
-                }
-                action.actionPerformed(
-                    AnActionEvent.createFromDataContext("", Presentation(), contexte)
-                )
-            } catch (t: Throwable) {
-                status("Could not open the purchase dialog: ${t.javaClass.simpleName}")
-            }
-        }, ModalityState.NON_MODAL)
+        acheteur.ouvrir(ProGate.CODE_PRODUIT, "ML Experiment Cockpit Pro: compare 2 runs.") { erreur ->
+            if (erreur != null) status(erreur)
+            rafraichirEtatPro()
+        }
     }
 
     // ------------------------------------------------------------------

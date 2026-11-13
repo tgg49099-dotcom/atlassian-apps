@@ -13,6 +13,14 @@ import java.io.File
  */
 class RelectureDescriptionTest {
 
+    /**
+     * The trial length the Marketplace has settled for the Pro tier:
+     * `purchaseInfo.trialPeriod` of the public API of the plugin 35416,
+     * measured on 12/11/2026 = 30 days.  If the vendor changes the setting,
+     * this constant and the texts that carry the announcement change together.
+     */
+    private val dureeReglee = 30
+
     private fun lire(chemin: String): String {
         val f = File(chemin)
         assertTrue(f.exists(), "Le fichier $chemin doit exister")
@@ -76,27 +84,33 @@ class RelectureDescriptionTest {
     }
 
     /**
-     * 4 - Aucune duree d'essai ne doit etre promise dans un texte public.
+     * 4 - La duree d'essai annoncee dans un texte public est la duree reglee.
      *
      * La duree reelle de l'essai est accordee par le Marketplace (reglage de
-     * vente), pas par le code : le texte public ne doit donc annoncer aucune
-     * duree, pour ne pas pouvoir mentir si la duree change.
+     * vente), pas par le code : la description livree annonce cette duree
+     * (30 jours, `purchaseInfo.trialPeriod`), et c'est la seule qu'elle peut
+     * annoncer.  Un texte public qui promettrait une autre duree serait faux
+     * le jour ou le reglage change.
      */
     @Test
-    @DisplayName("4 - Aucun texte public ne promet une duree d'essai")
-    fun aucuneDureePromisee() {
+    @DisplayName("4 - Les textes publics n'annoncent que la duree reglee (30 jours)")
+    fun dureeAnnonceeEgaleDureeReglee() {
         val pluginXml = lire("src/main/resources/META-INF/plugin.xml")
         val buildGradle = lire("build.gradle.kts")
         val panneau = lire("src/main/kotlin/com/slot5/mlexp/pro/PanneauComparaison.kt")
-        val duree = Regex("""\b\d+\s*-?\s*days?\b""")
+        val duree = Regex("""\b(\d+)\s*-?\s*days?\b""")
 
         for (nom in listOf("plugin.xml", "build.gradle.kts")) {
             val texte = if (nom == "plugin.xml") pluginXml else buildGradle
-            val trouve = duree.find(texte)
-            assertTrue(
-                trouve == null,
-                "$nom ne doit promettre aucune duree d'essai (trouve : ${trouve?.value})"
-            )
+            for (trouve in duree.findAll(texte)) {
+                val annoncee = trouve.groupValues[1].toInt()
+                assertEquals(
+                    dureeReglee,
+                    annoncee,
+                    "$nom annonce une duree d'essai de '$annoncee' jour(s) alors que la " +
+                        "duree reglee est de $dureeReglee jours (purchaseInfo.trialPeriod)"
+                )
+            }
         }
 
         // le libelle de l'onglet verrouille : le prix et l'essai, sans duree

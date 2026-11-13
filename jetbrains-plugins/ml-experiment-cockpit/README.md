@@ -2,7 +2,7 @@
 
 JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML experiments without leaving the IDE.
 
-> **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
+> **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** The sources in this repository are version **2026.1.2**: **2026.1.2 prete a televerser le 15/11, pas encore publiee** (it fixes the Pro gate so the Compare tab unlocks as soon as the licence is active). Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
 ## Install
 
@@ -19,7 +19,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
 - Marketplace listing (plugin 35416): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 - Product README (full documentation): https://github.com/tgg49099-dotcom/atlassian-apps/blob/main/jetbrains-plugins/ml-experiment-cockpit/README.md
 
-## What this plugin does (v0.0.22 - in JetBrains review; v0.0.21 is live)
+## What this plugin does (v0.0.22 - in JetBrains review; v0.0.21 is live; the sources here are 2026.1.2, not published yet)
 
 1. **Configure the five fields** in `Settings → Tools → ML Experiment Cockpit`:
    - MLflow: e.g. `http://localhost:5000`.
@@ -59,7 +59,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
    `GET /api/2.0/mlflow/metrics/get-history` and renders it as a line chart
    (auto-scaled Y axis, hand-drawn with `Graphics2D`).
 
-### Compare (Pro tier n°1, v0.0.22)
+### Compare (Pro tier n°1, v0.0.22; sources here = 2026.1.2)
 
 10. Tab **"Compare"** — the first paid feature, sold by JetBrains as a
     subscription under the product code `PPCOCKPITPRO`. Right-click a run in
@@ -70,8 +70,11 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
     axis** (A in blue, B in orange). **« Copy (Markdown) »** puts both tables
     in the clipboard.
     Without a licence the tab stays **visible but locked**, with a
-    **« Get Pro »** button that opens JetBrains' own purchase dialog. The
-    four free tabs are **strictly unchanged** (same limits: 500 experiments,
+    **« Get Pro »** button that opens JetBrains' own purchase dialog.
+    **2026.1.2:** the licence state is read again when the purchase dialog
+    closes, so the tab opens as soon as the licence is active instead of
+    staying locked until the IDE restarts.
+    The four free tabs are **strictly unchanged** (same limits: 500 experiments,
     100 runs per experiment, 500 registered models, 500 model versions,
     5 000 metric points per run) — `GratuitInchangeTest` proves it.
 > The **Compare** tab requires a licence sold by the JetBrains Marketplace — see the plugin page for availability: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
@@ -98,6 +101,7 @@ owner can publish as soon as `JETBRAINS_MARKETPLACE_TOKEN` arrives.
 | 0.0.12 | Public plugin id `com.slot5.mlexp` → `com.tgglabs.mlexp`; `META-INF/pluginIcon.svg` + `pluginIcon_dark.svg` shipped; change-notes collapsed to the single real first release | ✅ published on the Marketplace |
 | 0.0.13 - 0.0.21 | Intermediate releases published on the Marketplace (version list on the plugin page) | ✅ published |
 | 0.0.22 | **Pro tier n°1 — “Compare 2 runs”**: 5th tab (Compare), parameters + metrics side by side, superposed curves, Markdown export, native JetBrains licence gate (`PPCOCKPITPRO`). The four free tabs are strictly unchanged. | ✅ built - in JetBrains review (submitted 10/11/2026), not yet live |
+| 2026.1.2 | **The Compare tab unlocks as soon as the licence becomes active**: the licence state is read again when the purchase dialog closes (new `AcheteurPro` seam + `ComparaisonDeverrouilleTest`). The version number is now `2026.1.2`, which starts with `2026.1` like the `release-version="20261"` of the product descriptor, as the official "add-required-parameters" rule requires. | ✅ built - ready to upload on 15/11/2026, NOT published yet |
 
 Each version adds a thin slice of the niche.
 
@@ -113,10 +117,10 @@ cd ml-experiment-plugin
 ./scripts/prevol.sh          # pre-flight, on the BUILT jar — never publish without it
 ```
 
-Output ZIP (the shipped version is 2026.1.1, file name 0.0.23):
+Output ZIP (the version in these sources is 2026.1.2; that ZIP is ready to upload on 15/11/2026 and is NOT published yet):
 
 ```
-build/distributions/ml-experiment-cockpit-0.0.23.zip
+build/distributions/ml-experiment-cockpit-2026.1.2.zip
 ```
 
 `./gradlew clean` deletes the whole `build/` tree, including any earlier ZIP kept as a
@@ -128,7 +132,7 @@ fallback. `buildPlugin` without `clean` leaves the previous ZIPs in place.
 the sources: it extracts the plugin JAR out of the distribution ZIP and scans the
 `META-INF/plugin.xml` inside it for placeholder / withdrawn-feature residue, checks the
 id / version / vendor / `until-build`, checks that both icons are inside the JAR, and
-checks that the change-notes start with the shipped version (2026.1.0) and list at
+checks that the change-notes start with the shipped version (2026.1.2) and list at
 least one bullet (the older published versions may follow as history). Exit 0 = green,
 non-zero = do not publish.
 
@@ -139,7 +143,7 @@ Once `JETBRAINS_MARKETPLACE_TOKEN` is set:
 ```bash
 export JETBRAINS_MARKETPLACE_TOKEN="perm:..."
 ./scripts/upload_to_marketplace.sh \
-    ./build/distributions/ml-experiment-cockpit-0.0.23.zip
+    ./build/distributions/ml-experiment-cockpit-2026.1.2.zip
 ```
 
 The script auto-extracts `xmlId=com.tgglabs.mlexp` from `plugin.xml` inside the ZIP.
@@ -175,6 +179,7 @@ ml-experiment-plugin/
 │   │       ├── ComparaisonRuns.kt              Pure comparison core (params, metrics, gaps, Markdown)
 │   │       ├── CourbeDiff.kt                   Superposed 2-run chart (A blue, B orange)
 │   │       ├── ComparaisonHub.kt               Relay between the free tree and the Compare tab
+│   │       ├── AcheteurPro.kt                  Seam to the platform purchase dialog (only place that opens it)
 │   │       └── PanneauComparaison.kt           The “Compare” tab UI (locked without a licence)
 │   └── resources/META-INF/
 │       ├── plugin.xml                          Actions + services + notificationGroup + toolWindow

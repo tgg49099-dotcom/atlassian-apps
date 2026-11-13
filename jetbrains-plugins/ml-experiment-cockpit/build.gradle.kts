@@ -92,19 +92,17 @@ intellijPlatform {
     pluginConfiguration {
         id = "com.tgglabs.mlexp"
         name = "ML Experiment Cockpit"
-        // 07/11/2026 (cycle 150) — version AFFICHEE / VENDUE.
+        // 13/11/2026 (cycle 205) — version 2026.1.2 partout (consigne de la mere) :
+        // « meme version dans les deux, 2026.1.2 partout ».
         // MESURE : cette ligne (`pluginConfiguration.version`) est ce qui
         // decide de la balise <version> du plugin.xml FINAL (le patcher de la
         // plateforme ecrase la balise <version> des sources). Elle vaut donc
-        // `pluginMarketplaceVersion` (2026.1.1) et NON plus `project.version`
-        // (0.0.23) : la regle officielle impose que les 2 premiers chiffres du
-        // `release-version` ("20261") correspondent a ceux du `version`.
-        // `project.version` reste 0.0.23 : c'est lui qui nomme le ZIP livre
-        // (ml-experiment-cockpit-0.0.23.zip) — inchange. Le nom du JAR INTERNE
-        // du ZIP, lui, suit `pluginConfiguration.version` :
-        // ml-experiment-cockpit-2026.1.1.jar (MESURE cycle 150, voir
-        // gradle.properties) — pas 0.0.22. C'est ce que lit aussi
-        // scripts/prevol.sh (depuis le cycle 153).
+        // `pluginMarketplaceVersion` (2026.1.2), et `project.version` vaut
+        // `pluginVersion` (2026.1.2) : le ZIP, le JAR interne et la version
+        // AFFICHEE portent le meme numero, qui commence par `2026.1` comme le
+        // `release-version="20261"` du descripteur (regle officielle
+        // « add-required-parameters » : release-version=20241 et
+        // version=2024.1.1).
         version = (project.findProperty("pluginMarketplaceVersion") as String?) ?: project.version.toString()
         ideaVersion {
             sinceBuild = (project.findProperty("pluginSinceBuild") as String?) ?: "243"
@@ -120,7 +118,7 @@ intellijPlatform {
         // Les deux fichiers (plugin.xml source ET ce bloc) doivent donc
         // porter EXACTEMENT le meme texte.
         description = """
-<p>MLflow experiment tracking, Weights & Biases (wandb) sweeps, Optuna studies, the Model Registry — runs and metrics in PyCharm, IntelliJ, WebStorm, GoLand or CLion.</p>
+<p>Tools for machine learning and data science in your IDE: MLflow experiment tracking, Weights & Biases (wandb) sweeps, Optuna studies, the Model Registry — runs and metrics in PyCharm, IntelliJ, WebStorm, GoLand or CLion.</p>
 <ul>
 <li><b>Experiments</b> — your MLflow experiments and runs in a tree, with parameters, metric values and the full history of any metric as a curve.</li>
 <li><b>Optuna</b> — studies and trials from your Optuna Dashboard: summary, the five best trials and a bar chart of the hyperparameter that takes the most distinct values.</li>
@@ -130,17 +128,20 @@ intellijPlatform {
 <p>All five tabs (Experiments, Optuna, Models, Sweeps and the Compare view) live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
 <table>
-<tr><th>Function</th><th>Free</th><th>Pro ($29/year, free trial)</th></tr>
+<tr><th>Function</th><th>Free</th><th>Pro ($29/year, 30-day free trial)</th></tr>
 <tr><td>Experiments, Optuna, Models, Sweeps tabs</td><td>yes</td><td>yes</td></tr>
 <tr><td>Compare 2 runs: parameters, metrics with gaps, both curves on one axis, Markdown export</td><td>tab visible, locked</td><td>yes</td></tr>
 <tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>
 </table>
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
-        changeNotes = """
+        changeNotes = """<h3>2026.1.2 - The Compare tab is unlocked as soon as the licence becomes active.</h3>
+<ul>
+    <li>The licence state is read again when the purchase dialog closes, so the Compare tab opens instead of staying locked.</li>
+</ul>
 <h3>2026.1.1 - Compare tab: the real price, the licence read again, and the platform's pooled threads.</h3>
 <ul>
-    <li>The locked Compare tab now states the price set on the Marketplace: $29/year, and mentions the free trial without promising a duration (the trial length is the one set in the Marketplace sale settings).</li>
+    <li>The locked Compare tab now displays the Pro tier price ($29/year) and mentions the free trial without promising a duration (the trial length is the one configured in the Marketplace sale settings).</li>
     <li>The licence state is read again every time the Compare tab becomes visible again (for instance when the IDE had just started and the licence could not be read yet), so the tab is not left locked for a customer who has a licence.</li>
     <li>The status line is now shown under both views of the tab, so a purchase dialog that cannot be opened is reported instead of failing silently.</li>
     <li>If the second run is changed while the comparison is being computed, the comparison is computed again for the new run instead of showing the previous one.</li>
