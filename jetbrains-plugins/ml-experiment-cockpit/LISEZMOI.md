@@ -1,8 +1,8 @@
 # LISEZMOI — dossier produit « ML Experiment Cockpit » (fiche Marketplace 35416)
 
-Version **2026.1.5** (ZIP candidat `ml-experiment-cockpit-2026.1.5.zip`). Ce dossier contient **le code du
-plugin** : sources Kotlin, `plugin.xml`, `build.gradle.kts` et les 21 fichiers
-de test (20 classes de test Kotlin + 1 ressource) — **101 tests, 19 classes de test**.
+Version **2026.1.6** (ZIP candidat `ml-experiment-cockpit-2026.1.6.zip`). Ce dossier contient **le code du
+plugin** : sources Kotlin, `plugin.xml`, `build.gradle.kts` et les 23 fichiers
+de test (22 fichiers Kotlin + 1 ressource) — **107 tests, 21 classes de test**.
 
 **Ce que ce dossier n'est pas :** ce n'est pas un ZIP a decompresser, ni un
 dossier de preuves. Il a ete **allege** pour que la revue dispose de tous les
@@ -35,10 +35,21 @@ Gradle 8.10.2 installe :
 
 ## Etat
 
-Le code de ce dossier est la version **2026.1.5**. Le Marketplace liste les versions
-approuvees : au 18/11/2026, c'est la **2026.1.4** (updateId 1222361) ; la 2026.1.5 est
-prete a etre televersee. Rien n'est en vente pour l'instant : **0 $**
-(`purchaseInfo.buyUrl` est `null` tant que le palier n'est pas ouvert).
-Le prix (29 EUR/an) et l'essai sont configures dans la fiche Marketplace, pas
-dans ce code. Le texte public annonce la duree reglee par le Marketplace
-(**30 jours**, `purchaseInfo.trialPeriod`) et **aucune autre**.
+Au 18/11/2026 :
+
+- **Version listee sur le Marketplace : 2026.1.4** (updateId 1222361). C'est la
+  seule version approuvee en ligne. Le code de ce dossier est la **2026.1.6** :
+  son ZIP est livre et fige, **il n'est pas encore televerse**.
+- **154 telechargements.**
+- **Le palier Pro est propose a la vente : 29,00 EUR/an.** Prix public lu sur
+  `GET /api/marketplace/plugin/35416/prices?countryCode=CH` (HTTP 200,
+  `price` = `29.00`, devise EUR) ; pour un acheteur suisse le Marketplace ajoute
+  la TVA : **31,35 EUR TTC** (`priceTaxed`). L'essai gratuit est de **30 jours**
+  (`purchaseInfo.trialPeriod` = 30).
+- **Aucune vente a ce jour : 0 revenu.** Le premier versement Marketplace
+  n'arrive qu'apres le **31/12/2026** : le Marketplace verse une fois par an le
+  31 decembre, meme sous le seuil de 200 EUR, puis regle dans les 30 jours.
+
+Le prix (29,00 EUR/an) et l'essai (30 jours) sont configures dans la fiche
+Marketplace, pas dans ce code. Le texte public annonce la duree reglee par le
+Marketplace (**30 jours**, `purchaseInfo.trialPeriod`) et **aucune autre**.
