@@ -128,14 +128,20 @@ intellijPlatform {
 <p>All five tabs (Experiments, Optuna, Models, Sweeps and the Compare view) live in one <b>ML Experiment Cockpit</b> tool window, in PyCharm, IntelliJ IDEA, WebStorm, GoLand and CLion — any IntelliJ-platform IDE from build 243 to 263. This plugin is <b>read-only</b>: it reads your servers and never writes to them.</p>
 <p>You see exactly what your server answers, within its own query limits: up to 500 experiments, 100 runs per experiment, 500 registered models, 500 model versions and 5 000 metric points per run; W&B sweeps are read without pagination (the first 50 sweeps).</p>
 <table>
-<tr><th>Function</th><th>Free</th><th>Pro ($29/year, 30-day free trial)</th></tr>
+<tr><th>Function</th><th>Free</th><th>Pro (29 EUR/year, VAT depending on your country, 30-day free trial)</th></tr>
 <tr><td>Experiments, Optuna, Models, Sweeps tabs</td><td>yes</td><td>yes</td></tr>
 <tr><td>Compare 2 runs: parameters, metrics with gaps, both curves on one axis, Markdown export</td><td>tab visible, locked</td><td>yes</td></tr>
 <tr><td>Metric points per metric, per run</td><td>5 000 points (free chart)</td><td>100 000 points (in the Compare view)</td></tr>
 </table>
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
-        changeNotes = """<h3>2026.1.5 - A mistyped server address now gives a clear message.</h3>
+        changeNotes = """<h3>2026.1.6 - The Pro tier price is now written in euros.</h3>
+<ul>
+    <li>Every text of the plugin that names the price of the Pro tier — the description table, the locked Compare tab and these notes — now reads <em>29 EUR/year, VAT depending on your country</em>. The Marketplace purchase dialog remains the one that shows the final price and takes the payment.</li>
+    <li>The Compare tab now says <em>Pro: active</em> when the Pro features are usable, without distinguishing a free trial from a paid licence.</li>
+    <li>No functional change: the four free tabs and the comparison itself are unchanged.</li>
+</ul>
+<h3>2026.1.5 - A mistyped server address now gives a clear message.</h3>
 <ul>
     <li>When the address of the MLflow, Optuna or W&amp;B server is typed without its scheme (for example <code>localhost:5000</code> instead of <code>http://localhost:5000</code>), the tab now reports <em>Invalid MLflow URL: "localhost:5000" - the scheme is missing (http:// or https://)</em> — the same message for the three servers — instead of <em>Unexpected error</em> and a red error balloon.</li>
     <li>The Sweeps tab (W&amp;B) had the same defect as the other two tabs: a mistyped address made it fail with a raw Java error. It is fixed too.</li>
@@ -157,7 +163,7 @@ intellijPlatform {
 </ul>
 <h3>2026.1.1 - Compare tab: the real price, the licence read again, and the platform's pooled threads.</h3>
 <ul>
-    <li>The locked Compare tab now displays the Pro tier price ($29/year) and mentions the free trial without promising a duration (the trial length is the one configured in the Marketplace sale settings).</li>
+    <li>The locked Compare tab now displays the Pro tier price (29 EUR/year, VAT depending on your country) and mentions the free trial without promising a duration (the trial length is the one configured in the Marketplace sale settings).</li>
     <li>The licence state is read again every time the Compare tab becomes visible again (for instance when the IDE had just started and the licence could not be read yet), so the tab is not left locked for a customer who has a licence.</li>
     <li>The status line is now shown under both views of the tab, so a purchase dialog that cannot be opened is reported instead of failing silently.</li>
     <li>If the second run is changed while the comparison is being computed, the comparison is computed again for the new run instead of showing the previous one.</li>

@@ -207,8 +207,8 @@ class CorrectionsJuryTest {
             "the comment must say that the price is written in the code"
         )
         assertTrue(
-            source.contains("ML Experiment Cockpit Pro - \$29/year, free trial."),
-            "the price must really be written in the code: the label of the locked card"
+            source.contains("ML Experiment Cockpit Pro - 29 EUR/year, VAT depending on your country, free trial."),
+            "the price must really be written in the code: the label of the locked card (EUR label, 18/11/2026)"
         )
     }
 }

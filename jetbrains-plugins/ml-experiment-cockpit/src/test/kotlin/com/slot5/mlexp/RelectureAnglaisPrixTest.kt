@@ -14,8 +14,11 @@ import org.junit.jupiter.api.Test
  *
  *   - A1  l'article anglais : plus aucun « a ML Experiment Cockpit Pro »
  *         (le bon article est « an », parce que « ML » se lit « em-el ») ;
- *   - A2  le prix : « $29/year » et « free trial » dans les **3 endroits**
- *         (le panneau Compare, le `plugin.xml`, le `build.gradle.kts`) ;
+ *   - A2  le prix : « 29 EUR/year, VAT depending on your country » et
+ *         « free trial » dans les **3 endroits** (le panneau Compare, le
+ *         `plugin.xml`, le `build.gradle.kts`) — libelle EUR decide par la
+ *         Direction le 18/11/2026 (l'ancien « $29/year » est interdit,
+ *         voir `LibellePrixEurTest`) ;
  *   - A3  l'essai : la duree annoncee dans les sources livrees est
  *         **exactement celle que le Marketplace a reglee** (30 jours,
  *         `purchaseInfo.trialPeriod`) ; aucune autre duree ne peut etre
@@ -92,13 +95,17 @@ class RelectureAnglaisPrixTest {
     }
 
     @Test
-    @DisplayName("A2 - the price and the free trial are written in the 3 places")
+    @DisplayName("A2 - the EUR price, the VAT mention and the free trial are written in the 3 places")
     fun prixDansLesTroisEndroits() {
         for (chemin in troisEndroits) {
             val texte = lire(chemin)
             assertTrue(
-                texte.contains("\$29/year"),
-                "$chemin must state the price as \$29/year"
+                texte.contains("29 EUR/year"),
+                "$chemin must state the price as 29 EUR/year"
+            )
+            assertTrue(
+                texte.contains("VAT depending on your country"),
+                "$chemin must say that the VAT depends on the country"
             )
             assertTrue(
                 texte.contains("free trial"),
@@ -157,7 +164,7 @@ class RelectureAnglaisPrixTest {
     }
 
     @Test
-    @DisplayName("A4b - the release notes describe the 2026.1.2")
+    @DisplayName("A4b - the release notes describe the 2026.1.6 (top section, EUR price)")
     fun section2026Presente() {
         for (chemin in listOf(
             "src/main/resources/META-INF/plugin.xml",
@@ -165,12 +172,16 @@ class RelectureAnglaisPrixTest {
         )) {
             val texte = lire(chemin)
             assertTrue(
-                texte.contains("<h3>2026.1.2 "),
-                "$chemin must describe the version 2026.1.2 in its release notes"
+                texte.contains("<h3>2026.1.6 "),
+                "$chemin must describe the version 2026.1.6 in its release notes"
             )
             assertTrue(
-                texte.contains("\$29/year") && texte.contains("free trial"),
-                "$chemin must state the real price and the free trial in the 2026.1.2 notes"
+                texte.contains("29 EUR/year") && texte.contains("VAT depending on your country"),
+                "$chemin must state the EUR price and the VAT mention in the release notes"
+            )
+            assertTrue(
+                texte.contains("<h3>2026.1.2 "),
+                "$chemin must keep the history of the 2026.1.2 notes"
             )
             assertTrue(
                 texte.contains("pooled threads"),

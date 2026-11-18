@@ -76,7 +76,8 @@ class RelectureDescriptionTest {
             "500 model versions",
             "5 000 metric points per run",
             "100 000 points",
-            "29/year",
+            "29 EUR/year",
+            "VAT depending on your country",
             "free trial"
         )) {
             assertTrue(pluginXml.contains(terme), "La description doit mentionner la limite/valeur : $terme")
@@ -113,10 +114,11 @@ class RelectureDescriptionTest {
             }
         }
 
-        // le libelle de l'onglet verrouille : le prix et l'essai, sans duree
+        // le libelle de l'onglet verrouille : le prix en euros (libelle EUR
+        // du 18/11/2026), la TVA et l'essai, sans duree
         assertTrue(
-            panneau.contains("ML Experiment Cockpit Pro - \$29/year, free trial."),
-            "Le libelle de l'onglet verrouille doit dire le prix et l'essai, sans duree"
+            panneau.contains("ML Experiment Cockpit Pro - 29 EUR/year, VAT depending on your country, free trial."),
+            "Le libelle de l'onglet verrouille doit dire le prix EUR, la TVA et l'essai, sans duree"
         )
         val trouvePanneau = duree.find(panneau)
         assertTrue(

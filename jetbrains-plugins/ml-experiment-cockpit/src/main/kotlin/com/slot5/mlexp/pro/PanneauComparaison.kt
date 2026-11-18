@@ -234,7 +234,7 @@ class PanneauComparaison(
         messageVerrou.border = javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20)
         carteVerrou.add(messageVerrou, BorderLayout.CENTER)
         val bas = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
-            add(JLabel("ML Experiment Cockpit Pro - $29/year, free trial."))
+            add(JLabel("ML Experiment Cockpit Pro - 29 EUR/year, VAT depending on your country, free trial."))
             // Jury 13/11/2026 (review 8f1f, point a): the licence can be read
             // as "no licence" right after a purchase finished in the browser
             // (the dialog of the platform is not the one that closes then).
@@ -251,12 +251,16 @@ class PanneauComparaison(
     /** Reads the licence state again and switches between content and closed gate. */
     private fun rafraichirEtatPro() {
         etatPro = ProGate.etat()
+        // 18/11/2026 (2026.1.6, decision of the Direction): the badge says
+        // "Pro: active" WITHOUT distinguishing a free trial from a paid
+        // licence - during an eval the exact nature of what the platform
+        // returned is not ours to claim, and an authorised customer must
+        // never read a label that sounds like "not really licensed".
         badge.text = when (etatPro) {
-            ProState.PRO -> "licence: active"
-            ProState.ESSAI -> "licence: free trial"
-            ProState.EXPIRE -> "licence: trial ended"
-            ProState.ABSENT -> "licence: none"
-            ProState.INCONNU -> "licence: not verifiable"
+            ProState.PRO, ProState.ESSAI -> "Pro: active"
+            ProState.EXPIRE -> "Pro: not active - trial ended"
+            ProState.ABSENT -> "Pro: not active - no licence"
+            ProState.INCONNU -> "Pro: not verifiable yet"
         }
         // Jury 13/11/2026 (review 8f1f, point b): the "Get Pro" button is
         // only useful to a customer who does NOT have the Pro licence: it is
@@ -277,9 +281,10 @@ class PanneauComparaison(
      * [ProGate.CODE_PRODUIT].
      *
      * **The price is written in the code**: the label of the locked card
-     * ("$29/year, free trial") is hard-coded, exactly like the price of the
-     * public description of the plugin. The purchase dialog of the platform
-     * remains the one that shows the price and takes the payment.
+     * ("29 EUR/year, VAT depending on your country, free trial") is
+     * hard-coded, exactly like the price of the public description of the
+     * plugin. The purchase dialog of the platform remains the one that shows
+     * the final price and takes the payment.
      *
      * The dialog is opened through [AcheteurPro] (the seam): in a real IDE it
      * is the JetBrains purchase dialog, in the test it is a double.
