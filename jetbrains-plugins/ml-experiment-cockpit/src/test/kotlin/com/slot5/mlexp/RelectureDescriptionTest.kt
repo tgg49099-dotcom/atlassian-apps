@@ -114,16 +114,20 @@ class RelectureDescriptionTest {
             }
         }
 
-        // le libelle de l'onglet verrouille : le prix en euros (libelle EUR
-        // du 18/11/2026), la TVA et l'essai, sans duree
+        // le message de l'onglet verrouille (2026.1.7, consigne de la mere
+        // du 19/11/2026) : le message de vente honnete - la fonctionnalite,
+        // le prix EUR, la TVA, l'essai - et la SEULE duree reglee (30 jours)
         assertTrue(
-            panneau.contains("ML Experiment Cockpit Pro - 29 EUR/year, VAT depending on your country, free trial."),
-            "Le libelle de l'onglet verrouille doit dire le prix EUR, la TVA et l'essai, sans duree"
+            panneau.contains("Compare is a Pro feature.") &&
+                panneau.contains("29 EUR/year, VAT depending on your country.") &&
+                panneau.contains("30-day free trial."),
+            "Le message de l'onglet verrouille doit vendre le palier Pro : la fonctionnalite, " +
+                "le prix EUR, la TVA et l'essai (MESSAGE_VERROU_VENTE, 2026.1.7)"
         )
-        val trouvePanneau = duree.find(panneau)
+        val dureesPanneau = duree.findAll(panneau).map { it.groupValues[1].toInt() }.toList()
         assertTrue(
-            trouvePanneau == null,
-            "Le panneau ne doit afficher aucune duree (trouve : ${trouvePanneau?.value})"
+            dureesPanneau.all { it == dureeReglee },
+            "Le panneau ne peut annoncer que la duree reglee ($dureeReglee jours) : $dureesPanneau"
         )
     }
 }

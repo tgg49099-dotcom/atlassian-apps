@@ -164,7 +164,7 @@ class RelectureAnglaisPrixTest {
     }
 
     @Test
-    @DisplayName("A4b - the release notes describe the 2026.1.6 (top section, EUR price)")
+    @DisplayName("A4b - the release notes describe the 2026.1.7 on top (sales message), and keep the history")
     fun section2026Presente() {
         for (chemin in listOf(
             "src/main/resources/META-INF/plugin.xml",
@@ -172,12 +172,20 @@ class RelectureAnglaisPrixTest {
         )) {
             val texte = lire(chemin)
             assertTrue(
-                texte.contains("<h3>2026.1.6 "),
-                "$chemin must describe the version 2026.1.6 in its release notes"
+                texte.contains("<h3>2026.1.7 "),
+                "$chemin must describe the version 2026.1.7 in its release notes"
+            )
+            assertTrue(
+                texte.indexOf("<h3>2026.1.7 ") < texte.indexOf("<h3>2026.1.6 "),
+                "$chemin must describe the 2026.1.7 BEFORE the 2026.1.6 (top section)"
             )
             assertTrue(
                 texte.contains("29 EUR/year") && texte.contains("VAT depending on your country"),
                 "$chemin must state the EUR price and the VAT mention in the release notes"
+            )
+            assertTrue(
+                texte.contains("<h3>2026.1.6 "),
+                "$chemin must keep the history of the 2026.1.6 notes"
             )
             assertTrue(
                 texte.contains("<h3>2026.1.2 "),

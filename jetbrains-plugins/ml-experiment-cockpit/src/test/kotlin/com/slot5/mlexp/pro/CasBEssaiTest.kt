@@ -30,7 +30,8 @@ import org.junit.jupiter.api.Test
  * la porte. **Cette croyance n'est pas encore verifiee sur un essai reel** :
  * si la plateforme ne renvoie NI `key:` NI `stamp:` NI `eval:` pendant
  * l'essai (cas b), la porte Pro reste FERMEE et l'utilisateur en essai lit
- * « No licence is active on this machine » sur l'onglet verrouille. Le test
+ * le message de vente de l'onglet verrouille (2026.1.7 : « Compare is a Pro
+ * feature. » ; l'etat « no licence » reste sur le badge). Le test
  * ci-dessous documente ce comportement tel quel : il est VOLONTAIRE
  * (fail-closed, jamais de Pro gratuit « au doigt mouille »), et il doit
  * etre confirme ou infirme au PREMIER ESSAI REEL d'un utilisateur. Si le
@@ -157,8 +158,9 @@ class CasBEssaiTest {
         // The sale settings of the Marketplace grant a 30-day trial, BUT the
         // licence facade answers "no stamp at all" (facadeInitialisee = true,
         // sceau = null): the case b. Nothing received = no Pro: the gate
-        // stays closed (fail-closed), and the locked card says "No licence
-        // is active on this machine." - even though the user IS in trial.
+        // stays closed (fail-closed), and the locked card shows the sales
+        // message (2026.1.7: "Compare is a Pro feature." - the state "no
+        // licence" is on the badge) - even though the user IS in trial.
         val casB = LectureLicence(facadeInitialisee = true, sceau = null)
 
         assertEquals(
@@ -183,9 +185,9 @@ class CasBEssaiTest {
             val message = (visible as JPanel).components.filterIsInstance<JTextArea>().firstOrNull()
             assertNotNull(message, "case b: the lock card must hold the message area")
             assertTrue(
-                message!!.text.contains("No licence is active on this machine."),
-                "case b, stated as it is: the user in trial reads \"No licence is active on this " +
-                    "machine.\" - a BELIEF TO VERIFY at the first real user trial"
+                message!!.text.contains("Compare is a Pro feature."),
+                "case b, stated as it is: the user in trial reads the sales message " +
+                    "\"Compare is a Pro feature.\" - a BELIEF TO VERIFY at the first real user trial"
             )
             assertTrue(
                 textesDeLabel(panneau.rootComponent).any { it == "Pro: not active - no licence" },

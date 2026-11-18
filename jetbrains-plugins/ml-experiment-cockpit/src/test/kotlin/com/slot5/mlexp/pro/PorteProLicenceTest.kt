@@ -163,8 +163,8 @@ class PorteProLicenceTest {
             assertNotNull(panneau.rootComponent, "the panel must build without exception")
             val porte = porteDe(panneau)
             assertEquals(2, porte.componentCount, "the gate must hold its 2 cards")
-            // 3. PAS DE FENETRE BLOQUEE : la carte visible est le message
-            //    "no licence", pas une fenetre qui gele l'IDE.
+            // 3. PAS DE FENETRE BLOQUEE : la carte visible est le message de
+            //    vente (2026.1.7), pas une fenetre qui gele l'IDE.
             val visible = carteVisible(porte)
             assertTrue(
                 contientUnTextArea(visible),
@@ -172,9 +172,11 @@ class PorteProLicenceTest {
             )
             val message = (visible as JPanel).components.filterIsInstance<JTextArea>().firstOrNull()
             assertNotNull(message, "the lock card must hold the message area")
+            // 2026.1.7: le message de verrou est le message de vente honnete
+            // (l'etat "pas de licence" reste sur le badge, pas dans le texte).
             assertTrue(
-                message!!.text.contains("No licence is active on this machine."),
-                "the free user must read \"No licence is active on this machine.\", got: ${message.text}"
+                message!!.text.contains("Compare is a Pro feature."),
+                "the free user must read the sales message \"Compare is a Pro feature.\", got: ${message.text}"
             )
         } finally {
             ProGate.installerSource(SourceLicenceAbsent)

@@ -86,12 +86,16 @@ class LibellePrixEurTest {
     }
 
     /**
-     * The change of label must not change the deal: the trial length
-     * announced next to the price stays the settled one (30 days) and the
-     * panel never promises a duration of its own.
+     * The change of label must not change the deal: the trial length the
+     * panel may announce is the settled one (30 days,
+     * `purchaseInfo.trialPeriod`) and NO other. Since 2026.1.7 (consigne of
+     * the mother, 19/11/2026) the locked card SELLS the tier and announces
+     * the settled length ("30-day free trial"): that length is measured on
+     * the public API of the plugin, so announcing it is honest - any other
+     * duration would be a lie the day the setting moves.
      */
     @Test
-    @DisplayName("EUR-3 - the EUR label does not change the deal: 30-day trial, no other duration in the panel")
+    @DisplayName("EUR-3 - the panel announces the settled trial only: \"30-day\", never another duration")
     fun leLibelleNeChangePasLeMarche() {
         val panneau = lire("src/main/kotlin/com/slot5/mlexp/pro/PanneauComparaison.kt")
         assertFalse(
@@ -99,10 +103,13 @@ class LibellePrixEurTest {
             "the panel must not carry the old dollar price"
         )
         val duree = Regex("""\b(\d+)\s*-?\s*days?\b""")
-        val trouve = duree.find(panneau)
+        val coupables = duree.findAll(panneau)
+            .filter { it.groupValues[1].toInt() != 30 }
+            .map { it.value }
+            .toList()
         assertTrue(
-            trouve == null,
-            "the panel must still display no duration of its own (found: ${trouve?.value})"
+            coupables.isEmpty(),
+            "the only trial length the panel may announce is the settled one (30 days) - found: $coupables"
         )
     }
 }

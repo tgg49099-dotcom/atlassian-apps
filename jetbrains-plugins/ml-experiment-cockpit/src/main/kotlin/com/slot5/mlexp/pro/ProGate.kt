@@ -16,15 +16,19 @@ package com.slot5.mlexp.pro
  *
  * **The discipline taken from the `licence/` module** (plan section 3.3): one
  * state, one precise reason, never a vague exception. Five states, five
- * reasons:
+ * reasons. Since 2026.1.7 the **message of the locked card is the same
+ * honest sales message for every locked state** (it lives in
+ * `PanneauComparaison.MESSAGE_VERROU_VENTE`): what the feature is, its price,
+ * the trial, and where to buy. The state itself is read on the badge of the
+ * tab, never in the message:
  *
- * | State | Meaning | Message shown |
+ * | State | Meaning | Badge shown |
  * |---|---|---|
- * | [ProState.PRO] | active paid licence | - |
- * | [ProState.ESSAI] | free trial in progress | - |
- * | [ProState.EXPIRE] | the trial has ended | "your trial has ended" |
- * | [ProState.ABSENT] | no licence for this product | "no licence" |
- * | [ProState.INCONNU] | the platform cannot answer yet | "I cannot check" |
+ * | [ProState.PRO] | active paid licence | "Pro: active" |
+ * | [ProState.ESSAI] | free trial in progress | "Pro: active" |
+ * | [ProState.EXPIRE] | the trial has ended | "Pro: not active - trial ended" |
+ * | [ProState.ABSENT] | no licence for this product | "Pro: not active - no licence" |
+ * | [ProState.INCONNU] | the platform cannot answer yet | "Pro: not verifiable yet" |
  *
  * Safety rule: **INCONNU never opens a paid feature** and **INCONNU never
  * closes a free feature**. The free path never consults this gate (the
@@ -199,18 +203,10 @@ object ProGate {
     /** `10^11`: above it the timestamp is in milliseconds; below it, in seconds. */
     private const val SEUIL_MILLIORDES = 100_000_000_000L
 
-    /** Message shown to the user when the gate is closed. Never an error: a gate. */
-    fun messageVerrou(etat: ProState): String = when (etat) {
-        ProState.PRO -> "ML Experiment Cockpit Pro: active licence."
-        ProState.ESSAI -> "ML Experiment Cockpit Pro: free trial in progress."
-        ProState.EXPIRE ->
-            "Your free trial of ML Experiment Cockpit Pro has ended. " +
-                "Comparing 2 runs stays available with a paid licence."
-        ProState.ABSENT ->
-            "Comparing 2 runs is part of ML Experiment Cockpit Pro. " +
-                "No licence is active on this machine."
-        ProState.INCONNU ->
-            "Your ML Experiment Cockpit Pro licence cannot be checked right now. " +
-                "The free features stay available."
-    }
+    // 2026.1.7 (consigne of the mother, 19/11/2026): `messageVerrou(etat)` is
+    // REMOVED. The locked card now shows ONE honest sales message, the same
+    // for every locked state - it lives in the panel
+    // (PanneauComparaison.MESSAGE_VERROU_VENTE): what the feature is, its
+    // price, the trial, and a clickable link to the Marketplace page. The
+    // state (ABSENT, EXPIRE, INCONNU) stays on the badge of the tab.
 }

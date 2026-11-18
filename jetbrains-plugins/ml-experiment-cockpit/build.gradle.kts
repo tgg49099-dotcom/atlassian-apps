@@ -135,7 +135,11 @@ intellijPlatform {
 </table>
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
-        changeNotes = """<h3>2026.1.6 - The Pro tier price is now written in euros.</h3>
+        changeNotes = """<h3>2026.1.7 - The locked Compare tab now sells the Pro tier.</h3>
+<ul>
+    <li>The locked tab says <em>Compare is a Pro feature</em>, states the price (29 EUR/year, VAT depending on your country) and the 30-day free trial, and links to the plugin page on the JetBrains Marketplace, where the buy and trial buttons are.</li>
+</ul>
+<h3>2026.1.6 - The Pro tier price is now written in euros.</h3>
 <ul>
     <li>Every text of the plugin that names the price of the Pro tier — the description table, the locked Compare tab and these notes — now reads <em>29 EUR/year, VAT depending on your country</em>. The Marketplace purchase dialog remains the one that shows the final price and takes the payment.</li>
     <li>The Compare tab now says <em>Pro: active</em> when the Pro features are usable, without distinguishing a free trial from a paid licence.</li>

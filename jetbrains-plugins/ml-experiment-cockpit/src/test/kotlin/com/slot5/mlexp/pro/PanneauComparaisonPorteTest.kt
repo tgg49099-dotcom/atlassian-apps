@@ -5,6 +5,7 @@ import java.awt.Component
 import java.awt.GraphicsEnvironment
 import java.awt.event.HierarchyEvent
 import javax.swing.JFrame
+import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JTextArea
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -139,7 +140,7 @@ class PanneauComparaisonPorteTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("P1 - free user (no licence): the lock card is visible with \"No licence is active on this machine.\"")
+    @DisplayName("P1 - free user (no licence): the lock card is visible with the sales message \"Compare is a Pro feature.\"")
     fun utilisateurGratuitVoitLaPorteFermee() {
         avecLicence(LicenceAbsente) {
             val panneau = PanneauComparaison(ComparaisonHub())
@@ -153,10 +154,96 @@ class PanneauComparaisonPorteTest {
                 .filterIsInstance<JTextArea>()
                 .firstOrNull()
             assertNotNull(message, "the lock card must hold the message area")
+            // 2026.1.7: the lock message is now the honest sales message (the
+            // state "no licence" stays on the badge, never in the message).
             assertTrue(
-                message!!.text.contains("No licence is active on this machine."),
-                "the free user must read \"No licence is active on this machine.\", got: ${message.text}"
+                message!!.text.contains("Compare is a Pro feature."),
+                "the free user must read the sales message \"Compare is a Pro feature.\", got: ${message.text}"
             )
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // V - the locked card SELLS the Pro tier (consigne of the mother,
+    //     19/11/2026): one honest sales message + a clickable link to the
+    //     Marketplace page, and nothing else
+    // ------------------------------------------------------------------
+
+    /** Every JLabel text of the component (and of its descendants). */
+    private fun textesDeLabel(c: Component): List<String> =
+        listOfNotNull((c as? JLabel)?.text) +
+            ((c as? java.awt.Container)?.components?.flatMap { textesDeLabel(it) } ?: emptyList())
+
+    /** Every component of the tree, the component itself included. */
+    private fun tousLesComposants(c: Component): List<Component> =
+        listOf(c) +
+            ((c as? java.awt.Container)?.components?.flatMap { tousLesComposants(it) } ?: emptyList())
+
+    @Test
+    @DisplayName(
+        "V - the locked card sells the Pro tier: \"Compare is a Pro feature\", 29 EUR/year + VAT, 30-day free trial, " +
+            "clickable Marketplace URL - and no forbidden word"
+    )
+    fun leMessageDeVerrouVendLePalierProHonnement() {
+        avecLicence(LicenceAbsente) {
+            val panneau = PanneauComparaison(ComparaisonHub())
+            val porte = porteDe(panneau)
+            val visible = carteVisible(porte)
+            assertTrue(
+                contientUnTextArea(visible),
+                "the visible card must be the lock card (it holds the message)"
+            )
+            val message = (visible as JPanel).components
+                .filterIsInstance<JTextArea>()
+                .firstOrNull()
+            assertNotNull(message, "the lock card must hold the message area")
+
+            // The WHOLE text the customer can read on the locked card: the
+            // message area + every label (the clickable link lives there).
+            val texteComplet = message!!.text + "\n" +
+                textesDeLabel(visible).joinToString("\n")
+
+            // 1. what is sold
+            assertTrue(
+                texteComplet.contains("Compare is a Pro feature."),
+                "the message must name the Pro feature, got: $texteComplet"
+            )
+            // 2. the price - the settled EUR label, VAT mention included
+            assertTrue(
+                texteComplet.contains("29 EUR/year"),
+                "the price must be written (29 EUR/year), got: $texteComplet"
+            )
+            assertTrue(
+                texteComplet.contains("VAT depending on your country"),
+                "the VAT mention must be written, got: $texteComplet"
+            )
+            // 3. the trial - the settled length only
+            assertTrue(
+                texteComplet.contains("30-day free trial"),
+                "the 30-day free trial must be announced, got: $texteComplet"
+            )
+            // 4. the clickable link to the Marketplace page of the plugin
+            //    (it is there that the buy / trial buttons of JetBrains are)
+            val url = PanneauComparaison.URL_FICHE_MARKETPLACE
+            val lien = tousLesComposants(visible)
+                .filterIsInstance<JLabel>()
+                .firstOrNull { it.text == url }
+            assertNotNull(
+                lien,
+                "the locked card must show the Marketplace URL $url, got: $texteComplet"
+            )
+            assertTrue(
+                lien!!.mouseListeners.isNotEmpty(),
+                "the Marketplace URL must be clickable (a mouse listener opens the browser)"
+            )
+            // 5. nothing more: no payment in the plugin, no Gumroad, no
+            //    donation, no unmeasured promise
+            for (interdit in listOf("unlimited", "\$29", "USD", "Gumroad", "donat", "lifetime", "forever")) {
+                assertFalse(
+                    texteComplet.contains(interdit, ignoreCase = true),
+                    "the locked card must not say \"$interdit\", got: $texteComplet"
+                )
+            }
         }
     }
 

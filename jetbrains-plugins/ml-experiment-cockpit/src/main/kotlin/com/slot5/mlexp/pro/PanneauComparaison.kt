@@ -34,8 +34,12 @@ import javax.swing.table.DefaultTableModel
  *
  * v0.0.22. The 5th tab of the "ML Experiment Cockpit" tool window. It is
  * **visible by everybody** and **locked without a licence**: it is never an
- * error message, it is a gate (short text + a "Get Pro" button that opens the
- * JetBrains purchase dialog).
+ * error message, it is a gate. Since 2026.1.7 (consigne of the mother,
+ * 19/11/2026) the locked card **sells the Pro tier**: one honest message -
+ * what the feature is, its price, the trial - and a **clickable link** to the
+ * Marketplace page of the plugin, where the buy and trial buttons of
+ * JetBrains are (plus the "Get Pro" button that opens the JetBrains purchase
+ * dialog).
  *
  * Content when the gate is open:
  *   - an **A / B** header (name, `run_id`, status, start, duration);
@@ -72,6 +76,33 @@ class PanneauComparaison(
     // again (no official documentation describes a licence change event).
     private val boutonRelireLicence = JButton("Check licence again")
     private val boutonCopier = JButton("Copy (Markdown)").apply { isEnabled = false }
+
+    // 2026.1.7 (consigne of the mother, 19/11/2026): a real clickable link to
+    // the Marketplace page of the plugin - it is THERE that the buy and trial
+    // buttons of JetBrains are, not in the plugin (the plugin never takes a
+    // payment). The URL is also readable as plain text, so the message stays
+    // honest even without a click. No other link: no Gumroad, no donation.
+    //
+    // The click opens the DEFAULT BROWSER through the JDK itself
+    // (java.awt.Desktop): com.intellij.ui.BrowserUtil is NOT on the compile
+    // classpath of the PY 2024.3 dependency (measured 19/11/2026:
+    // "Unresolved reference: BrowserUtil"), while the JDK works the same on
+    // every IDE from build 243 to 263.
+    private val lienMarketplace = JLabel(URL_FICHE_MARKETPLACE).apply {
+        foreground = java.awt.Color(0x00, 0x00, 0xCC)
+        cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
+        addMouseListener(object : java.awt.event.MouseAdapter() {
+            override fun mouseClicked(e: java.awt.event.MouseEvent) {
+                try {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI(URL_FICHE_MARKETPLACE))
+                } catch (t: Throwable) {
+                    // No browser on this machine (headless JVM, locked-down
+                    // desktop): nothing breaks, the URL stays readable.
+                    status("Could not open the browser: ${t.javaClass.simpleName} - ${URL_FICHE_MARKETPLACE}")
+                }
+            }
+        })
+    }
     private val statusLabel = JBLabel(
         "Select a run in the Experiments tab, then right-click it to compare it with another run."
     )
@@ -233,12 +264,14 @@ class PanneauComparaison(
         messageVerrou.wrapStyleWord = true
         messageVerrou.border = javax.swing.BorderFactory.createEmptyBorder(20, 20, 20, 20)
         carteVerrou.add(messageVerrou, BorderLayout.CENTER)
+        // 2026.1.7 (consigne of the mother, 19/11/2026): the price now lives
+        // in the message itself ([MESSAGE_VERROU_VENTE]), so the bottom row
+        // keeps only the clickable link to the Marketplace page and the
+        // "Check licence again" button (jury 13/11/2026, review 8f1f, point
+        // a: the licence can be read as "no licence" right after a purchase
+        // finished in the browser - the customer can ask for a new reading).
         val bas = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
-            add(JLabel("ML Experiment Cockpit Pro - 29 EUR/year, VAT depending on your country, free trial."))
-            // Jury 13/11/2026 (review 8f1f, point a): the licence can be read
-            // as "no licence" right after a purchase finished in the browser
-            // (the dialog of the platform is not the one that closes then).
-            // The customer can therefore ask for a new reading.
+            add(lienMarketplace)
             add(boutonRelireLicence)
         }
         carteVerrou.add(bas, BorderLayout.SOUTH)
@@ -270,7 +303,10 @@ class PanneauComparaison(
             messageVerrou.text = ""
             carte.show(porte, "contenu")
         } else {
-            messageVerrou.text = ProGate.messageVerrou(etatPro)
+            // 2026.1.7: ONE sales message for every locked state (ABSENT,
+            // EXPIRE, INCONNU): the state itself stays on the badge above,
+            // never in the message.
+            messageVerrou.text = MESSAGE_VERROU_VENTE
             carte.show(porte, "verrou")
         }
     }
@@ -280,11 +316,12 @@ class PanneauComparaison(
      * price and takes the payment). The product code passed is
      * [ProGate.CODE_PRODUIT].
      *
-     * **The price is written in the code**: the label of the locked card
-     * ("29 EUR/year, VAT depending on your country, free trial") is
-     * hard-coded, exactly like the price of the public description of the
-     * plugin. The purchase dialog of the platform remains the one that shows
-     * the final price and takes the payment.
+     * **The price is written in the code**: the sales message of the locked
+     * card ([MESSAGE_VERROU_VENTE] - "Compare is a Pro feature. 29 EUR/year,
+     * VAT depending on your country. 30-day free trial.") is hard-coded,
+     * exactly like the price of the public description of the plugin. The
+     * purchase dialog of the platform remains the one that shows the final
+     * price and takes the payment.
      *
      * The dialog is opened through [AcheteurPro] (the seam): in a real IDE it
      * is the JetBrains purchase dialog, in the test it is a double.
@@ -615,6 +652,30 @@ class PanneauComparaison(
          * user - never a silently incomplete curve.
          */
         const val PLAFOND_POINTS_PRO = 100000
+
+        /**
+         * Marketplace page of the plugin 35416: it is THERE that the buy and
+         * trial buttons of JetBrains are (the plugin never takes a payment).
+         * Written once, read by the clickable link of the locked card and
+         * checked by the tests.
+         */
+        const val URL_FICHE_MARKETPLACE =
+            "https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit"
+
+        /**
+         * The sales message of the locked card (2026.1.7, consigne of the
+         * mother, 19/11/2026): ONE honest message for every locked state -
+         * what the feature is, its price, the trial. The price label is the
+         * settled one everywhere ("29 EUR/year, VAT depending on your
+         * country", the same words as the description and the sale settings);
+         * the trial length is the one the Marketplace settled (30 days,
+         * `purchaseInfo.trialPeriod`, measured on 19/11/2026). Nothing else
+         * is promised: no "unlimited", no other price, no other link.
+         */
+        const val MESSAGE_VERROU_VENTE =
+            "Compare is a Pro feature.\n" +
+                "29 EUR/year, VAT depending on your country.\n" +
+                "30-day free trial."
     }
 }
 
