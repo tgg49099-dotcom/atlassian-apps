@@ -2,7 +2,7 @@
 
 JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML experiments without leaving the IDE.
 
-> **Status: published on the JetBrains Marketplace - v0.0.21 is live; v0.0.22 (2026.1.0) is in JetBrains' review.** The sources in this repository are version **2026.1.2**: **2026.1.2 prete a televerser le 15/11, pas encore publiee** (it fixes the Pro gate so the Compare tab unlocks as soon as the licence is active). Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
+> **Status: published on the JetBrains Marketplace.** The sources in this repository are version **2026.1.5**. The *Versions* tab of the plugin page lists the versions that are actually published, with their change notes. Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
 ## Install
 
@@ -19,7 +19,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
 - Marketplace listing (plugin 35416): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 - Product README (full documentation): https://github.com/tgg49099-dotcom/atlassian-apps/blob/main/jetbrains-plugins/ml-experiment-cockpit/README.md
 
-## What this plugin does (v0.0.22 - in JetBrains review; v0.0.21 is live; the sources here are 2026.1.2, not published yet)
+## What this plugin does (sources here = 2026.1.5)
 
 1. **Configure the five fields** in `Settings → Tools → ML Experiment Cockpit`:
    - MLflow: e.g. `http://localhost:5000`.
@@ -59,7 +59,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
    `GET /api/2.0/mlflow/metrics/get-history` and renders it as a line chart
    (auto-scaled Y axis, hand-drawn with `Graphics2D`).
 
-### Compare (Pro tier n°1, v0.0.22; sources here = 2026.1.2)
+### Compare (Pro tier n°1; sources here = 2026.1.5)
 
 10. Tab **"Compare"** — the first paid feature, sold by JetBrains as a
     subscription under the product code `PPCOCKPITPRO`. Right-click a run in
@@ -79,9 +79,9 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
     5 000 metric points per run) — `GratuitInchangeTest` proves it.
 > The **Compare** tab requires a licence sold by the JetBrains Marketplace — see the plugin page for availability: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
-That is the entire v0.0.22 surface. The build pipeline (`buildPlugin` + `verifyPlugin`)
-and the upload script (`scripts/upload_to_marketplace.sh`) are validated so the
-owner can publish as soon as `JETBRAINS_MARKETPLACE_TOKEN` arrives.
+That is the entire surface of the plugin (sources here = 2026.1.5). The build pipeline
+(`buildPlugin` + `verifyPlugin`) is validated, and the upload procedure is documented
+below.
 
 ## Roadmap (post-MVP)
 
@@ -101,7 +101,11 @@ owner can publish as soon as `JETBRAINS_MARKETPLACE_TOKEN` arrives.
 | 0.0.12 | Public plugin id `com.slot5.mlexp` → `com.tgglabs.mlexp`; `META-INF/pluginIcon.svg` + `pluginIcon_dark.svg` shipped; change-notes collapsed to the single real first release | ✅ published on the Marketplace |
 | 0.0.13 - 0.0.21 | Intermediate releases published on the Marketplace (version list on the plugin page) | ✅ published |
 | 0.0.22 | **Pro tier n°1 — “Compare 2 runs”**: 5th tab (Compare), parameters + metrics side by side, superposed curves, Markdown export, native JetBrains licence gate (`PPCOCKPITPRO`). The four free tabs are strictly unchanged. | ✅ built - in JetBrains review (submitted 10/11/2026), not yet live |
-| 2026.1.2 | **The Compare tab unlocks as soon as the licence becomes active**: the licence state is read again when the purchase dialog closes (new `AcheteurPro` seam + `ComparaisonDeverrouilleTest`). The version number is now `2026.1.2`, which starts with `2026.1` like the `release-version="20261"` of the product descriptor, as the official "add-required-parameters" rule requires. | ✅ built - ready to upload on 15/11/2026, NOT published yet |
+| 2026.1.0 | The Pro tier is put on sale on the Marketplace (product code `PPCOCKPITPRO`, 29.00 EUR/year, 30-day free trial). | ✅ published on the Marketplace |
+| 2026.1.2 | **The Compare tab unlocks as soon as the licence becomes active**: the licence state is read again when the purchase dialog closes (new `AcheteurPro` seam + `ComparaisonDeverrouilleTest`). The version number now starts with `2026.1`, like the `release-version="20261"` of the product descriptor, as the official "add-required-parameters" rule requires. | ✅ built - superseded by 2026.1.4, never published on its own |
+| 2026.1.3 | The purchase dialog is opened with the current platform APIs: the plugin reports no deprecated, removed or override-only API usage on recent IDE versions. | ✅ built - superseded by 2026.1.4, never published on its own |
+| 2026.1.4 | **The licence check verifies the JetBrains signature** (official sample): the Pro tier is unlocked only by a licence stamp whose signature is verified against the two public JetBrains root certificates; a hand-written stamp no longer opens the paid tab. | ✅ published on the Marketplace |
+| 2026.1.5 | **A mistyped server address now gives a clear message**: the MLflow, Optuna and W&B tabs report the address and the missing scheme (one message for the three servers) instead of "Unexpected error" and a red error balloon; the W&B Sweeps tab no longer fails with a raw Java error. No visible change when the address is correct. | ✅ built - the version in these sources (see the *Versions* tab of the plugin page for what is published) |
 
 Each version adds a thin slice of the niche.
 
@@ -114,13 +118,12 @@ export JAVA_HOME=<your JDK 21>
 export PATH="$JAVA_HOME/bin:$PATH"
 cd ml-experiment-plugin
 ./gradlew buildPlugin verifyPlugin
-./scripts/prevol.sh          # pre-flight, on the BUILT jar — never publish without it
 ```
 
-Output ZIP (the version in these sources is 2026.1.2; that ZIP is ready to upload on 15/11/2026 and is NOT published yet):
+Output ZIP (the version in these sources is 2026.1.5):
 
 ```
-build/distributions/ml-experiment-cockpit-2026.1.2.zip
+build/distributions/ml-experiment-cockpit-2026.1.5.zip
 ```
 
 `./gradlew clean` deletes the whole `build/` tree, including any earlier ZIP kept as a
@@ -128,25 +131,34 @@ fallback. `buildPlugin` without `clean` leaves the previous ZIPs in place.
 
 ## Pre-flight
 
-`scripts/prevol.sh` enforces the publication rules on the artefact that ships, not on
-the sources: it extracts the plugin JAR out of the distribution ZIP and scans the
-`META-INF/plugin.xml` inside it for placeholder / withdrawn-feature residue, checks the
-id / version / vendor / `until-build`, checks that both icons are inside the JAR, and
-checks that the change-notes start with the shipped version (2026.1.2) and list at
-least one bullet (the older published versions may follow as history). Exit 0 = green,
-non-zero = do not publish.
+Before any upload, check the artefact that ships, not the sources: extract the plugin JAR
+out of the distribution ZIP and scan the `META-INF/plugin.xml` inside it for
+placeholder / withdrawn-feature residue, check the id / version / vendor / `until-build`,
+check that both icons are inside the JAR, and check that the change-notes start with the
+shipped version (2026.1.5) and list at least one bullet (the older published versions may
+follow as history). Also check that the ZIP you are about to upload is byte-for-byte the
+one your build produced (`cmp` against `build/distributions/`), and that a version with the
+same number is not already listed on the plugin page.
 
 ## Upload to JetBrains Marketplace
 
-Once `JETBRAINS_MARKETPLACE_TOKEN` is set:
+With `JETBRAINS_MARKETPLACE_TOKEN` set in the environment (the value is never written to
+a file):
 
 ```bash
-export JETBRAINS_MARKETPLACE_TOKEN="perm:..."
-./scripts/upload_to_marketplace.sh \
-    ./build/distributions/ml-experiment-cockpit-2026.1.2.zip
+Z=build/distributions/ml-experiment-cockpit-2026.1.5.zip
+md5sum "$Z"                       # the ZIP you upload must be the one your build produced
+curl -i --header "Authorization: Bearer ${JETBRAINS_MARKETPLACE_TOKEN}" \
+     -F pluginId=35416 \
+     -F "file=@$Z" \
+     https://plugins.jetbrains.com/api/updates/upload
 ```
 
-The script auto-extracts `xmlId=com.tgglabs.mlexp` from `plugin.xml` inside the ZIP.
+The Marketplace reads the version, the release version and the change notes from the
+descriptor inside the ZIP (`META-INF/plugin.xml`): there is no version field to fill in.
+An empty `channel` means the *Stable* channel. After the upload, the update id returned by
+the `201` response is the reference to keep, and the published version is checked on
+`https://plugins.jetbrains.com/api/plugins/35416/updates` (public route, no token).
 
 ## Repository layout
 
@@ -156,9 +168,6 @@ ml-experiment-plugin/
 ├── gradle.properties                           Plugin id, version, target IDE, vendor
 ├── settings.gradle
 ├── gradle/wrapper/                             Gradle 8.10.2 wrapper
-├── scripts/
-│   ├── upload_to_marketplace.sh                Multipart POST to /api/updates/upload
-│   └── prevol.sh                               Pre-flight on the BUILT jar (run before any publish)
 ├── src/main/
 │   ├── kotlin/com/slot5/mlexp/
 │   │   ├── MlflowSettings.kt                   PersistentStateComponent (URIs v0.0.4 + W&B v0.0.7; W&B key in PasswordSafe v0.0.9; deploy fields removed v0.0.8)
@@ -173,9 +182,11 @@ ml-experiment-plugin/
 │   │   ├── ModelRegistryToolWindowPanel.kt     Models Tool Window Swing panel (v0.0.6)
 │   │   ├── WandbClient.kt                      W&B Sweeps GraphQL client (v0.0.7)
 │   │   ├── SweepToolWindowPanel.kt             Sweeps Tool Window Swing panel (v0.0.7)
+│   │   ├── BaseUrl.kt                          The one place that says what a wrong server address is (2026.1.5)
 │   │   └── pro/                                **Pro tier n°1 (v0.0.22)**
 │   │       ├── ProGate.kt                      Pure-Kotlin licence gate (states PRO/ESSAI/EXPIRE/ABSENT/INCONNU)
 │   │       ├── LicenceNatif.kt                 The ONLY file touching `com.intellij.ui.LicensingFacade`
+│   │       ├── VerificationSceau.kt            Verification of the JetBrains signature of the licence stamp (2026.1.4)
 │   │       ├── ComparaisonRuns.kt              Pure comparison core (params, metrics, gaps, Markdown)
 │   │       ├── CourbeDiff.kt                   Superposed 2-run chart (A blue, B orange)
 │   │       ├── ComparaisonHub.kt               Relay between the free tree and the Compare tab
@@ -185,7 +196,6 @@ ml-experiment-plugin/
 │       ├── plugin.xml                          Actions + services + notificationGroup + toolWindow
 │       ├── pluginIcon.svg                      40×40 light-theme listing icon
 │       └── pluginIcon_dark.svg                 40×40 dark-theme listing icon
-├── CHANGELOG.md
 ├── LICENSE                                     Apache 2.0
 └── README.md
 ```

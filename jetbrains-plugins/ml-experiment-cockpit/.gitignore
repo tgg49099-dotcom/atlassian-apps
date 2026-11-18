@@ -32,3 +32,5 @@ logs/
 *.swp
 *.bak
 *~
+# IntelliJ Platform Gradle Plugin cache
+.intellijPlatform/

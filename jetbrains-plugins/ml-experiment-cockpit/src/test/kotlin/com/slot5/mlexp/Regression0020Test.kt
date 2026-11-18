@@ -152,8 +152,12 @@ class Regression0020Test {
             client.listStudies()
         }
         val message = e.message ?: ""
+        // v2026.1.5 — le message n'est plus celui de la JVM
+        // (« invalid URI scheme localhost ») mais le message actionnable :
+        // « Invalid Optuna URL: "localhost:8080" - the scheme is missing
+        // (http:// or https://) » (voir Regression0026Test).
         assertTrue(
-            message.contains("invalid URI scheme"),
+            message.contains("Invalid Optuna URL"),
             "le message doit dire quelle URI est refusee, il dit : $message"
         )
         assertTrue(

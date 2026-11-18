@@ -1,6 +1,8 @@
 package com.slot5.mlexp.pro
 
 import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.ActionUiKind
+import com.intellij.openapi.actionSystem.ActionWrapperUtil
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.Presentation
@@ -62,16 +64,35 @@ class AcheteurPlateforme : AcheteurPro {
                                 else -> null
                             }
                         }
-                        action.actionPerformed(
-                            AnActionEvent.createFromDataContext("", Presentation(), contexte)
+                        // JetBrains Platform 2026.2 : the Plugin Verifier reports
+                        // `AnActionEvent.createFromDataContext` as "This method will be
+                        // removed in a future release" (scheduled for removal) and
+                        // `AnAction.actionPerformed` as "@ApiStatus.OverrideOnly" (it may
+                        // only be overridden, never called by client code).
+                        // We therefore build the event with `AnActionEvent.createEvent`
+                        // and let the platform run the action with
+                        // `ActionWrapperUtil.actionPerformed`: both are public and are
+                        // not deprecated in every platform release from 2024.3
+                        // (build 243) to 2026.2 (build 262).
+                        // The visible behaviour is unchanged: the same action, the same
+                        // DataContext (product code + message), the same empty
+                        // presentation, and the action is still run on the EDT.
+                        val evenement = AnActionEvent.createEvent(
+                            action,
+                            contexte,
+                            Presentation(),
+                            "place",
+                            ActionUiKind.NONE,
+                            null
                         )
+                        ActionWrapperUtil.actionPerformed(evenement, action, action)
                     }
                 } catch (t: Throwable) {
                     erreur = "Could not open the purchase dialog: ${t.javaClass.simpleName}"
                 } finally {
                     surFermeture(erreur)
                 }
-            }, ModalityState.NON_MODAL)
+            }, ModalityState.defaultModalityState())
         } catch (t: Throwable) {
             // No IDE: the panel must not break, it simply says so.
             surFermeture("Could not open the purchase dialog: ${t.javaClass.simpleName}")

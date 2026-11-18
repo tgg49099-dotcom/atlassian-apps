@@ -40,6 +40,12 @@ import org.junit.jupiter.api.Test
  */
 class ComparaisonDeverrouilleTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    fun accepterLesSceauxDeTest() = ProGate.installerVerificateur(VerificateurDeTest.ACCEPTE)
+
+    @org.junit.jupiter.api.AfterEach
+    fun remettreLeVraiVerificateur() = ProGate.remettreVerificateurJetBrains()
+
     // ------------------------------------------------------------------
     // The doubles (no secret, no licence, no token)
     // ------------------------------------------------------------------

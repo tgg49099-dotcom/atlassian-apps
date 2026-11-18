@@ -254,15 +254,38 @@ class WandbClient(
         // JSON serializer dep.
         val payload = "{\"query\":${jsonString(query)},\"variables\":${variablesJson}}"
         val endpoint = baseUri.trimEnd('/') + "/graphql"
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(endpoint))
-            .timeout(Duration.ofSeconds(10))
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .header("Authorization", "Bearer $apiKey")
-            .POST(HttpRequest.BodyPublishers.ofString(payload))
-            .build()
+        // v2026.1.5 — **la requete est construite DANS le `try`** (meme
+        // correction que celle deja faite et testee pour `OptunaClient.get()`
+        // en v0.0.20 et pour `MlflowClient.get()`/`post()` en v2026.1.5).
+        //
+        // Avant, `URI.create(endpoint)` puis `HttpRequest…build()` etaient
+        // **hors du `try`** : une adresse W&B mal saisie — le schema
+        // « https:// » oublie, c'est-a-dire « wandb.ai » au lieu de
+        // « https://wandb.ai » — levait une
+        // `IllegalArgumentException("invalid URI scheme …")` **brute**, qui
+        // n'est pas une `WandbException` : l'onglet Sweeps traitait deux
+        // types d'exception (`WandbException` -> « Failed to load sweeps: … »,
+        // `Throwable` -> « Unexpected error: … » + bulle rouge) et l'utilisateur
+        // voyait « Unexpected error » pour une simple faute de frappe.
         return try {
+            // **message actionnable** : l'adresse fautive est nommee et les
+            // deux formes acceptees sont rappelees. Meme message pour les
+            // trois clients (MLflow, Optuna, W&B) : voir [BaseUrl].
+            if (BaseUrl.isNotHttpUrl(baseUri)) {
+                throw WandbException(
+                    BaseUrl.invalidUrlMessage("W&B", baseUri),
+                    status = 0,
+                    body = ""
+                )
+            }
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(10))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .header("Authorization", "Bearer $apiKey")
+                .POST(HttpRequest.BodyPublishers.ofString(payload))
+                .build()
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             val status = response.statusCode()
             val body = response.body().orEmpty()

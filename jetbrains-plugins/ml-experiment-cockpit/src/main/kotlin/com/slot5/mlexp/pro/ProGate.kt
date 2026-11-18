@@ -132,17 +132,41 @@ object ProGate {
     }
 
     /**
+     * Checks the JetBrains signature of `key:` and `stamp:` stamps
+     * (`VerificationSceau.kt`, port of the official sample `CheckLicense.java`).
+     * Replaced only by the tests, never in production.
+     */
+    @Volatile
+    private var verificateur: VerificateurSceau = VerificationJetBrains()
+
+    /** For the tests only: installs another signature checker (see `VerificateurDeTest`). */
+    fun installerVerificateur(v: VerificateurSceau) {
+        verificateur = v
+    }
+
+    /** For the tests only: puts back the real JetBrains checker. */
+    fun remettreVerificateurJetBrains() {
+        verificateur = VerificationJetBrains()
+    }
+
+    /**
      * Turns a stamp into a state.
      *
-     * The three prefixes are read **as they are**, without interpretation: the
-     * signature of the stamp is checked by the platform (it controls the
-     * licence at IDE startup and at least once a day), we only note its
-     * presence. An unknown prefix means [ProState.ABSENT]: **nothing else is a
-     * licence**.
+     * Studio, 16/11/2026: `key:` and `stamp:` open the Pro tier **only if the
+     * JetBrains signature is valid** (official sample `CheckLicense.java`).
+     * Until 2026.1.3 the prefix alone was enough: a hand-written stamp
+     * `key:anything` unlocked the paid tab. A stamp whose signature is not
+     * valid means [ProState.ABSENT] (no licence), never an exception. The
+     * trial stamp `eval:` carries no signature and is read as before. An
+     * unknown prefix means [ProState.ABSENT]: **nothing else is a licence**.
      */
     fun etatDepuisSceau(sceau: String): ProState {
-        if (sceau.startsWith(PREFIXE_CLE)) return ProState.PRO
-        if (sceau.startsWith(PREFIXE_STAMP)) return ProState.PRO
+        if (sceau.startsWith(PREFIXE_CLE)) {
+            return if (verificateur.cleValide(sceau.removePrefix(PREFIXE_CLE))) ProState.PRO else ProState.ABSENT
+        }
+        if (sceau.startsWith(PREFIXE_STAMP)) {
+            return if (verificateur.serveurValide(sceau.removePrefix(PREFIXE_STAMP))) ProState.PRO else ProState.ABSENT
+        }
         if (sceau.startsWith(PREFIXE_EVAL)) {
             // The trial stamp carries the end date (an integer).
             val brut = sceau.removePrefix(PREFIXE_EVAL).substringBefore(':').trim().toLongOrNull()

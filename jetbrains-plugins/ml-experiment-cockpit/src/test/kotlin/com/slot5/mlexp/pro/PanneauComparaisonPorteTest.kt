@@ -54,6 +54,12 @@ import org.junit.jupiter.api.Test
  */
 class PanneauComparaisonPorteTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    fun accepterLesSceauxDeTest() = ProGate.installerVerificateur(VerificateurDeTest.ACCEPTE)
+
+    @org.junit.jupiter.api.AfterEach
+    fun remettreLeVraiVerificateur() = ProGate.remettreVerificateurJetBrains()
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------

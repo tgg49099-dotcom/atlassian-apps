@@ -373,13 +373,39 @@ class MlflowClient(private val baseUri: String) {
 
     private fun get(pathWithQuery: String): String {
         val endpoint = baseUri.trimEnd('/') + pathWithQuery
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(endpoint))
-            .timeout(Duration.ofSeconds(10))
-            .header("Accept", "application/json")
-            .GET()
-            .build()
+        // v2026.1.5 — **la requete est construite DANS le `try`** (meme
+        // correction que celle deja faite et testee pour `OptunaClient.get()`
+        // en v0.0.20, `Regression0020Test` defaut n° 3).
+        //
+        // Avant, `URI.create(endpoint)` puis `HttpRequest…build()` etaient
+        // **hors du `try`** : une URI mal saisie — le schema « http:// »
+        // oublie, c'est-a-dire « localhost:5000 » au lieu de
+        // « http://localhost:5000 » — levait une
+        // `IllegalArgumentException("invalid URI scheme localhost")` **brute**,
+        // qui n'est pas une `MlflowException`. L'onglet Experiments traitait
+        // deux types d'exception (`MlflowException` -> « Failed to load
+        // experiments: … », `Throwable` -> « Unexpected error: … » + bulle
+        // rouge) : l'utilisateur voyait donc « Unexpected error » et une bulle
+        // « Project unexpected error » pour une simple faute de frappe.
         return try {
+            // v2026.1.5 — **message actionnable** : une adresse sans schema
+            // (« localhost:5000 ») est refusee ICI, avec le message qui dit
+            // quoi corriger, au lieu du message brut de la JVM
+            // (« invalid URI scheme localhost »). Meme message pour les trois
+            // clients (MLflow, Optuna, W&B) : voir [BaseUrl].
+            if (BaseUrl.isNotHttpUrl(baseUri)) {
+                throw MlflowException(
+                    BaseUrl.invalidUrlMessage("MLflow", baseUri),
+                    status = 0,
+                    body = ""
+                )
+            }
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(10))
+                .header("Accept", "application/json")
+                .GET()
+                .build()
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             val status = response.statusCode()
             val body = response.body().orEmpty()
@@ -405,14 +431,26 @@ class MlflowClient(private val baseUri: String) {
 
     private fun post(path: String, jsonBody: String): String {
         val endpoint = baseUri.trimEnd('/') + path
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(endpoint))
-            .timeout(Duration.ofSeconds(5))
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .build()
+        // v2026.1.5 — meme correction que dans `get()` : la requete est
+        // construite DANS le `try`, pour qu'une URI mal saisie donne une
+        // `MlflowException` (« Failed to load experiments: … ») et non une
+        // `IllegalArgumentException` brute (« Unexpected error » + bulle rouge).
         return try {
+            // v2026.1.5 — meme message actionnable que dans `get()`.
+            if (BaseUrl.isNotHttpUrl(baseUri)) {
+                throw MlflowException(
+                    BaseUrl.invalidUrlMessage("MLflow", baseUri),
+                    status = 0,
+                    body = ""
+                )
+            }
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create(endpoint))
+                .timeout(Duration.ofSeconds(5))
+                .header("Content-Type", "application/json")
+                .header("Accept", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                .build()
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             val status = response.statusCode()
             val body = response.body().orEmpty()

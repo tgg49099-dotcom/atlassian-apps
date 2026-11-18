@@ -199,6 +199,18 @@ class OptunaClient(private val baseUri: String) {
     private fun get(path: String): String {
         val endpoint = baseUri.trimEnd('/') + path
         return try {
+            // v2026.1.5 — **message actionnable** : une adresse sans schema
+            // (« localhost:8080 ») est refusee ICI, avec le message qui dit
+            // quoi corriger, au lieu du message brut de la JVM
+            // (« invalid URI scheme localhost »). Meme message pour les trois
+            // clients (MLflow, Optuna, W&B) : voir [BaseUrl].
+            if (BaseUrl.isNotHttpUrl(baseUri)) {
+                throw OptunaException(
+                    BaseUrl.invalidUrlMessage("Optuna", baseUri),
+                    status = 0,
+                    body = ""
+                )
+            }
             val request = HttpRequest.newBuilder()
                 .uri(URI.create(endpoint))
                 .timeout(Duration.ofSeconds(10))

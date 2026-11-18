@@ -66,6 +66,11 @@ class PanneauComparaison(
         foreground = java.awt.Color(0x55, 0x55, 0x55)
     }
     private val boutonGetPro = JButton("Get Pro")
+    // Jury 13/11/2026 (review 8f1f, point a): right after a purchase
+    // finished in the browser, the licence can still be read as "no
+    // licence". The locked card therefore offers a button that reads it
+    // again (no official documentation describes a licence change event).
+    private val boutonRelireLicence = JButton("Check licence again")
     private val boutonCopier = JButton("Copy (Markdown)").apply { isEnabled = false }
     private val statusLabel = JBLabel(
         "Select a run in the Experiments tab, then right-click it to compare it with another run."
@@ -154,6 +159,7 @@ class PanneauComparaison(
         carte.show(porte, "contenu")
 
         boutonGetPro.addActionListener { ouvrirDialogueAchat() }
+        boutonRelireLicence.addActionListener { rafraichirEtatPro() }
         boutonCopier.addActionListener { copierMarkdown() }
         comboMetrique.addActionListener(listenerMetrique)
         comboRuns.addActionListener { onRunBChoisi() }
@@ -229,6 +235,11 @@ class PanneauComparaison(
         carteVerrou.add(messageVerrou, BorderLayout.CENTER)
         val bas = JPanel(FlowLayout(FlowLayout.CENTER)).apply {
             add(JLabel("ML Experiment Cockpit Pro - $29/year, free trial."))
+            // Jury 13/11/2026 (review 8f1f, point a): the licence can be read
+            // as "no licence" right after a purchase finished in the browser
+            // (the dialog of the platform is not the one that closes then).
+            // The customer can therefore ask for a new reading.
+            add(boutonRelireLicence)
         }
         carteVerrou.add(bas, BorderLayout.SOUTH)
     }
@@ -247,6 +258,10 @@ class PanneauComparaison(
             ProState.ABSENT -> "licence: none"
             ProState.INCONNU -> "licence: not verifiable"
         }
+        // Jury 13/11/2026 (review 8f1f, point b): the "Get Pro" button is
+        // only useful to a customer who does NOT have the Pro licence: it is
+        // hidden as soon as the licence authorises the Pro features.
+        boutonGetPro.isVisible = !etatPro.autorise()
         if (etatPro.autorise()) {
             messageVerrou.text = ""
             carte.show(porte, "contenu")
@@ -259,7 +274,12 @@ class PanneauComparaison(
     /**
      * Opens the **JetBrains purchase dialog** (it is the one that shows the
      * price and takes the payment). The product code passed is
-     * [ProGate.CODE_PRODUIT]: **no amount is written in the code**.
+     * [ProGate.CODE_PRODUIT].
+     *
+     * **The price is written in the code**: the label of the locked card
+     * ("$29/year, free trial") is hard-coded, exactly like the price of the
+     * public description of the plugin. The purchase dialog of the platform
+     * remains the one that shows the price and takes the payment.
      *
      * The dialog is opened through [AcheteurPro] (the seam): in a real IDE it
      * is the JetBrains purchase dialog, in the test it is a double.
@@ -267,7 +287,9 @@ class PanneauComparaison(
      * **The licence is read again when the dialog closes.** The platform
      * checks the licence "at least once a day" (official documentation), so it
      * can appear *during* the session: without this reading, the customer who
-     * has just paid would keep seeing a locked tab.
+     * has just paid would keep seeing a locked tab. The locked card also
+     * offers a "Check licence again" button, for a purchase finished in the
+     * browser (the dialog of the platform is then not the one that closes).
      */
     private fun ouvrirDialogueAchat() {
         acheteur.ouvrir(ProGate.CODE_PRODUIT, "ML Experiment Cockpit Pro: compare 2 runs.") { erreur ->

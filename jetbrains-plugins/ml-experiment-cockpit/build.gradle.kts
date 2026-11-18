@@ -135,7 +135,23 @@ intellijPlatform {
 </table>
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
-        changeNotes = """<h3>2026.1.2 - The Compare tab is unlocked as soon as the licence becomes active.</h3>
+        changeNotes = """<h3>2026.1.5 - A mistyped server address now gives a clear message.</h3>
+<ul>
+    <li>When the address of the MLflow, Optuna or W&amp;B server is typed without its scheme (for example <code>localhost:5000</code> instead of <code>http://localhost:5000</code>), the tab now reports <em>Invalid MLflow URL: "localhost:5000" - the scheme is missing (http:// or https://)</em> — the same message for the three servers — instead of <em>Unexpected error</em> and a red error balloon.</li>
+    <li>The Sweeps tab (W&amp;B) had the same defect as the other two tabs: a mistyped address made it fail with a raw Java error. It is fixed too.</li>
+    <li>No visible change when the address is correct: the same data, the same messages.</li>
+</ul>
+<h3>2026.1.4 - The licence check now verifies the JetBrains signature (official sample).</h3>
+<ul>
+    <li>The Pro tier is now unlocked only by a licence stamp whose JetBrains signature is verified against the two public JetBrains root certificates, with the official JetBrains sample. A hand-written stamp no longer opens the paid tab.</li>
+    <li>No visible change for a customer with a valid licence or during the free trial.</li>
+</ul>
+<h3>2026.1.3 - The purchase dialog is opened with the current platform APIs.</h3>
+<ul>
+    <li>The "Get Pro" button now opens the JetBrains purchase dialog through the platform's current action API: the plugin reports no deprecated, removed or override-only API usage on recent IDE versions.</li>
+    <li>No visible change: the same dialog, the same product code and the same message.</li>
+</ul>
+<h3>2026.1.2 - The Compare tab is unlocked as soon as the licence becomes active.</h3>
 <ul>
     <li>The licence state is read again when the purchase dialog closes, so the Compare tab opens instead of staying locked.</li>
 </ul>

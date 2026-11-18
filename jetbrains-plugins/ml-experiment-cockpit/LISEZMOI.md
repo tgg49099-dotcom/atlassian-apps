@@ -1,8 +1,8 @@
 # LISEZMOI — dossier produit « ML Experiment Cockpit » (fiche Marketplace 35416)
 
-Version **2026.1.2** (ZIP candidat `ml-experiment-cockpit-2026.1.2.zip`). Ce dossier contient **le code du
-plugin** : sources Kotlin, `plugin.xml`, `build.gradle.kts` et les 14 fichiers
-de test.
+Version **2026.1.5** (ZIP candidat `ml-experiment-cockpit-2026.1.5.zip`). Ce dossier contient **le code du
+plugin** : sources Kotlin, `plugin.xml`, `build.gradle.kts` et les 21 fichiers
+de test (20 classes de test Kotlin + 1 ressource) — **101 tests, 19 classes de test**.
 
 **Ce que ce dossier n'est pas :** ce n'est pas un ZIP a decompresser, ni un
 dossier de preuves. Il a ete **allege** pour que la revue dispose de tous les
@@ -35,8 +35,10 @@ Gradle 8.10.2 installe :
 
 ## Etat
 
-Le candidat **n'a jamais ete televerse** : rien n'est en vente, 0 $.
-La version **2026.1.2** est prete a televerser le 15/11/2026 ; elle **n'est pas encore publiee**.
-Le prix (29 USD/an) et l'essai sont configures dans la fiche Marketplace, pas
+Le code de ce dossier est la version **2026.1.5**. Le Marketplace liste les versions
+approuvees : au 18/11/2026, c'est la **2026.1.4** (updateId 1222361) ; la 2026.1.5 est
+prete a etre televersee. Rien n'est en vente pour l'instant : **0 $**
+(`purchaseInfo.buyUrl` est `null` tant que le palier n'est pas ouvert).
+Le prix (29 EUR/an) et l'essai sont configures dans la fiche Marketplace, pas
 dans ce code. Le texte public annonce la duree reglee par le Marketplace
 (**30 jours**, `purchaseInfo.trialPeriod`) et **aucune autre**.

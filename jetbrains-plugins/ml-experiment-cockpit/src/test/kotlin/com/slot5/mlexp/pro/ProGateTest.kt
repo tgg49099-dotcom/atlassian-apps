@@ -45,7 +45,13 @@ class ProGateTest {
     @Test
     @DisplayName("2 - with a licence: the comparison passes (0 gap on 2 identical runs)")
     fun avecLicence_laComparaisonPasse() {
-        val etat = ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "key:une-cle"))
+        // A real signed stamp (test root): see VerificationSceauTest.
+        ProGate.installerVerificateur(VerificateurDeTest.racineDeTest())
+        val etat = try {
+            ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = VerificateurDeTest.sceau("cle_valide")))
+        } finally {
+            ProGate.remettreVerificateurJetBrains()
+        }
         assertEquals(ProState.PRO, etat)
 
         val r = ComparaisonRuns.calculer(deuxRuns(), etat)
@@ -100,9 +106,14 @@ class ProGateTest {
             "an unknown prefix is not a licence"
         )
         assertEquals(
-            ProState.PRO,
+            ProState.ABSENT,
             ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "stamp:serveur-flottant")),
-            "a floating server stamp = licence"
+            "a floating server stamp that JetBrains did not sign = no licence"
+        )
+        assertEquals(
+            ProState.ABSENT,
+            ProGate.etat(LectureLicence(facadeInitialisee = true, sceau = "key:une-cle")),
+            "a hand-written key: stamp = no licence (before 16/11/2026 it opened Pro)"
         )
         assertTrue(ProState.ESSAI.autorise(), "the trial authorises the comparison")
         assertTrue(!ProState.INCONNU.autorise(), "the unknown state opens nothing")
