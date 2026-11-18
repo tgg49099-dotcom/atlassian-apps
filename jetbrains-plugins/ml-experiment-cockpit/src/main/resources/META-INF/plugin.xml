@@ -63,8 +63,7 @@
 </ul>
 <h3>2026.1.5 - A mistyped server address now gives a clear message.</h3>
 <ul>
-    <li>When the address of the MLflow, Optuna or W&amp;B server is typed without its scheme (for example <code>localhost:5000</code> instead of <code>http://localhost:5000</code>), the tab now reports <em>Invalid MLflow URL: "localhost:5000" - the scheme is missing (http:// or https://)</em> — the same message for the three servers — instead of <em>Unexpected error</em> and a red error balloon.</li>
-    <li>The Sweeps tab (W&amp;B) had the same defect as the other two tabs: a mistyped address made it fail with a raw Java error. It is fixed too.</li>
+    <li>When the address of the MLflow or Optuna server is typed without its scheme (for example <code>localhost:5000</code> instead of <code>http://localhost:5000</code>), the tab now reports <em>Invalid MLflow URL: "localhost:5000" - the scheme is missing (http:// or https://)</em> (or <em>Invalid Optuna URL</em>) instead of <em>Unexpected error</em> and a red error balloon.</li>
     <li>No visible change when the address is correct: the same data, the same messages.</li>
 </ul>
 <h3>2026.1.4 - The licence check now verifies the JetBrains signature (official sample).</h3>
