@@ -94,7 +94,11 @@ class PanneauComparaison(
         addMouseListener(object : java.awt.event.MouseAdapter() {
             override fun mouseClicked(e: java.awt.event.MouseEvent) {
                 try {
-                    java.awt.Desktop.getDesktop().browse(java.net.URI(URL_FICHE_MARKETPLACE))
+                    // Jury 19/11/2026: the platform helper is com.intellij.ide.BrowserUtil
+                    // (package `ide`, not `ui`). It opens the browser the user chose in
+                    // Settings | Tools | Web Browsers and does not block the UI thread,
+                    // unlike java.awt.Desktop.browse, which can freeze the IDE on Linux.
+                    com.intellij.ide.BrowserUtil.browse(URL_FICHE_MARKETPLACE)
                 } catch (t: Throwable) {
                     // No browser on this machine (headless JVM, locked-down
                     // desktop): nothing breaks, the URL stays readable.
