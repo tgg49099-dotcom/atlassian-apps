@@ -6,6 +6,8 @@ import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.Presentation
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.fileChooser.FileChooserFactory
+import com.intellij.openapi.fileChooser.FileSaverDescriptor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.slot5.mlexp.MetricPoint
@@ -20,6 +22,7 @@ import java.awt.FlowLayout
 import java.awt.GridLayout
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
+import java.io.File
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JButton
 import javax.swing.JComboBox
@@ -48,7 +51,11 @@ import javax.swing.table.DefaultTableModel
  *   - a metric selector and the **overlaid curve** (A in blue, B in orange);
  *   - the **"Copy (Markdown)"** button: the "I want to export everything"
  *     gesture of the plan - it puts the 2 tables in the clipboard (no file,
- *     no CSV: the CSV/XLSX export is tier 2).
+ *     no CSV: the CSV/XLSX export is tier 2);
+ *   - the **"Export (HTML)"** button (Pro tier 2, since 2026.1.8): it writes
+ *     a **standalone HTML report** (2 tables + the curve as an embedded PNG,
+ *     CSS integrated, no external resource) in the folder the user chooses.
+ *     The button only exists when the Pro tier is active.
  *
  * The panel is **read-only**: it never writes to the server.
  */
@@ -76,6 +83,15 @@ class PanneauComparaison(
     // again (no official documentation describes a licence change event).
     private val boutonRelireLicence = JButton("Check licence again")
     private val boutonCopier = JButton("Copy (Markdown)").apply { isEnabled = false }
+    // 2026.1.8 (consigne of the mother, 19/11/2026) — palier Pro n°2 :
+    // l'export partageable de la comparaison (1 fichier HTML autonome).
+    // Le bouton n'existe QUE si le palier Pro est actif : sans licence,
+    // l'onglet Compare reste verrouille comme avant et la fonction payante
+    // n'est meme pas proposee (aucune fuite de la fonction payante).
+    private val boutonExport = JButton("Export (HTML)").apply {
+        isEnabled = false
+        isVisible = false
+    }
 
     // 2026.1.7 (consigne of the mother, 19/11/2026): a real clickable link to
     // the Marketplace page of the plugin - it is THERE that the buy and trial
@@ -145,6 +161,7 @@ class PanneauComparaison(
             add(badge)
             add(boutonGetPro)
             add(boutonCopier)
+            add(boutonExport)
         }
         rootComponent.add(topBar, BorderLayout.NORTH)
 
@@ -196,6 +213,7 @@ class PanneauComparaison(
         boutonGetPro.addActionListener { ouvrirDialogueAchat() }
         boutonRelireLicence.addActionListener { rafraichirEtatPro() }
         boutonCopier.addActionListener { copierMarkdown() }
+        boutonExport.addActionListener { exporter() }
         comboMetrique.addActionListener(listenerMetrique)
         comboRuns.addActionListener { onRunBChoisi() }
 
@@ -303,6 +321,10 @@ class PanneauComparaison(
         // only useful to a customer who does NOT have the Pro licence: it is
         // hidden as soon as the licence authorises the Pro features.
         boutonGetPro.isVisible = !etatPro.autorise()
+        // 2026.1.8 : le bouton « Export » est une fonction payante : il
+        // n'existe que si le palier Pro est actif. Sans licence, l'onglet
+        // reste verrouille ET le bouton n'est pas propose.
+        boutonExport.isVisible = etatPro.autorise()
         if (etatPro.autorise()) {
             messageVerrou.text = ""
             carte.show(porte, "contenu")
@@ -353,6 +375,7 @@ class PanneauComparaison(
         experimentId = d.experimentId
         comparaison = null
         boutonCopier.isEnabled = false
+        boutonExport.isEnabled = false
         rafraichirEtatPro()
         if (!etatPro.autorise()) {
             status("Comparison locked: an ML Experiment Cockpit Pro licence is required.")
@@ -426,7 +449,7 @@ class PanneauComparaison(
     }
 
     /** Computes and displays the comparison between A and the chosen run B. */
-    private fun calculerComparaison() {
+    private fun calculerComparaison(exportVers: File? = null, metriqueExport: String = "") {
         val a = runA ?: return
         val b = runChoisi() ?: return
         if (enCours) return
@@ -442,6 +465,34 @@ class PanneauComparaison(
         ApplicationManager.getApplication().executeOnPooledThread {
             try {
                 val client = MlflowClient(base)
+                // 2026.1.8 (palier Pro n°2) : l'export part du MEME job de
+                // plateforme que la comparaison (aucun fil nouveau : le
+                // compteur de fils de la plateforme reste vrai). L'export
+                // relit les 2 runs sur le serveur et ecrit le rapport ; en
+                // cas d'echec, c'est un message et AUCUN fichier n'est ecrit.
+                if (exportVers != null) {
+                    val resultat = ExportComparaison.exporter(
+                        client = client,
+                        runA = a,
+                        runB = b,
+                        experimentId = experimentId,
+                        metrique = metriqueExport,
+                        fichier = exportVers,
+                        etat = ProGate.etat(),
+                        origine = base
+                    )
+                    ApplicationManager.getApplication().invokeLater {
+                        enCours = false
+                        status(
+                            when (resultat) {
+                                is ResultatExport.Ecrit ->
+                                    "Comparison exported to ${resultat.chemin} (${resultat.octets} bytes)."
+                                is ResultatExport.Echec -> resultat.message
+                            }
+                        )
+                    }
+                    return@executeOnPooledThread
+                }
                 val detailsA = client.getRunDetails(a.id)
                 val detailsB = client.getRunDetails(b.id)
                 val refA = RunRef(
@@ -478,12 +529,22 @@ class PanneauComparaison(
             } catch (e: MlflowException) {
                 ApplicationManager.getApplication().invokeLater {
                     enCours = false
-                    status("Failed to load the runs: ${e.message}")
+                    status(
+                        if (exportVers != null)
+                            "Export failed: ${e.message}. No file was written."
+                        else
+                            "Failed to load the runs: ${e.message}"
+                    )
                 }
             } catch (t: Throwable) {
                 ApplicationManager.getApplication().invokeLater {
                     enCours = false
-                    status("Unexpected error: ${t.message ?: t.javaClass.simpleName}")
+                    status(
+                        if (exportVers != null)
+                            "Export failed: ${t.message ?: t.javaClass.simpleName}. No file was written."
+                        else
+                            "Unexpected error: ${t.message ?: t.javaClass.simpleName}"
+                    )
                 }
             }
         }
@@ -494,6 +555,7 @@ class PanneauComparaison(
             is ResultatComparaison.Refus -> {
                 comparaison = null
                 boutonCopier.isEnabled = false
+                boutonExport.isEnabled = false
                 viderTableaux()
                 status(resultat.message)
             }
@@ -503,6 +565,7 @@ class PanneauComparaison(
                 remplirTableaux(resultat)
                 remplirMetriques(resultat)
                 boutonCopier.isEnabled = true
+                boutonExport.isEnabled = true
                 status("${resultat.nombreEcarts} difference(s) between the 2 runs.")
             }
         }
@@ -631,6 +694,77 @@ class PanneauComparaison(
             status("Comparison copied to the clipboard (Markdown).")
         } catch (t: Throwable) {
             status("Copy failed: ${t.javaClass.simpleName}")
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Export (Pro tier 2) - 2026.1.8
+    // ------------------------------------------------------------------
+
+    /**
+     * Exports the comparison as a **standalone HTML file** (Pro tier 2).
+     *
+     * The file chooser of the platform is used: the user chooses the folder
+     * and the name of the file (aucun chemin en dur). If the user cancels,
+     * nothing happens at all.
+     *
+     * The export is a **fresh reading** of the 2 runs: it happens in the
+     * background job of the comparison (no new thread), and a failure is a
+     * clear message with **no file written** (a run that disappeared or that
+     * was renamed since the comparison was computed).
+     *
+     * **Nothing leaves the machine**: the report is written on the disk of
+     * the user, and the plugin sends nothing (no request, no e-mail, no
+     * telemetry).
+     */
+    private fun exporter() {
+        // La porte d'abord : sans licence active, aucun export n'est possible
+        // (et le bouton n'est de toute facon pas visible).
+        if (!etatPro.autorise()) {
+            status("Export is a Pro feature: an ML Experiment Cockpit Pro licence is required.")
+            return
+        }
+        val c = comparaison
+        if (c == null) {
+            status("Nothing to export yet: compare 2 runs first.")
+            return
+        }
+        if (enCours) {
+            status("A comparison is already running: try the export again in a moment.")
+            return
+        }
+        val fichier = choisirFichierExport(c) ?: return
+        // Le nom de la metrique est lu ICI (sur l'EDT), pas dans le fil de
+        // fond : Swing n'aime pas qu'on lise un composant depuis un autre fil.
+        val metrique = comboMetrique.selectedItem as? String ?: ""
+        calculerComparaison(exportVers = fichier, metriqueExport = metrique)
+    }
+
+    /**
+     * The platform's file chooser: the user chooses **where** the report is
+     * written. `null` = the user cancelled (nothing is written).
+     */
+    private fun choisirFichierExport(c: ResultatComparaison.Comparaison): File? {
+        return try {
+            val descriptor = FileSaverDescriptor(
+                "Export the comparison as an HTML report",
+                "Choose the file to write the standalone HTML report",
+                "html"
+            )
+            val nom = ExportComparaison.nomFichier(
+                c.a.libelle(),
+                c.b.libelle(),
+                System.currentTimeMillis()
+            )
+            val dialogue = FileChooserFactory.getInstance()
+                .createSaveFileDialog(descriptor, rootComponent)
+            val choisi = dialogue.save(null as com.intellij.openapi.vfs.VirtualFile?, nom)
+            choisi?.file
+        } catch (t: Throwable) {
+            // Pas de boite de dialogue possible (environnement verrouille) :
+            // rien n'est casse, l'utilisateur peut reessayer.
+            status("Could not open the file chooser: ${t.javaClass.simpleName}")
+            null
         }
     }
 

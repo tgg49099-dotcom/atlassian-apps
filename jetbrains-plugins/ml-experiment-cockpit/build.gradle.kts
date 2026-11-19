@@ -135,7 +135,14 @@ intellijPlatform {
 </table>
 <p><b>ML Experiment Cockpit Pro</b> adds exactly one tab — <b>Compare</b>: right-click a run in the Experiments tree, pick « Compare with… », and the two runs are shown side by side — parameters, last metric values with absolute and relative gaps — and both metric curves are drawn on the same axis, exportable as Markdown. Without a licence the tab stays visible but locked, and the four free tabs are unchanged.</p>
 <p>It is a read-only MLOps view: experiment tracking, hyperparameter sweeps and registered models, read from the servers you configure. Open it from <b>View | Tool Windows | ML Experiment Cockpit</b> and set your servers in <em>Settings | Tools | ML Experiment Cockpit</em>. Every request goes to the servers you configure — no telemetry, no analytics, no advertising.</p>""".trimIndent()
-        changeNotes = """<h3>2026.1.7 - The locked Compare tab now sells the Pro tier.</h3>
+        changeNotes = """<h3>2026.1.8 - The comparison can be shared as one standalone HTML file.</h3>
+<ul>
+    <li>Pro only: a new <b>Export</b> button writes the comparison - parameters, latest metric values with the absolute and the relative gaps, and the curve of the metric - as <b>one self-contained HTML file</b>, that can be sent to someone who has no MLflow.</li>
+    <li>The report is self-contained: the style is integrated in the file and the curve is an embedded image. It opens offline and loads nothing from the network.</li>
+    <li>The file is written in the folder you choose, under the name <code>ml-experiment-compare-&lt;run A&gt;-&lt;run B&gt;-&lt;date&gt;.html</code>. The 2 runs are read again at that moment: if one of them has disappeared or has been renamed since the comparison, nothing is written and the tab says why.</li>
+    <li>No functional change: the four free tabs, their limits, the comparison itself and the Markdown copy are unchanged.</li>
+</ul>
+<h3>2026.1.7 - The locked Compare tab now sells the Pro tier.</h3>
 <ul>
     <li>The locked tab says <em>Compare is a Pro feature</em>, states the price (29 EUR/year, VAT depending on your country) and the 30-day free trial, and links to the plugin page on the JetBrains Marketplace, where the buy and trial buttons are.</li>
 </ul>
