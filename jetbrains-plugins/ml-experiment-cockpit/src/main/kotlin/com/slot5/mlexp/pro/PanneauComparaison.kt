@@ -371,6 +371,11 @@ class PanneauComparaison(
                 zoneLicence.add(boutonLicencePro)
             }
         }
+        // Jury 19/11/2026 : Swing ne relance pas la mise en page apres
+        // removeAll()/add() ; sans ceci le bouton peut rester dessine (ou ne
+        // pas apparaitre) jusqu'au prochain redimensionnement.
+        zoneLicence.revalidate()
+        zoneLicence.repaint()
         // 2026.1.8 : le bouton « Export » est une fonction payante : il
         // n'existe que si le palier Pro est actif. Sans licence, l'onglet
         // reste verrouille ET le bouton n'est pas propose.
