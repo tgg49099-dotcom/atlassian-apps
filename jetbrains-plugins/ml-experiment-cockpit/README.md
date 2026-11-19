@@ -2,7 +2,7 @@
 
 JetBrains IDE plugin — connect to an MLflow Tracking Server, see your ML experiments without leaving the IDE.
 
-> **Status: published on the JetBrains Marketplace.** The sources in this repository are version **2026.1.8**. The *Versions* tab of the plugin page lists the versions that are actually published, with their change notes. Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
+> **Status: published on the JetBrains Marketplace.** The sources in this repository are version **2026.1.9**. The *Versions* tab of the plugin page lists the versions that are actually published, with their change notes. Plugin page: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
 ## Install
 
@@ -19,7 +19,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
 - Marketplace listing (plugin 35416): https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 - Product README (full documentation): https://github.com/tgg49099-dotcom/atlassian-apps/blob/main/jetbrains-plugins/ml-experiment-cockpit/README.md
 
-## What this plugin does (sources here = 2026.1.8)
+## What this plugin does (sources here = 2026.1.9)
 
 1. **Configure the five fields** in `Settings → Tools → ML Experiment Cockpit`:
    - MLflow: e.g. `http://localhost:5000`.
@@ -59,7 +59,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
    `GET /api/2.0/mlflow/metrics/get-history` and renders it as a line chart
    (auto-scaled Y axis, hand-drawn with `Graphics2D`).
 
-### Compare (Pro tiers n°1 and n°2; sources here = 2026.1.8)
+### Compare (Pro tiers n°1 and n°2; sources here = 2026.1.9)
 
 10. Tab **"Compare"** — the first paid feature, sold by JetBrains as a
     subscription under the product code `PPCOCKPITPRO`. Right-click a run in
@@ -88,7 +88,7 @@ Compatibility: the published build declares `since-build 243.0` and `until-build
     5 000 metric points per run) — `GratuitInchangeTest` proves it.
 > The **Compare** tab requires a licence sold by the JetBrains Marketplace — see the plugin page for availability: https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit
 
-That is the entire surface of the plugin (sources here = 2026.1.8). The build pipeline
+That is the entire surface of the plugin (sources here = 2026.1.9). The build pipeline
 (`buildPlugin` + `verifyPlugin`) is validated, and the upload procedure is documented
 below.
 
@@ -116,7 +116,8 @@ below.
 | 2026.1.4 | **The licence check verifies the JetBrains signature** (official sample): the Pro tier is unlocked only by a licence stamp whose signature is verified against the two public JetBrains root certificates; a hand-written stamp no longer opens the paid tab. | ✅ published on the Marketplace |
 | 2026.1.5 | **A mistyped server address now gives a clear message**: the MLflow, Optuna and W&B tabs report the address and the missing scheme (one message for the three servers) instead of "Unexpected error" and a red error balloon; the W&B Sweeps tab no longer fails with a raw Java error. No visible change when the address is correct. | ✅ built - frozen, awaiting upload (md5 `49e0e4ae…`) |
 | 2026.1.6 | **The Pro tier price is now written in euros**: every text that names the price (the description table, the locked Compare tab, these notes) reads `29 EUR/year, VAT depending on your country`; the Compare tab says `Pro: active` without distinguishing a free trial from a paid licence. No functional change: the price stays 29 EUR/year and the trial stays 30 days. | ✅ published on the Marketplace |
-| 2026.1.8 | **Pro tier n°2 — the comparison can be shared**: a new **Export** button writes the comparison (parameters, latest metric values with the absolute and relative gaps, the curve of the metric) as **one standalone HTML file** — style included, curve embedded, **no external resource**, opens offline. The file goes to the folder the user chooses, under the name `ml-experiment-compare-<run A>-<run B>-<date>.html`; the two runs are read again at that moment and nothing is written if one of them has disappeared or been renamed. The button only exists while the Pro tier is active. No functional change: the four free tabs, their limits, the comparison and the Markdown copy are unchanged. | ✅ built - the version in these sources (never uploaded yet) |
+| 2026.1.9 | **The release notes now invite the reader to try the Pro tier**: the first sentence of the notes says what the Pro tier brings (compare 2 runs, export the comparison as **one standalone HTML file**) and that the **trial is free for 30 days**. The proof of the report is strengthened (the schemes are counted without regard to the case, and every `src`/`href` must start with `data:`), the exported report is readable by a colleague (rights 644), and the comment of the Marketplace link names the helper that is really called. Nothing else changes: the four free tabs, their limits, the comparison and the Markdown copy are unchanged. | ✅ built - the version in these sources (never uploaded yet) |
+| 2026.1.8 | **Pro tier n°2 — the comparison can be shared**: a new **Export** button writes the comparison (parameters, latest metric values with the absolute and relative gaps, the curve of the metric) as **one standalone HTML file** — style included, curve embedded, **no external resource**, opens offline. The file goes to the folder the user chooses, under the name `ml-experiment-compare-<run A>-<run B>-<date>.html`; the two runs are read again at that moment and nothing is written if one of them has disappeared or been renamed. The button only exists while the Pro tier is active. Nothing else changes: the four free tabs, their limits, the comparison and the Markdown copy are unchanged. | ✅ built - superseded by 2026.1.9, never uploaded on its own |
 | 2026.1.7 | **The locked Compare tab now sells the Pro tier**: the locked card says *Compare is a Pro feature*, states the price (29 EUR/year, VAT depending on your country) and the 30-day free trial, and links to the plugin page on the JetBrains Marketplace, where the buy and trial buttons are. No payment is taken in the plugin. The four free tabs are unchanged. | ✅ built - the version in these sources (see the *Versions* tab of the plugin page for what is published) |
 
 Each version adds a thin slice of the niche.
@@ -132,10 +133,10 @@ cd ml-experiment-plugin
 ./gradlew buildPlugin verifyPlugin
 ```
 
-Output ZIP (the version in these sources is 2026.1.7):
+Output ZIP (the version in these sources is 2026.1.9):
 
 ```
-build/distributions/ml-experiment-cockpit-2026.1.7.zip
+build/distributions/ml-experiment-cockpit-2026.1.9.zip
 ```
 
 `./gradlew clean` deletes the whole `build/` tree, including any earlier ZIP kept as a
@@ -147,7 +148,7 @@ Before any upload, check the artefact that ships, not the sources: extract the p
 out of the distribution ZIP and scan the `META-INF/plugin.xml` inside it for
 placeholder / withdrawn-feature residue, check the id / version / vendor / `until-build`,
 check that both icons are inside the JAR, and check that the change-notes start with the
-shipped version (2026.1.7) and list at least one bullet (the older published versions may
+shipped version (2026.1.9) and list at least one bullet (the older published versions may
 follow as history). Also check that the ZIP you are about to upload is byte-for-byte the
 one your build produced (`cmp` against `build/distributions/`), and that a version with the
 same number is not already listed on the plugin page.
@@ -158,7 +159,7 @@ With `JETBRAINS_MARKETPLACE_TOKEN` set in the environment (the value is never wr
 a file):
 
 ```bash
-Z=build/distributions/ml-experiment-cockpit-2026.1.7.zip
+Z=build/distributions/ml-experiment-cockpit-2026.1.9.zip
 md5sum "$Z"                       # the ZIP you upload must be the one your build produced
 curl -i --header "Authorization: Bearer ${JETBRAINS_MARKETPLACE_TOKEN}" \
      -F pluginId=35416 \

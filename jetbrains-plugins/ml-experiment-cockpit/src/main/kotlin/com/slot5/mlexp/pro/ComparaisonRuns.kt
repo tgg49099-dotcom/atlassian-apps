@@ -268,9 +268,13 @@ object ComparaisonRuns {
 
     /** The user message of a refusal. */
     fun messageRefus(code: CodeRefus): String = when (code) {
+        // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de
+        // 14:15): the refusal must not stop at "no licence": it says HOW to
+        // get one - the 30-day free trial, started from the Compare tab.
         CodeRefus.BLOQUE_SANS_LICENCE ->
             "Comparing 2 runs is part of ML Experiment Cockpit Pro: " +
-                "no licence is active on this machine."
+                "no licence is active on this machine. " +
+                "Start the 30-day free trial from the Compare tab."
         CodeRefus.LICENCE_EXPIREE ->
             "Your free trial of ML Experiment Cockpit Pro has ended."
         CodeRefus.FACADE_NON_INITIALISEE ->

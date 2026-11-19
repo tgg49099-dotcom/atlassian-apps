@@ -19,8 +19,8 @@ package com.slot5.mlexp.pro
  * reasons. Since 2026.1.7 the **message of the locked card is the same
  * honest sales message for every locked state** (it lives in
  * `PanneauComparaison.MESSAGE_VERROU_VENTE`): what the feature is, its price,
- * the trial, and where to buy. The state itself is read on the badge of the
- * tab, never in the message:
+ * the trial (and how to start it: **in the IDE**), and where to buy. The
+ * state itself is read on the badge of the tab, never in the message:
  *
  * | State | Meaning | Badge shown |
  * |---|---|---|
@@ -207,6 +207,7 @@ object ProGate {
     // REMOVED. The locked card now shows ONE honest sales message, the same
     // for every locked state - it lives in the panel
     // (PanneauComparaison.MESSAGE_VERROU_VENTE): what the feature is, its
-    // price, the trial, and a clickable link to the Marketplace page. The
+    // price, the trial (and how to start it, in the IDE), and a clickable
+    // link to the Marketplace page (price and details). The
     // state (ABSENT, EXPIRE, INCONNU) stays on the badge of the tab.
 }

@@ -223,18 +223,25 @@ class PanneauComparaisonPorteTest {
                 "the 30-day free trial must be announced, got: $texteComplet"
             )
             // 4. the clickable link to the Marketplace page of the plugin
-            //    (it is there that the buy / trial buttons of JetBrains are)
+            //    (2026.1.9, consigne of the mother of 19/11/2026: the link is
+            //    KEPT but labelled with what it carries - the price and the
+            //    details; the trial is started in the IDE, not on the web page)
             val url = PanneauComparaison.URL_FICHE_MARKETPLACE
             val lien = tousLesComposants(visible)
                 .filterIsInstance<JLabel>()
-                .firstOrNull { it.text == url }
+                .firstOrNull { it.text == "Pricing and details" }
             assertNotNull(
                 lien,
-                "the locked card must show the Marketplace URL $url, got: $texteComplet"
+                "the locked card must show the link \"Pricing and details\", got: $texteComplet"
             )
             assertTrue(
                 lien!!.mouseListeners.isNotEmpty(),
-                "the Marketplace URL must be clickable (a mouse listener opens the browser)"
+                "the Marketplace link must be clickable (a mouse listener opens the browser)"
+            )
+            assertEquals(
+                url,
+                lien.toolTipText,
+                "the link must still point to the Marketplace page of the plugin"
             )
             // 5. nothing more: no payment in the plugin, no Gumroad, no
             //    donation, no unmeasured promise

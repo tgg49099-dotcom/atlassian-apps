@@ -22,7 +22,13 @@ import org.junit.jupiter.api.Test
  *   3. le nombre d'images **intégrees** (`data:image/png;base64`) : **>= 1** ;
  *   4. l'absence de `NaN` et de ligne fantome.
  *
- * Le fichier est écrit dans le dossier donne par la variable
+ * **Cycle 246 (19/11/2026, retouche 2b du Studio) :** le controle des
+ * ressources est passe par `ControleRessources`, qui compte les schemas
+ * **sans egard a la casse** (`HTTPS://` est une URL comme `https://`) et
+ * exige que **chaque `src`/`href` commence par `data:`**. Les droits du
+ * fichier final sont mesures (644 : le rapport se partage).
+ *
+ * Le fichier est ecrit dans le dossier donne par la variable
  * d'environnement `MLEXP_PREUVE_DOSSIER` (le cycle 245 y met
  * `/work/preuves/cycle245`) ; sans elle, le fichier va dans le dossier
  * temporaire du systeme. Le test est **toujours vert** : il ne depend
@@ -55,27 +61,61 @@ class PreuveRapportHorsLigneTest {
             assertTrue(fichier.exists(), "the report must be on the disk: $fichier")
 
             val html = fichier.readText(Charsets.UTF_8)
-            val externes = Regex("https?://").findAll(html).count()
+            // The control of the resources (proof 08, corrected in cycle 246):
+            // the schemes are counted in ANY case, and every src/href must
+            // start with `data:`.
+            val externes = ControleRessources.schemesExternes(html)
+            val ressources = ControleRessources.ressources(html)
+            val nonData = ControleRessources.ressourcesNonData(html)
             val images = Regex("data:image/png;base64,").findAll(html).count()
 
             // 1. the size
             println("PREUVE-AUTONOMIE fichier=${fichier.absolutePath}")
             println("PREUVE-AUTONOMIE taille_octets=${fichier.length()}")
-            // 2. no external URL
-            println("PREUVE-AUTONOMIE url_externes=$externes")
+            // 2. no external URL (any case)
+            println("PREUVE-AUTONOMIE url_externes=${externes.size}")
             // 3. at least one embedded image
             println("PREUVE-AUTONOMIE images_base64=$images")
             // 4. no NaN, no ghost line
             println("PREUVE-AUTONOMIE nan=${html.contains("NaN")}")
+            // 5. every resource is a data:
+            println("PREUVE-AUTONOMIE ressources=${ressources.size} non_data=${nonData.size}")
+            // 6. the rights of the final file (644: readable by a colleague)
+            println("PREUVE-AUTONOMIE droits=${droitsOctal(fichier)}")
 
             assertTrue(fichier.length() > 1000, "the report must not be empty")
-            assertEquals(0, externes, "the report must load NOTHING from the network")
+            assertEquals(0, externes.size, "the report must load NOTHING from the network (any case)")
             assertTrue(images >= 1, "the curve must be embedded in the report")
             assertFalse(html.contains("NaN"), "the report must hold no NaN")
             assertTrue(html.contains("<th>parameter</th>"), "the parameter table must be there")
             assertTrue(html.contains("<th>metric</th>"), "the metric table must be there")
+            // every src/href of the report is a data: (the curve), nothing else
+            assertTrue(ressources.isNotEmpty(), "the report must hold at least one resource")
+            assertTrue(
+                nonData.isEmpty(),
+                "every src/href of the report must start with data:: $nonData"
+            )
         } finally {
             serveur.close()
+        }
+    }
+
+    /**
+     * The rights of the final report, in octal (`644` = readable by
+     * everybody, writable by its owner).
+     *
+     * The report is meant to be **shared**: a colleague who has no write
+     * access on the folder must still be able to open it. The temporary
+     * file of the export is created with the rights `600` (owner only), so
+     * the rights are set before the file is moved.
+     */
+    private fun droitsOctal(fichier: File): String {
+        return try {
+            java.nio.file.attribute.PosixFilePermissions.toString(
+                java.nio.file.Files.getPosixFilePermissions(fichier.toPath())
+            )
+        } catch (t: Throwable) {
+            "illisible ($t)"
         }
     }
 }

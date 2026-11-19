@@ -567,8 +567,7 @@ class ExportComparaisonTest {
 
     @Test
     @DisplayName("E22 - the export writes the file the user chose, nowhere else")
-    fun leExportEcritLeFichierChoisiEtRienDautre() {
-        val serveur = ServeurFaux()
+    fun leExportEcritLeFichierChoisiEtRienDautre() {        val serveur = ServeurFaux()
         val dossier = File(System.getProperty("java.io.tmpdir"), "mlexp-export-test-${System.nanoTime()}")
         val sousDossier = File(dossier, "rapports")
         assertTrue(sousDossier.mkdirs())
@@ -591,6 +590,70 @@ class ExportComparaisonTest {
             serveur.close()
             dossier.deleteRecursively()
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 5. The cycle 246 corrections (retouches 2b and 2c of the Studio)
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("E23 - the final report has the rights 644: a colleague can open it")
+    fun leRapportFinalEstLisibleParUnCollegue() {
+        val dossier = File(System.getProperty("java.io.tmpdir"), "mlexp-export-test-${System.nanoTime()}")
+        assertTrue(dossier.mkdirs(), "the test folder must be created")
+        try {
+            val fichier = File(dossier, "rapport.html")
+            val html = ExportComparaison.html(comparaison(), pngBase64(), "loss", 1_762_000_000_000L)
+            val r = ExportComparaison.ecrire(fichier, html)
+            assertTrue(r is ResultatExport.Ecrit, "the write must succeed: $r")
+            // The temporary file of the export is created with the rights 600
+            // (owner only): the rights must be set BEFORE the move.
+            val droits = java.nio.file.attribute.PosixFilePermissions.toString(
+                java.nio.file.Files.getPosixFilePermissions(fichier.toPath())
+            )
+            assertEquals(
+                "rw-r--r--",
+                droits,
+                "the report must be readable by everybody (644): the rights are $droits"
+            )
+        } finally {
+            dossier.deleteRecursively()
+        }
+    }
+
+    @Test
+    @DisplayName("E24 - the scheme of a URL is neutralised in ANY case (HTTPS:// too)")
+    fun leSchemaEstNeutraliseDansToutesLesCasses() {
+        // A URL scheme is case-insensitive (RFC 3986): an upper-case scheme
+        // is a URL exactly like a lower-case one. The report must hold
+        // neither, otherwise the proof of the autonomy could be green on a
+        // report that holds a URL.
+        for (hostile in listOf(
+            "https://exemple.org/x",
+            "HTTPS://exemple.org/x",
+            "Http://exemple.org/x",
+            "hTtPs://exemple.org/x"
+        )) {
+            val echappe = ExportComparaison.echapper(hostile)
+            assertFalse(
+                Regex("(?i)https?://").containsMatchIn(echappe),
+                "the scheme must be neutralised, whatever its case: $hostile -> $echappe"
+            )
+            assertTrue(
+                echappe.contains("exemple.org/x"),
+                "the value must still be readable by the human: $echappe"
+            )
+        }
+        // and the whole report holds none of them
+        val c = comparaison(
+            paramsA = mapOf("dataset" to "HTTPS://exemple.org/data?a=1"),
+            paramsB = mapOf("dataset" to "HTTP://exemple.org/data")
+        )
+        val html = ExportComparaison.html(c, pngBase64(), "loss", 1_762_000_000_000L)
+        assertFalse(
+            Regex("(?i)https?://").containsMatchIn(html),
+            "the report must hold no scheme at all, whatever its case"
+        )
     }
 
 }

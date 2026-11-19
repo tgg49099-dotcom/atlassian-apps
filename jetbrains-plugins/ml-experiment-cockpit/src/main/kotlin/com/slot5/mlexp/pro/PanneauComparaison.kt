@@ -40,9 +40,15 @@ import javax.swing.table.DefaultTableModel
  * error message, it is a gate. Since 2026.1.7 (consigne of the mother,
  * 19/11/2026) the locked card **sells the Pro tier**: one honest message -
  * what the feature is, its price, the trial - and a **clickable link** to the
- * Marketplace page of the plugin, where the buy and trial buttons of
- * JetBrains are (plus the "Get Pro" button that opens the JetBrains purchase
- * dialog).
+ * Marketplace page of the plugin ("Pricing and details": the price and the
+ * details of the offer).
+ *
+ * **The trial is started IN THE IDE** (Studio, 19/11/2026, review of 14:15):
+ * the button of the locked card says "Start 30-day free trial" and opens the
+ * JetBrains dialog, where the customer then clicks "Evaluate for free" (or
+ * Help | Register). The Marketplace **web page documents the purchase, it does
+ * not grant the trial**. "Get Pro" is kept only when the trial has ended
+ * (state EXPIRE): there, the purchase is the only way left.
  *
  * Content when the gate is open:
  *   - an **A / B** header (name, `run_id`, status, start, duration);
@@ -76,7 +82,18 @@ class PanneauComparaison(
     private val badge = JBLabel("licence: -").apply {
         foreground = java.awt.Color(0x55, 0x55, 0x55)
     }
-    private val boutonGetPro = JButton("Get Pro")
+    // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de 14:15)
+    // : the button of the locked card used to say "Get Pro", i.e. it asked
+    // for the PAYMENT. The 30-day trial is free and is started in the IDE, so
+    // the button must offer the TRIAL: "Start 30-day free trial". "Get Pro"
+    // is kept ONLY when the trial has ended (state EXPIRE). The label depends
+    // on the licence state: see [libelleBoutonLicence].
+    private val boutonLicencePro = JButton()
+    // The button lives in its own holder: when the Pro tier is active
+    // (PRO, ESSAI) the button is REMOVED from the panel, so that there is
+    // really NO button left (not a hidden one).
+    private val zoneLicence = JPanel(FlowLayout(FlowLayout.LEFT))
+    private val topBar = JPanel(FlowLayout(FlowLayout.LEFT))
     // Jury 13/11/2026 (review 8f1f, point a): right after a purchase
     // finished in the browser, the licence can still be read as "no
     // licence". The locked card therefore offers a button that reads it
@@ -93,18 +110,22 @@ class PanneauComparaison(
         isVisible = false
     }
 
-    // 2026.1.7 (consigne of the mother, 19/11/2026): a real clickable link to
-    // the Marketplace page of the plugin - it is THERE that the buy and trial
-    // buttons of JetBrains are, not in the plugin (the plugin never takes a
-    // payment). The URL is also readable as plain text, so the message stays
-    // honest even without a click. No other link: no Gumroad, no donation.
+    // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de 14:15)
+    // : the link is KEPT, but it is labelled "Pricing and details" - it carries
+    // the price and the details of the offer. It is NOT the place where the
+    // trial is granted: the trial is started in the IDE ("Evaluate for free" in
+    // the License Activation window, or Help | Register). The Marketplace web
+    // page documents the purchase, it does not grant the trial. The URL stays
+    // readable in the tooltip of the link. No other link: no Gumroad, no
+    // donation.
     //
-    // The click opens the DEFAULT BROWSER through the JDK itself
-    // (java.awt.Desktop): com.intellij.ui.BrowserUtil is NOT on the compile
-    // classpath of the PY 2024.3 dependency (measured 19/11/2026:
-    // "Unresolved reference: BrowserUtil"), while the JDK works the same on
-    // every IDE from build 243 to 263.
-    private val lienMarketplace = JLabel(URL_FICHE_MARKETPLACE).apply {
+    // The click opens the browser the user chose in Settings | Tools | Web
+    // Browsers, through the platform helper com.intellij.ide.BrowserUtil
+    // (package `ide`, not `ui`): it does not block the UI thread, unlike
+    // java.awt.Desktop.browse, which can freeze the IDE on Linux. The helper
+    // is on the compile classpath of every IDE from build 243 to 263.
+    private val lienMarketplace = JLabel(LIBELLE_LIEN_MARKETPLACE).apply {
+        toolTipText = URL_FICHE_MARKETPLACE
         foreground = java.awt.Color(0x00, 0x00, 0xCC)
         cursor = java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR)
         addMouseListener(object : java.awt.event.MouseAdapter() {
@@ -123,9 +144,18 @@ class PanneauComparaison(
             }
         })
     }
-    private val statusLabel = JBLabel(
-        "Select a run in the Experiments tab, then right-click it to compare it with another run."
-    )
+    /**
+     * The status line (under both cards).
+     *
+     * 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de
+     * 14:15): a plain `JLabel` does NOT wrap its text - the tail of a long
+     * message ("Start the 30-day free trial from the Compare tab.") is
+     * simply **clipped** when the tool window is narrower than the text. The
+     * messages are therefore written in HTML (see [status]): the label then
+     * WRAPS on the width of the panel instead of cutting the instruction that
+     * leads to the trial.
+     */
+    private val statusLabel = JBLabel()
 
     private val entete = JTable(ModeleNonEditable(arrayOf<Any>("A", "B"), 5))
     private val tableParams = JTable(ModeleNonEditable(arrayOf<Any>("parameter", "A", "B", "state"), 0))
@@ -154,15 +184,16 @@ class PanneauComparaison(
 
     init {
         // ---- NORTH : title, licence state, buttons ----
-        val topBar = JPanel(FlowLayout(FlowLayout.LEFT)).apply {
-            add(JBLabel("Compare 2 runs").apply {
-                font = com.intellij.util.ui.JBFont.regular()
-            })
-            add(badge)
-            add(boutonGetPro)
-            add(boutonCopier)
-            add(boutonExport)
-        }
+        topBar.add(JBLabel("Compare 2 runs").apply {
+            font = com.intellij.util.ui.JBFont.regular()
+        })
+        topBar.add(badge)
+        // The licence button sits in its own holder: it can then be removed
+        // from the panel when the Pro tier is active (no hidden button left).
+        zoneLicence.add(boutonLicencePro)
+        topBar.add(zoneLicence)
+        topBar.add(boutonCopier)
+        topBar.add(boutonExport)
         rootComponent.add(topBar, BorderLayout.NORTH)
 
         // ---- CENTER : content or closed gate ----
@@ -174,6 +205,10 @@ class PanneauComparaison(
 
         construireContenu()
         construireVerrou()
+
+        // The first message of the status line (written through [status], so
+        // that it wraps like every other message).
+        status("Select a run in the Experiments tab, then right-click it to compare it with another run.")
 
         // 10/11/2026 (cycle 158) — CORRECTION D'UN BLOQUANT MESURE DANS UN IDE REEL.
         //
@@ -210,7 +245,7 @@ class PanneauComparaison(
         porte.add(carteVerrou, "verrou")
         carte.show(porte, "contenu")
 
-        boutonGetPro.addActionListener { ouvrirDialogueAchat() }
+        boutonLicencePro.addActionListener { ouvrirDialogueAchat() }
         boutonRelireLicence.addActionListener { rafraichirEtatPro() }
         boutonCopier.addActionListener { copierMarkdown() }
         boutonExport.addActionListener { exporter() }
@@ -317,10 +352,25 @@ class PanneauComparaison(
             ProState.ABSENT -> "Pro: not active - no licence"
             ProState.INCONNU -> "Pro: not verifiable yet"
         }
-        // Jury 13/11/2026 (review 8f1f, point b): the "Get Pro" button is
-        // only useful to a customer who does NOT have the Pro licence: it is
-        // hidden as soon as the licence authorises the Pro features.
-        boutonGetPro.isVisible = !etatPro.autorise()
+        // Jury 13/11/2026 (review 8f1f, point b): the button is only useful
+        // to a customer who does NOT have the Pro licence: it is hidden as
+        // soon as the licence authorises the Pro features.
+        //
+        // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de
+        // 14:15) : the button now offers the TRIAL ("Start 30-day free
+        // trial") and not the payment ("Get Pro"), except when the trial has
+        // ended (EXPIRE). When the Pro tier is active (PRO, ESSAI) the button
+        // is REMOVED from the panel: there is no button left at all.
+        val libelle = libelleBoutonLicence(etatPro)
+        if (libelle == null) {
+            zoneLicence.removeAll()
+        } else {
+            boutonLicencePro.text = libelle
+            if (boutonLicencePro.parent !== zoneLicence) {
+                zoneLicence.removeAll()
+                zoneLicence.add(boutonLicencePro)
+            }
+        }
         // 2026.1.8 : le bouton « Export » est une fonction payante : il
         // n'existe que si le palier Pro est actif. Sans licence, l'onglet
         // reste verrouille ET le bouton n'est pas propose.
@@ -773,8 +823,20 @@ class PanneauComparaison(
     // ------------------------------------------------------------------
 
     private fun status(message: String) {
-        statusLabel.text = message
+        // 2026.1.9 : the message is written in HTML so that the label WRAPS
+        // it (a plain JLabel clips the text that is wider than the panel).
+        statusLabel.text = "<html>" + echapperHtml(message) + "</html>"
     }
+
+    /**
+     * Escapes the characters that HTML would interpret: the messages are
+     * plain text (a file path, an error message) and must be READ as they
+     * are written.
+     */
+    private fun echapperHtml(texte: String): String = texte
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
 
     private fun formatInstant(ms: Long): String {
         if (ms <= 0L) return "-"
@@ -792,13 +854,53 @@ class PanneauComparaison(
         const val PLAFOND_POINTS_PRO = 100000
 
         /**
-         * Marketplace page of the plugin 35416: it is THERE that the buy and
-         * trial buttons of JetBrains are (the plugin never takes a payment).
-         * Written once, read by the clickable link of the locked card and
-         * checked by the tests.
+         * Marketplace page of the plugin 35416: the page that shows the price
+         * and the details of the offer (the plugin itself never takes a
+         * payment). It is NOT the place where the trial is granted: the trial
+         * is started in the IDE ("Evaluate for free" in the License Activation
+         * window, or Help | Register). Written once, read by the clickable
+         * link of the locked card and checked by the tests.
          */
         const val URL_FICHE_MARKETPLACE =
             "https://plugins.jetbrains.com/plugin/35416-ml-experiment-cockpit"
+
+        /**
+         * The label of the link to the Marketplace page (2026.1.9, consigne of
+         * the mother, 19/11/2026, revue du Studio de 14:15): the link says
+         * what it carries - the price and the details - and no more.
+         */
+        const val LIBELLE_LIEN_MARKETPLACE = "Pricing and details"
+
+        /**
+         * The label of the button of the locked card when the trial is
+         * offered (2026.1.9, consigne of the mother, 19/11/2026, revue du
+         * Studio de 14:15): the trial is free, so the button must offer it.
+         */
+        const val LIBELLE_BOUTON_ESSAI = "Start 30-day free trial"
+
+        /**
+         * The label of the button of the locked card when the trial has ended
+         * (state EXPIRE): the purchase is then the only way left.
+         */
+        const val LIBELLE_BOUTON_ACHAT = "Get Pro"
+
+        /**
+         * The label of the button of the locked card, according to the
+         * licence state.
+         *
+         * 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de
+         * 14:15): the button said "Get Pro", i.e. it asked for the PAYMENT.
+         * The 30-day trial is free and is started **in the IDE**, so the
+         * button must offer the trial ("Start 30-day free trial"); "Get Pro"
+         * is kept only when the trial has ended. `null` = **no button at all**
+         * (PRO, ESSAI: the Pro tier is already active, there is nothing left
+         * to offer).
+         */
+        fun libelleBoutonLicence(etat: ProState): String? = when (etat) {
+            ProState.PRO, ProState.ESSAI -> null
+            ProState.EXPIRE -> LIBELLE_BOUTON_ACHAT
+            ProState.ABSENT, ProState.INCONNU -> LIBELLE_BOUTON_ESSAI
+        }
 
         /**
          * The sales message of the locked card (2026.1.7, consigne of the
@@ -809,11 +911,20 @@ class PanneauComparaison(
          * the trial length is the one the Marketplace settled (30 days,
          * `purchaseInfo.trialPeriod`, measured on 19/11/2026). Nothing else
          * is promised: no "unlimited", no other price, no other link.
+         *
+         * 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio de
+         * 14:15): a **4th line** says HOW the trial is started, because the
+         * 3 first lines only announced it: "30-day free trial." alone sends
+         * the customer looking for a trial button that is not there. The
+         * trial is started **in the IDE**: "Evaluate for free" in the JetBrains
+         * window, or Help | Register.
          */
         const val MESSAGE_VERROU_VENTE =
             "Compare is a Pro feature.\n" +
                 "29 EUR/year, VAT depending on your country.\n" +
-                "30-day free trial."
+                "30-day free trial.\n" +
+                "Click \"Start 30-day free trial\", then \"Evaluate for free\" " +
+                "in the JetBrains window (or Help | Register)."
     }
 }
 

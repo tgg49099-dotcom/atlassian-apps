@@ -116,11 +116,18 @@ class ComparaisonDeverrouilleTest {
                 contientUnTextArea(carteVisible(porte)),
                 "without a licence the Compare tab must stay locked"
             )
-            // ... and the "Get Pro" button is there.
-            val bouton = boutonsDe(panneau.rootComponent).firstOrNull { it.text == "Get Pro" }
-            assertNotNull(bouton, "the free user must find the \"Get Pro\" button")
+            // ... and the trial button is there.
+            // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio
+            // de 14:15): the button no longer says "Get Pro" (it asked for the
+            // PAYMENT); it offers the free trial, which is started in the IDE.
+            val bouton = boutonsDe(panneau.rootComponent)
+                .firstOrNull { it.text == "Start 30-day free trial" }
+            assertNotNull(
+                bouton,
+                "the free user must find the \"Start 30-day free trial\" button"
+            )
 
-            // 2. The customer clicks "Get Pro" and the purchase completes.
+            // 2. The customer clicks it and the purchase completes.
             bouton!!.doClick(0)
 
             // 3. The dialog was opened for OUR product...

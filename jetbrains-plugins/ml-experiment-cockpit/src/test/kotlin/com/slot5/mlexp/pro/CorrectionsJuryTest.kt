@@ -156,35 +156,44 @@ class CorrectionsJuryTest {
     }
 
     // ------------------------------------------------------------------
-    // J2 - the "Get Pro" button is hidden for a customer who has the licence
+    // J2 - the licence button is GONE for a customer who has the licence
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("J2 - the \"Get Pro\" button is hidden when the Pro licence authorises the features")
-    fun leBoutonGetProEstCachePourUnClientPro() {
+    @DisplayName("J2 - no button at all when the Pro licence authorises the features")
+    fun aucunBoutonPourUnClientPro() {
         val source = SourceLicenceFaux(sceau = "key:test-key-no-secret")
         avecLicence(source) {
             val panneau = PanneauComparaison(ComparaisonHub())
-            val bouton = boutonsDe(panneau.rootComponent).firstOrNull { it.text == "Get Pro" }
-            assertNotNull(bouton, "the panel must hold the \"Get Pro\" button")
+            val boutons = boutonsDe(panneau.rootComponent)
+            // 2026.1.9 (consigne of the mother, 19/11/2026, revue du Studio
+            // de 14:15): the button of the locked card is now labelled
+            // according to the licence state ("Start 30-day free trial",
+            // "Get Pro" only when the trial has ended). When the Pro tier is
+            // active, there is NO button left - not even a hidden one.
             assertFalse(
-                bouton!!.isVisible,
-                "a customer who already has the Pro licence must not see \"Get Pro\""
+                boutons.any { it.text == "Start 30-day free trial" },
+                "a customer who already has the Pro licence must not see a trial button"
+            )
+            assertFalse(
+                boutons.any { it.text == "Get Pro" },
+                "a customer who already has the Pro licence must not see a purchase button"
             )
         }
     }
 
     @Test
-    @DisplayName("J2 bis - the \"Get Pro\" button stays visible for a customer without licence")
-    fun leBoutonGetProResteVisiblePourUnClientGratuit() {
+    @DisplayName("J2 bis - the trial button stays visible for a customer without licence")
+    fun leBoutonDEssaiResteVisiblePourUnClientGratuit() {
         val source = SourceLicenceFaux(sceau = null)
         avecLicence(source) {
             val panneau = PanneauComparaison(ComparaisonHub())
-            val bouton = boutonsDe(panneau.rootComponent).firstOrNull { it.text == "Get Pro" }
-            assertNotNull(bouton, "the panel must hold the \"Get Pro\" button")
+            val bouton = boutonsDe(panneau.rootComponent)
+                .firstOrNull { it.text == "Start 30-day free trial" }
+            assertNotNull(bouton, "the panel must hold the \"Start 30-day free trial\" button")
             assertTrue(
                 bouton!!.isVisible,
-                "a customer without licence must find \"Get Pro\""
+                "a customer without licence must find \"Start 30-day free trial\""
             )
         }
     }

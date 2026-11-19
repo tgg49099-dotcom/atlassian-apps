@@ -232,6 +232,10 @@ object ExportComparaison {
      *
      * The file is written **in a temporary file of the same folder**, then
      * moved: a failure therefore leaves **no half-written report** behind.
+     *
+     * The final file has the rights **644** (readable by everybody, writable
+     * by its owner): the report is meant to be **shared**, and a colleague
+     * who has no write access on the folder must still be able to open it.
      */
     fun ecrire(fichier: File, html: String): ResultatExport {
         val absolut = fichier.absoluteFile
@@ -245,6 +249,7 @@ object ExportComparaison {
         return try {
             tmp = Files.createTempFile(dossier.toPath(), ".mlexp-export-", ".tmp")
             Files.write(tmp, html.toByteArray(StandardCharsets.UTF_8))
+            appliquerDroits644(tmp)
             Files.move(tmp, absolut.toPath(), StandardCopyOption.REPLACE_EXISTING)
             tmp = null
             ResultatExport.Ecrit(absolut.path, absolut.length())
@@ -262,6 +267,30 @@ object ExportComparaison {
                     // is more useful than a second one.
                 }
             }
+        }
+    }
+
+    /**
+     * Gives the file the rights **644** (`rw-r--r--`).
+     *
+     * `Files.createTempFile` creates the temporary file with the rights
+     * **600** (owner only) on a POSIX file system, and a move keeps them:
+     * the report would then be unreadable by a colleague who shares the
+     * folder. The rights are therefore set **before** the move, on the
+     * temporary file itself.
+     *
+     * On a file system that has no POSIX rights (Windows), the call is
+     * simply skipped: the report is still written, with the rights the
+     * system gives it.
+     */
+    private fun appliquerDroits644(fichier: java.nio.file.Path) {
+        try {
+            Files.setPosixFilePermissions(
+                fichier,
+                java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--")
+            )
+        } catch (t: Throwable) {
+            // A file system without POSIX rights (Windows): nothing to change.
         }
     }
 
@@ -389,6 +418,13 @@ object ExportComparaison {
      * contains **no `http://` and no `https://` at all**, which is what makes
      * the "the report loads nothing from the network" property **checkable**
      * with a simple `grep`. The browser still displays the text as it is.
+     *
+     * The scheme is neutralised **whatever its case**: a URL scheme is
+     * case-insensitive (RFC 3986), so `HTTPS://` is a URL exactly like
+     * `https://`. The proof of the report (proof 08) counts the schemes
+     * **without regard to the case**: if only the lower case were
+     * neutralised, an upper-case scheme would survive the escape **and**
+     * escape the count — a false green.
      */
     fun echapper(s: String): String {
         val sb = StringBuilder()
@@ -402,10 +438,13 @@ object ExportComparaison {
                 else -> sb.append(c)
             }
         }
-        return sb.toString()
-            .replace("http://", "http&#58;//")
-            .replace("https://", "https&#58;//")
+        return SCHEME_URL.replace(sb.toString()) { m -> m.value.replace("://", "&#58;//") }
     }
+
+    /**
+     * The scheme of a URL, **in any case** (`HTTP://`, `Https://`...).
+     */
+    private val SCHEME_URL = Regex("https?://", RegexOption.IGNORE_CASE)
 
     /** The CSS of the report: integrated in the file, nothing external. */
     private val CSS = """
