@@ -105,8 +105,7 @@ of minors.
 
 ## 7. Changes to this Policy
 
-Material changes are announced on the Marketplace listing changelog and
-on this page with a new "Last updated" date.
+Material changes are announced on this page with a new "Last updated" date.
 
 ## 8. Contact
 
