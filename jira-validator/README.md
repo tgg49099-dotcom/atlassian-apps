@@ -142,5 +142,5 @@ the region), encrypted at rest — see the [Privacy Policy](PRIVACY.md) for deta
 ## Version
 
 **App version 4.3.0** is the build currently served in production. Material changes
-are announced in the Marketplace listing changelog and in the
+are announced in the
 `Last updated` line of the [Privacy Policy](PRIVACY.md).
