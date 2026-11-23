@@ -3,7 +3,7 @@
 Last updated: 2026-10-28. Effective on first marketplace publish.
 
 This Privacy Policy explains what data **Schema Validator for Jira** (the
-"App", a Forge app published on the Atlassian Marketplace) reads, stores,
+"App", a Forge app that has no Atlassian Marketplace listing yet) reads, stores,
 and shares when an Atlassian Cloud administrator installs it on a Jira site.
 
 The App is published by an individual partner (the "Publisher", identified
