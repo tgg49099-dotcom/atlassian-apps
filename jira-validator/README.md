@@ -39,8 +39,8 @@ Small teams (roughly 2 to 15 people) who want a lightweight data-quality check o
 ## Install (4 steps)
 
 **Step 1 — install the app.** The app is **not on the Atlassian Marketplace yet**
-(there is no listing to install from). Judges: use the installation link provided
-with the submission. Anyone else: install the Atlassian Forge CLI
+(there is no listing to install from), and **no signed installation link is
+available for it at the moment**. To install it: install the Atlassian Forge CLI
 (`npm install -g @forge/cli`), run `forge login`, and then
 `forge install -e production --site <your-site>.atlassian.net -p jira --non-interactive --confirm-scopes`.
 The app adds one panel to the issue view and one page to the project settings — it
