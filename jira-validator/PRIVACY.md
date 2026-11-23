@@ -7,7 +7,7 @@ This Privacy Policy explains what data **Schema Validator for Jira** (the
 and shares when an Atlassian Cloud administrator installs it on a Jira site.
 
 The App is published by an individual partner (the "Publisher", identified
-on the Marketplace listing). The App runs entirely on Atlassian Forge
+in this repository and at the contact address in § 8). The App runs entirely on Atlassian Forge
 infrastructure and does not operate any external server.
 
 ## 1. Data we read
